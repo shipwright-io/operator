@@ -1,0 +1,24 @@
+on: 
+    pull_request:
+      branches: [ main ]
+    push:
+      branches: [ main ]
+name: ci/github
+jobs:
+    unit:
+        strategy:
+          matrix:
+            go-version: [1.15.x]
+            os: [ubuntu-latest]
+        runs-on: ${{ matrix.os }}
+        steps:
+        - name: Install Go
+          uses: actions/setup-go@v2
+          with:
+            go-version: ${{ matrix.go-version }}
+        - name: Check out code
+          uses: actions/checkout@v2
+        - name: Build
+          run: make manager
+        - name: Test
+          run: make test
