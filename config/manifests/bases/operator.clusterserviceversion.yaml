@@ -1,0 +1,51 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: ShipwrightBuild is the Schema for the shipwrightbuilds API
+      displayName: Shipwright Build
+      kind: ShipwrightBuild
+      name: shipwrightbuilds.operator.shipwright.io
+      version: v1alpha1
+  description: Install Shipwright Builds on your Kubernetes cluster
+  displayName: Shipwright Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - build
+  - shipwright
+  - tekton
+  - cicd
+  links:
+  - name: Operator
+    url: https://operator.domain
+  maintainers:
+  - email: shipwright-dev@lists.shipwright.io
+    name: '"The Shipwright Contributors"'
+  maturity: alpha
+  provider:
+    name: The Shipwright Contributors
+    url: https://shipwright.io
+  version: 0.0.0

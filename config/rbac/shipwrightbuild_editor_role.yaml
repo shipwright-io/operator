@@ -1,0 +1,24 @@
+# permissions for end users to edit shipwrightbuilds.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: shipwrightbuild-editor-role
+rules:
+- apiGroups:
+  - operator.shipwright.io
+  resources:
+  - shipwrightbuilds
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.shipwright.io
+  resources:
+  - shipwrightbuilds/status
+  verbs:
+  - get
