@@ -80,9 +80,17 @@ manifests: controller-gen
 	# This can be removed when operator-sdk is upgraded to v1.5.x
 	hack/fix-plurals.sh
 
+# Verify manifests were generated and committed to git
+verify-manifests: manifests
+	hack/check-git-status.sh manifests
+
 # Run go fmt against code
 fmt:
 	go fmt ./...
+
+# Verify formatting and ensure git status is clean
+verify-fmt: fmt
+	hack/check-git-status.sh fmt
 
 # Run go vet against code
 vet:
@@ -91,6 +99,10 @@ vet:
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+# Verify code was generated and git status is clean
+verify-generate: generate
+	hack/check-git-status.sh generate
 
 # Build the container image
 image-build: test
@@ -110,6 +122,10 @@ KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize:
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
 
+OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
+operator-sdk:
+	hack/install-operator-sdk.sh $(OPERATOR_SDK)
+
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 define go-get-tool
@@ -126,11 +142,15 @@ endef
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: manifests kustomize
-	operator-sdk generate kustomize manifests -q
+bundle: manifests kustomize operator-sdk
+	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	operator-sdk bundle validate ./bundle
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	$(OPERATOR_SDK) bundle validate ./bundle
+
+# Verify bundle manifests were generated and committed to git
+verify-bundle: bundle
+	hack/check-git-status.sh bundle
 
 # Build the bundle image.
 .PHONY: bundle-build
