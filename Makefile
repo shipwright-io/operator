@@ -28,8 +28,6 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
 BUNDLE_IMG ?= quay.io/shipwright/operator-bundle:$(VERSION)
 
-# Image URL to use all building/pushing image targets
-IMG ?= quay.io/shipwright/operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
@@ -41,20 +39,25 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 CONTAINER_ENGINE ?= docker
+IMAGE_REPO ?= quay.io/shipwright
+TAG ?= latest
+IMAGE_PUSH ?= true
 
-all: manager
+all: operator
+
+build: operator
 
 # Run tests
 test: generate fmt vet manifests
 	hack/test-with-envtest.sh
 
 # Build manager binary
-manager: generate fmt vet
-	go build -o bin/manager main.go
+operator: generate fmt vet
+	go build -o bin/operator ./cmd/operator
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
-	go run ./main.go
+	go run ./cmd/operator
 
 # Install CRDs into a cluster
 install: manifests kustomize
@@ -66,7 +69,7 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/manager && $(KUSTOMIZE) edit set image controller="${IMAGE_REPO}/operator:${TAG}"
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
@@ -104,13 +107,14 @@ generate: controller-gen
 verify-generate: generate
 	hack/check-git-status.sh generate
 
-# Build the container image
-image-build: test
-	$(CONTAINER_ENGINE) build -t ${IMG} .
+KO_DEST = $(shell pwd)/bin
+KO = $(KO_DEST)/ko
+ko:
+	hack/install-ko.sh $(KO_DEST)
 
-# Push the docker image
-image-push:
-	$(CONTAINER_ENGINE) push ${IMG}
+# Build and push the image with ko
+ko-publish: ko
+	KO_DOCKER_REPO=${IMAGE_REPO} $(KO) publish --base-import-paths --push=${IMAGE_PUSH} -t ${TAG} ./cmd/operator
 
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
@@ -144,7 +148,7 @@ endef
 .PHONY: bundle
 bundle: manifests kustomize operator-sdk
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
+	cd config/manager && $(KUSTOMIZE) edit set image controller="${IMAGE_REPO}/operator:${TAG}"
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 
