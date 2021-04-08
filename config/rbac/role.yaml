@@ -31,41 +31,53 @@ rules:
 - apiGroups:
   - apps
   resources:
+  - daemonsets
   - deployments
+  - replicasets
+  - statefulsets
   verbs:
   - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - apps
   resourceNames:
-  - shipwright-build-controller
+  - shipwright-build
   resources:
-  - deployments
+  - deployments/finalizers
   verbs:
-  - delete
-  - patch
   - update
 - apiGroups:
   - ""
   resources:
+  - configmaps
+  - endpoints
+  - events
+  - persistentvolumeclaims
+  - pods
+  - secrets
   - serviceaccounts
+  - services
+  - services/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
   verbs:
   - create
   - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resourceNames:
-  - shipwright-build-controller
-  resources:
-  - serviceaccounts
-  verbs:
-  - delete
-  - patch
-  - update
 - apiGroups:
   - operator.shipwright.io
   resources:
@@ -130,3 +142,28 @@ rules:
   - delete
   - patch
   - update
+- apiGroups:
+  - shipwright.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - tekton.dev
+  resources:
+  - taskruns
+  - tasks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
