@@ -48,8 +48,9 @@ all: operator
 build: operator
 
 # Run tests
+BINDATA = $(shell pwd)/cmd/operator/kodata
 test: generate fmt vet manifests
-	hack/test-with-envtest.sh
+	KO_DATA_PATH=${BINDATA} hack/test-with-envtest.sh
 
 # Build manager binary
 operator: generate fmt vet
