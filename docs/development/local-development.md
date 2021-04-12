@@ -29,3 +29,34 @@ The following make options can be set:
 * `IMAGE_PUSH` - if false, does not push the image. Defaults to true.
 
 Refer to the [ko documenation](https://github.com/google/ko#local-publishing-options) for more information.
+
+## Deploy to Kubernetes
+
+To test the operator on a Kubernetes cluster, you first must have the following:
+
+* Access to a Kubernetes cluster v1.19 or higher, with cluster admin permissions.
+* Install Tekton v0.21 on the cluster.
+
+```bash
+$ export KUBECONFIG=/path/to/kubeconfig
+$ kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.21.0/release.notags.yaml
+```
+
+If pushing to an external image registry, you may need to provide credentials to ko:
+
+```bash
+$ make ko
+$ ko login <IMAGE_REGISTRY> -u <USERNAME> -p <PASSWORD>
+```
+
+Next, build the operator image as specified above, and push to a container registry that can be accessed by the cluster:
+
+```bash
+$ make build IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" TAG="<TAG>"
+```
+
+Finally, use the `make deploy` command with appropriate `IMAGE_REPO` and `TAG` arguments to deploy to the cluster.
+
+```bash
+$ make deploy IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" TAG="<TAG>"
+```
