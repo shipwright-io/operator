@@ -117,6 +117,10 @@ ko:
 ko-publish: ko
 	KO_DOCKER_REPO=${IMAGE_REPO} $(KO) publish --base-import-paths --push=${IMAGE_PUSH} -t ${TAG} ./cmd/operator
 
+ko-deploy: manifests kustomize ko
+	cd config/manager && $(KUSTOMIZE) edit set image controller="ko://github.com/shipwright-io/operator/cmd/operator"
+	$(KUSTOMIZE) build config/default | KO_DOCKER_REPO=${IMAGE_REPO} $(KO) apply --base-import-paths --push=${IMAGE_PUSH} -t ${TAG} -f -
+
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen:
@@ -130,6 +134,10 @@ kustomize:
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
 operator-sdk:
 	hack/install-operator-sdk.sh $(OPERATOR_SDK)
+
+GINKGO = $(shell pwd)/bin/ginkgo
+ginkgo:
+	$(call go-get-tool,$(GINKGO),github.com/onsi/ginkgo/ginkgo@v1.14.1)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -161,3 +169,8 @@ verify-bundle: bundle
 .PHONY: bundle-build
 bundle-build:
 	$(CONTAINER_ENGINE) build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+test-e2e: ginkgo
+	$(GINKGO) --nodes=1 --v --reportPassed ./test/e2e 
+
+test-e2e-operator: ko-deploy test-e2e

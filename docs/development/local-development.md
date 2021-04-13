@@ -46,17 +46,27 @@ If pushing to an external image registry, you may need to provide credentials to
 
 ```bash
 $ make ko
-$ ko login <IMAGE_REGISTRY> -u <USERNAME> -p <PASSWORD>
+$ bin/ko login <IMAGE_REGISTRY> -u <USERNAME> -p <PASSWORD>
 ```
 
-Next, build the operator image as specified above, and push to a container registry that can be accessed by the cluster:
+Next, use the ko-deploy make target to deploy to Kubernetes:
 
 ```bash
-$ make build IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" TAG="<TAG>"
+$ make ko-deploy IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" TAG="<TAG>"
 ```
 
-Finally, use the `make deploy` command with appropriate `IMAGE_REPO` and `TAG` arguments to deploy to the cluster.
+If deploying to a local KinD cluster, use `IMAGE_REPO=kind.local` and `TAG=latest`.
 
-```bash
-$ make deploy IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" TAG="<TAG>"
-```
+*Note: this will result in changes to `kustomization.yaml` files.*
+*Do not check these changes into git unless you intend to change how the operator is bundled for OLM.*
+
+## Testing your changes
+
+Before submitting a pull request, it is best practice to run our unit and end-to-end test suite against your changes.
+
+To run the unit tests, run `make test`
+
+To run the end to end tests, do the following:
+
+1. Deploy the operator to your kubernetes cluster (see above)
+2. Run `make test-e2e`
