@@ -43,7 +43,7 @@ jobs:
           run: make verify-manifests
         - name: Verify OLM bundle
           run: make verify-bundle
-    e2e:
+    e2e-operator:
         strategy:
           fail-fast: false
           matrix:
@@ -60,5 +60,24 @@ jobs:
             go-version: ${{ matrix.go-version }}
         - name: Check out code
           uses: actions/checkout@v2
-        - name: Build Image
-          run: make ko-publish IMAGE_REPO=ko.local
+        - name: Install kubectl
+          uses: azure/setup-kubectl@v1
+          with:
+            version: ${{ matrix.kubernetes }}
+        - name: Create kind cluster
+          uses: helm/kind-action@v1.1.0
+          with:
+            version: v0.10.0
+            node_image: kindest/node:${{ matrix.kubernetes }}
+            cluster_name: kind
+            wait: 120s
+        - name: Verify kind cluster
+          run: |
+            echo "# Using KinD context..."
+            kubectl config use-context "kind-kind"
+            echo "# KinD nodes:"
+            kubectl get nodes
+        - name: Test operator e2e
+          run: |
+            export KUBECONFIG=$HOME/.kube/config
+            make test-e2e-operator IMAGE_REPO=kind.local

@@ -2,7 +2,6 @@ package test
 
 import (
 	"context"
-	"fmt"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,7 +47,6 @@ func EventuallyRemoved(ctx context.Context, k8sClient client.Client, obj client.
 			return true
 		}
 		o.Expect(err).NotTo(o.HaveOccurred())
-		fmt.Printf("found object %s: %s\n", obj.GetObjectKind(), key)
 		return false
 	}).Should(o.BeTrue())
 }

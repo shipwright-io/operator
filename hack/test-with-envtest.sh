@@ -11,4 +11,4 @@ source "${ENVTEST_ASSETS_DIR}/setup-envtest.sh"
 fetch_envtest_tools "${ENVTEST_ASSETS_DIR}"
 setup_envtest_env "${ENVTEST_ASSETS_DIR}"
 # Run tests sequentially - the controller integration tests cannot be run concurrently
-go test ./... -coverprofile cover.out -p 1
+go test ./api/... ./cmd/... ./controllers/... -coverprofile cover.out -p 1
