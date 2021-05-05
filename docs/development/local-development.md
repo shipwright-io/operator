@@ -28,7 +28,7 @@ The following make options can be set:
 * `TAG` - defaults to `latest`.
 * `IMAGE_PUSH` - if false, does not push the image. Defaults to true.
 
-Refer to the [ko documenation](https://github.com/google/ko#local-publishing-options) for more information.
+Refer to the [ko documentation](https://github.com/google/ko#local-publishing-options) for more information.
 
 ## Deploy to Kubernetes
 
@@ -59,4 +59,10 @@ Finally, use the `make deploy` command with appropriate `IMAGE_REPO` and `TAG` a
 
 ```bash
 $ make deploy IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" TAG="<TAG>"
+```
+
+Scripts in `hack` folder may require `sed` (GNU), therefore in platforms other than Linux you may have it with a different name. For instance, on macOS it's usually named `gsed`, in this case provide the `SED_BIN` make variable with the alternative name.
+
+```bash
+$ make build SED_BIN=gsed ...
 ```
