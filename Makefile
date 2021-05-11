@@ -78,11 +78,12 @@ undeploy:
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
+SED_BIN ?= sed
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	# Fix pluralization of ShipwrightBuilds in generated manifests
 	# This can be removed when operator-sdk is upgraded to v1.5.x
-	hack/fix-plurals.sh
+	SED_BIN=${SED_BIN} hack/fix-plurals.sh
 
 # Verify manifests were generated and committed to git
 verify-manifests: manifests
