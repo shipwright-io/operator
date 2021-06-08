@@ -43,6 +43,10 @@ IMAGE_REPO ?= quay.io/shipwright
 TAG ?= latest
 IMAGE_PUSH ?= true
 
+# operating-system type and architecture based on golang
+OS ?= $(shell go env GOOS)
+ARCH ?= $(shell go env GOARCH)
+
 all: operator
 
 build: operator
@@ -109,10 +113,14 @@ generate: controller-gen
 verify-generate: generate
 	hack/check-git-status.sh generate
 
-KO_DEST = $(shell pwd)/bin
-KO = $(KO_DEST)/ko
-ko:
-	hack/install-ko.sh $(KO_DEST)
+# Creates a local "bin" directory for helper applications.
+bin-dir:
+	@mkdir ./bin || true
+
+# Installs ko on the specified location
+KO = $(shell pwd)/bin/ko
+ko: bin-dir
+	OS=${OS} ARCH=${ARCH} hack/install-ko.sh $(KO)
 
 # Build and push the image with ko
 ko-publish: ko
@@ -128,9 +136,10 @@ KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize:
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
 
+# Installs operator-sdk on specified location
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
-operator-sdk:
-	hack/install-operator-sdk.sh $(OPERATOR_SDK)
+operator-sdk: bin-dir
+	OS=${OS} ARCH=${ARCH} hack/install-operator-sdk.sh $(OPERATOR_SDK)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
