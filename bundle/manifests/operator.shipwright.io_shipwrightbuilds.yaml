@@ -17,7 +17,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ShipwrightBuild is the Schema for the shipwrightbuilds API
+        description: ShipwrightBuild represents the deployment of Shipwright's build controller on a Kubernetes cluster.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
@@ -28,14 +28,14 @@ spec:
           metadata:
             type: object
           spec:
-            description: ShipwrightBuildSpec defines the desired state of ShipwrightBuild
+            description: ShipwrightBuildSpec defines the configuration of a Shipwright Build deployment.
             properties:
-              foo:
-                description: Foo is an example field of ShipwrightBuild. Edit ShipwrightBuild_types.go to remove/update
+              targetNamespace:
+                description: TargetNamespace is the target namespace where Shipwright's build controller will be deployed.
                 type: string
             type: object
           status:
-            description: ShipwrightBuildStatus defines the observed state of ShipwrightBuild
+            description: ShipwrightBuildStatus defines the observed state of Shipwright-Build
             type: object
         type: object
     served: true
