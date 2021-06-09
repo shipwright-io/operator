@@ -73,7 +73,7 @@ var _ = BeforeSuite(func() {
 	err = (&ShipwrightBuildReconciler{
 		Client: mgr.GetClient(),
 		Scheme: scheme.Scheme,
-		Log:    ctrl.Log.WithName("controllers").WithName("shipwrightbuild"),
+		Logger: ctrl.Log.WithName("controllers").WithName("shipwrightbuild"),
 	}).SetupWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 

@@ -83,7 +83,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// selecting the target namespace based on the CRD information, when not informed using the
 	// default namespace instead
-	targetNamespace := b.Spec.Namespace
+	targetNamespace := b.Spec.TargetNamespace
 	if targetNamespace == "" {
 		logger.Info("Namespace is not informed, using default namespace instead")
 		targetNamespace = defaultTargetNamespace

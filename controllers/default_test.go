@@ -41,7 +41,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 				Name:      "cluster",
 			},
 			Spec: v1alpha1.ShipwrightBuildSpec{
-				Namespace: targetNamespace,
+				TargetNamespace: targetNamespace,
 			},
 		}
 		err = k8sClient.Create(ctx, build, &client.CreateOptions{})
