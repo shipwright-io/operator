@@ -7,56 +7,77 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/shipwright-io/operator/api/v1alpha1"
 	"github.com/shipwright-io/operator/test"
 )
 
+// createNamespace creates the namespace informed.
+func createNamespace(name string) {
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}
+	err := k8sClient.Get(ctx, types.NamespacedName{Name: ns.Name}, ns)
+	if errors.IsNotFound(err) {
+		err = k8sClient.Create(ctx, ns, &client.CreateOptions{})
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 
+	// namespace where ShipwrightBuild instance will be located
+	const namespace = "namespace"
+	// targetNamespace namespace where shipwright Controller and dependencies will be located
+	const targetNamespace = "target-namespace"
+	// build Build instance employed during testing
 	var build *v1alpha1.ShipwrightBuild
 
 	g.BeforeEach(func() {
-		namespace := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "shipwright-build",
-			},
-		}
-		err := k8sClient.Get(ctx, types.NamespacedName{Name: namespace.Name}, namespace)
-		if errors.IsNotFound(err) {
-			err = k8sClient.Create(ctx, namespace, &client.CreateOptions{})
-		}
-		o.Expect(err).NotTo(o.HaveOccurred())
+		// setting up the namespaces, where Shipwright Controller will be deployed
+		createNamespace(namespace)
+		createNamespace(targetNamespace)
 
 		g.By("creating a ShipwrightBuild instance")
 		build = &v1alpha1.ShipwrightBuild{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "cluster",
+				Namespace: namespace,
+				Name:      "cluster",
 			},
-			Spec: v1alpha1.ShipwrightBuildSpec{},
+			Spec: v1alpha1.ShipwrightBuildSpec{
+				TargetNamespace: targetNamespace,
+			},
 		}
-		err = k8sClient.Create(ctx, build, &client.CreateOptions{})
+		err := k8sClient.Create(ctx, build, &client.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// when the finalizer is in place, the deployment of manifest elements is done, and therefore
+		// functional testing can proceed
+		g.By("waiting for the finalizer to be set")
+		test.EventuallyContainFinalizer(ctx, k8sClient, build, FinalizerAnnotation)
 	})
 
 	g.AfterEach(func() {
 		g.By("deleting the ShipwrightBuild instance")
-		err := k8sClient.Get(ctx, types.NamespacedName{Name: build.Name}, build)
+		namespacedName := types.NamespacedName{Namespace: namespace, Name: build.Name}
+		err := k8sClient.Get(ctx, namespacedName, build)
 		if errors.IsNotFound(err) {
 			return
 		}
 		o.Expect(err).NotTo(o.HaveOccurred())
+
 		err = k8sClient.Delete(ctx, build, &client.DeleteOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
-		g.By("checking that the shipwright-build deployment has been removed")
+
+		g.By("waiting for ShipwrightBuild instance to be completely removed")
+		test.EventuallyRemoved(ctx, k8sClient, build)
+
+		g.By("checking that the shipwright-build-controller deployment has been removed")
 		deployment := &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
+				Namespace: targetNamespace,
 				Name:      "shipwright-build-controller",
-				Namespace: "shipwright-build",
 			},
 		}
 		test.EventuallyRemoved(ctx, k8sClient, deployment)
@@ -81,7 +102,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 
 			expectedServiceAccount := &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "shipwright-build",
+					Namespace: targetNamespace,
 					Name:      "shipwright-build-controller",
 				},
 			}
@@ -91,7 +112,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		g.It("creates a deployment for the Shipwright build controller", func() {
 			expectedDeployment := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "shipwright-build",
+					Namespace: targetNamespace,
 					Name:      "shipwright-build-controller",
 				},
 			}
@@ -111,17 +132,19 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		g.It("deletes the RBAC for the Shipwright build controller", func() {
 			expectedClusterRole := &rbacv1.ClusterRole{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "shipwright-build-controller",
+					Namespace: targetNamespace,
+					Name:      "shipwright-build-controller",
 				},
 			}
 			expectedClusterRoleBinding := &rbacv1.ClusterRoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "shipwright-build-controller",
+					Namespace: targetNamespace,
+					Name:      "shipwright-build-controller",
 				},
 			}
 			expectedServiceAccount := &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "shipwright-build",
+					Namespace: targetNamespace,
 					Name:      "shipwright-build-controller",
 				},
 			}
@@ -144,7 +167,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		g.It("deletes the deployment for the Shipwright build controller", func() {
 			expectedDeployment := &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "shipwright-build",
+					Namespace: targetNamespace,
 					Name:      "shipwright-build-controller",
 				},
 			}
