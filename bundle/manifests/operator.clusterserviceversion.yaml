@@ -24,7 +24,7 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: ShipwrightBuild is the Schema for the shipwrightbuilds API
+    - description: ShipwrightBuild represents the deployment of Shipwright's build controller on a Kubernetes cluster.
       displayName: Shipwright Build
       kind: ShipwrightBuild
       name: shipwrightbuilds.operator.shipwright.io

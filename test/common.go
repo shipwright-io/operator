@@ -2,7 +2,7 @@ package test
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -12,6 +12,9 @@ import (
 	o "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// timeout amount of time to wait for Eventually methods
+var timeout = 30 * time.Second
 
 // EventuallyExists checks if an object with the given namespace+name and type eventually exists.
 func EventuallyExists(ctx context.Context, k8sClient client.Client, obj client.Object) {
@@ -26,7 +29,32 @@ func EventuallyExists(ctx context.Context, k8sClient client.Client, obj client.O
 		}
 		o.Expect(err).NotTo(o.HaveOccurred())
 		return true
-	}).Should(o.BeTrue())
+	}, timeout).Should(o.BeTrue())
+}
+
+// EventuallyContainFinalizer retrieves and inspect the object to assert if the informed finalizer
+// string is in the object.
+func EventuallyContainFinalizer(
+	ctx context.Context,
+	k8sClient client.Client,
+	obj client.Object,
+	finalizer string,
+) {
+	o.Eventually(func() bool {
+		key := types.NamespacedName{
+			Namespace: obj.GetNamespace(),
+			Name:      obj.GetName(),
+		}
+		if err := k8sClient.Get(ctx, key, obj); err != nil {
+			return false
+		}
+		for _, s := range obj.GetFinalizers() {
+			if s == finalizer {
+				return true
+			}
+		}
+		return false
+	}, timeout).Should(o.BeTrue())
 }
 
 // CRDEventuallyExists checks if a custom resource definition with the given name eventually exists.
@@ -44,13 +72,8 @@ func EventuallyRemoved(ctx context.Context, k8sClient client.Client, obj client.
 	o.Eventually(func() bool {
 		key := types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}
 		err := k8sClient.Get(ctx, key, obj)
-		if errors.IsNotFound(err) {
-			return true
-		}
-		o.Expect(err).NotTo(o.HaveOccurred())
-		fmt.Printf("found object %s: %s\n", obj.GetObjectKind(), key)
-		return false
-	}).Should(o.BeTrue())
+		return errors.IsNotFound(err)
+	}, timeout).Should(o.BeTrue())
 }
 
 // CRDEventuallyRemoved checks if a custom resource definition has been eventually removed
