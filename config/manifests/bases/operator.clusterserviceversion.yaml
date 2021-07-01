@@ -10,7 +10,8 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: ShipwrightBuild represents the deployment of Shipwright's build controller on a Kubernetes cluster.
+    - description: ShipwrightBuild represents the deployment of Shipwright's build
+        controller on a Kubernetes cluster.
       displayName: Shipwright Build
       kind: ShipwrightBuild
       name: shipwrightbuilds.operator.shipwright.io

@@ -24,10 +24,6 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
-# BUNDLE_IMG defines the image:tag used for the bundle. 
-# You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
-BUNDLE_IMG ?= quay.io/shipwright/operator-bundle:$(VERSION)
-
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
@@ -40,8 +36,18 @@ endif
 
 CONTAINER_ENGINE ?= docker
 IMAGE_REPO ?= quay.io/shipwright
-TAG ?= latest
+TAG ?= $(VERSION)
 IMAGE_PUSH ?= true
+
+BUNDLE_IMG_NAME ?= operator-bundle
+OPERATOR_IMG_NAME ?= operator
+
+# Image URL to use all building/pushing image targets
+IMG ?= $(IMAGE_REPO)/$(OPERATOR_IMG_NAME):$(TAG)
+
+# BUNDLE_IMG defines the image:tag used for the bundle. 
+# You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
+BUNDLE_IMG ?= $(IMAGE_REPO)/$(BUNDLE_IMG_NAME):$(TAG)
 
 # operating-system type and architecture based on golang
 OS ?= $(shell go env GOOS)
@@ -74,7 +80,7 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller="${IMAGE_REPO}/operator:${TAG}"
+	cd config/manager && $(KUSTOMIZE) edit set image controller="$(IMG)"
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
@@ -85,9 +91,6 @@ undeploy:
 SED_BIN ?= sed
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	# Fix pluralization of ShipwrightBuilds in generated manifests
-	# This can be removed when operator-sdk is upgraded to v1.5.x
-	SED_BIN=${SED_BIN} hack/fix-plurals.sh
 
 # Verify manifests were generated and committed to git
 verify-manifests: manifests
@@ -129,7 +132,7 @@ ko-publish: ko
 # Download controller-gen locally if necessary
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen:
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1)
 
 # Download kustomize locally if necessary
 KUSTOMIZE = $(shell pwd)/bin/kustomize
@@ -159,9 +162,10 @@ endef
 .PHONY: bundle
 bundle: manifests kustomize operator-sdk
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller="${IMAGE_REPO}/operator:${TAG}"
+	cd config/manager && $(KUSTOMIZE) edit set image controller="${IMG}"
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
+
 
 # Verify bundle manifests were generated and committed to git
 verify-bundle: bundle
@@ -169,5 +173,10 @@ verify-bundle: bundle
 
 # Build the bundle image.
 .PHONY: bundle-build
-bundle-build:
+bundle-build: bundle
 	$(CONTAINER_ENGINE) build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+# Push the bundle image to the registry
+.PHONY: bundle-push
+bundle-push: bundle-build
+	$(CONTAINER_ENGINE) push $(BUNDLE_IMG)

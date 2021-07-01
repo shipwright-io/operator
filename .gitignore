@@ -1,4 +1,3 @@
-
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -7,6 +6,9 @@
 *.dylib
 bin
 testbin/*
+
+# OS specific files
+**/.DS_Store
 
 # Test binary, build with `go test -c`
 *.test

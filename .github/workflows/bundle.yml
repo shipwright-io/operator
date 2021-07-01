@@ -1,0 +1,87 @@
+on: 
+    pull_request:
+      branches: [ main ]
+    push:
+      branches: [ main ]
+name: ci/github
+jobs:
+    checksecret:
+      name: Check if REGISTRY_USERNAME is set in github secrets
+      runs-on: ubuntu-latest
+      outputs:
+        is_registry_username_set: ${{ steps.checksecret_job.outputs.is_registry_username_set }}
+      steps:
+        - name: Check if REGISTRY_USERNAME is set
+          id: checksecret_job
+          env:
+              REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          run: |
+              echo "is_registry_username_set: ${{ env.REGISTRY_USERNAME != '' }}"
+              echo "::set-output name=is_registry_username_set::${{ env.REGISTRY_USERNAME != '' }}"
+
+    bundle-build:
+        needs: [ checksecret ]
+        if: needs.checksecret.outputs.is_registry_username_set == 'true'
+        strategy:
+          fail-fast: false
+          matrix:
+            go-version: [ 1.16.x ]
+            os: [ ubuntu-latest ]
+            kubernetes:
+              - v1.20.7
+          max-parallel: 2
+        runs-on: ${{ matrix.os }}
+        steps:
+        - name: Install Go
+          uses: actions/setup-go@v2
+          with:
+            go-version: ${{ matrix.go-version }}
+        - name: Check out Code
+          uses: actions/checkout@v2
+        - name: Install kubectl
+          uses: azure/setup-kubectl@v1
+          with:
+            version: ${{ matrix.kubernetes }}
+        - name: Create kind cluster
+          uses: helm/kind-action@v1.1.0
+          with:
+            version: v0.10.0
+            node_image: kindest/node:${{ matrix.kubernetes }}
+            cluster_name: kind
+            wait: 120s
+        - name: Verify kind cluster
+          run: |
+            echo "# Using KinD context..."
+            kubectl config use-context "kind-kind"
+            echo "# KinD nodes:"
+            kubectl get nodes
+        - name: Login to the docker registry
+          env:
+            REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+            REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          run: echo "$REGISTRY_PASSWORD" | docker login --username "$REGISTRY_USERNAME" --password-stdin quay.io
+        - name: Make and push Operator image
+          env:
+            IMAGE_REPO: quay.io/shipwright
+            TAG: pr-${{ github.event.number }}
+          run: |
+            make ko-publish IMAGE_REPO=ko.local
+
+            docker tag ko.local/operator:${TAG} $IMAGE_REPO/operator-pr:${TAG}
+            docker push $IMAGE_REPO/operator-pr:${TAG}
+        - name: Make and push Bundle image
+          env:
+            IMAGE_REPO: quay.io/shipwright
+            TAG: pr-${{ github.event.number }}
+            BUNDLE_IMG_NAME: operator-bundle-pr
+            OPERATOR_IMG_NAME: operator-pr
+          run: |
+            make bundle-push
+        - name: Install OLM
+          run: ./bin/operator-sdk olm install
+        - name: Deploy Operator Bundle Image via subscription
+          env:
+            TAG: pr-${{ github.event.number }}
+          run: |
+            ./bin/operator-sdk run bundle \
+              quay.io/shipwright/operator-bundle-pr:$TAG \

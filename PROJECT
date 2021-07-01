@@ -3,11 +3,15 @@ layout: go.kubebuilder.io/v3
 projectName: operator
 repo: github.com/shipwright-io/operator
 resources:
-- crdVersion: v1
+- api:
+    crdVersion: v1
+  controller: true
+  domain: shipwright.io
   group: operator
   kind: ShipwrightBuild
+  path: github.com/shipwright-io/operator/api/v1alpha1
   version: v1alpha1
-version: 3-alpha
+version: "3"
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
