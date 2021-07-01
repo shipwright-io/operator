@@ -22,7 +22,7 @@ spec:
   namespace: default
 ```
 
-It will deploy the Build-Controller in `default` namespace. When `.spec.namespace` is not informed,
+It will deploy the Build-Controller in `default` namespace. When `.spec.namespace` is not set,
 it will use the `shipwright-build` namespace instead, this namespace needs to be created before the
 actual deployment takes place.
 
