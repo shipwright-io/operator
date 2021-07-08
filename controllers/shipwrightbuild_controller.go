@@ -10,22 +10,28 @@ import (
 	"os"
 	"path/filepath"
 
-	mfc "github.com/manifestival/controller-runtime-client"
-	"github.com/manifestival/manifestival"
-
-	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	buildcorev1alpha1 "github.com/shipwright-io/build/pkg/apis/core/v1alpha1"
+	"github.com/shipwright-io/build/pkg/ctxlog"
 	"github.com/shipwright-io/operator/api/v1alpha1"
+
+	mfc "github.com/manifestival/controller-runtime-client"
+	"github.com/manifestival/manifestival"
+)
+
+const (
+	namespace string = "namespace"
+	name      string = "name"
 )
 
 // ShipwrightBuildReconciler reconciles a ShipwrightBuild object
 type ShipwrightBuildReconciler struct {
 	client.Client
-	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	Manifest manifestival.Manifest
 }
@@ -62,14 +68,12 @@ type ShipwrightBuildReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
 func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("shipwrightbuild", req.NamespacedName)
-
 	build := &v1alpha1.ShipwrightBuild{}
 	// Remove Namespaces from the manifest - cluster admins must provision the shipwright-build namespace
 	manifest := r.Manifest.Filter(manifestival.Not(manifestival.ByKind("Namespace")))
 	err := r.Client.Get(ctx, req.NamespacedName, build)
 	if errors.IsNotFound(err) {
-		log.Info("object not found, deleting Shipwright Build from the cluster")
+		ctxlog.Info(ctx, "Object not found, deleting Shipwright Build from the cluster", namespace, req.Namespace, name, req.NamespacedName)
 		err = manifest.Delete()
 		if err != nil {
 			return ctrl.Result{}, err
@@ -79,9 +83,31 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	log.Info("reconciling ShipwrightBuild with manifest")
+
+	ctxlog.Info(ctx, "Reconciling ShipwrightBuild with manifest", namespace, req.Namespace, name, req.NamespacedName)
 	err = manifest.Apply()
 	if err != nil {
+		build.Status.SetCondition(&buildcorev1alpha1.Condition{
+			Type:    buildcorev1alpha1.ConditionReady,
+			Status:  corev1.ConditionFalse,
+			Reason:  "Failed",
+			Message: "Reconciling ShipwrightBuild failed",
+		})
+		ctxlog.Debug(ctx, "Updating shipwrightbuild status", namespace, req.Namespace, name, req.NamespacedName)
+		if err = r.Client.Status().Update(ctx, build); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, err
+	}
+
+	build.Status.SetCondition(&buildcorev1alpha1.Condition{
+		Type:    buildcorev1alpha1.ConditionReady,
+		Status:  corev1.ConditionTrue,
+		Reason:  "Running",
+		Message: "Reconciling ShipwrightBuild succeeded",
+	})
+	ctxlog.Debug(ctx, "Updating shipwrightbuild status", namespace, req.Namespace, name, req.NamespacedName)
+	if err = r.Client.Status().Update(ctx, build); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -91,14 +117,13 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 // SetupWithManager sets up the controller with the Manager.
 func (r *ShipwrightBuildReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	mfclient := mfc.NewClient(mgr.GetClient())
-	mflogger := mgr.GetLogger().WithName("manifestival")
 	dataPath, exists := os.LookupEnv("KO_DATA_PATH")
 	if !exists {
 		return fmt.Errorf("KO_DATA_PATH is not set - cannot set up reconciler")
 	}
 	buildManifest := filepath.Join(dataPath, "release.yaml")
 
-	mf, err := manifestival.NewManifest(buildManifest, manifestival.UseClient(mfclient), manifestival.UseLogger(mflogger))
+	mf, err := manifestival.NewManifest(buildManifest, manifestival.UseClient(mfclient), manifestival.UseLogger(ctxlog.NewLogger("manifestival")))
 	if err != nil {
 		return err
 	}

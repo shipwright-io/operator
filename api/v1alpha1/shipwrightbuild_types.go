@@ -6,6 +6,8 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	buildcorev1alpha1 "github.com/shipwright-io/build/pkg/apis/core/v1alpha1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -24,6 +26,9 @@ type ShipwrightBuildSpec struct {
 type ShipwrightBuildStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// Conditions holds the latest available observations of a resource's current state. 
+	Conditions buildcorev1alpha1.Conditions `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -50,4 +55,15 @@ type ShipwrightBuildList struct {
 
 func init() {
 	SchemeBuilder.Register(&ShipwrightBuild{}, &ShipwrightBuildList{})
+}
+
+// SetCondition updates a list of conditions with the provided condition
+func (sbs *ShipwrightBuildStatus) SetCondition(condition *buildcorev1alpha1.Condition) {
+	for i, c := range sbs.Conditions {
+		if c.Type == condition.Type {
+			sbs.Conditions[i] = *condition
+			return
+		}
+	}
+	sbs.Conditions = append(sbs.Conditions, *condition)
 }

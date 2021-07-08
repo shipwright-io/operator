@@ -12,7 +12,6 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/shipwright-io/build/pkg/ctxlog"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -21,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/shipwright-io/build/pkg/ctxlog"
 	operatorv1alpha1 "github.com/shipwright-io/operator/api/v1alpha1"
 	"github.com/shipwright-io/operator/controllers"
 	// +kubebuilder:scaffold:imports
@@ -99,7 +99,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctxlog.Info(ctx, "starting manager")
+	ctxlog.Info(ctx, "Starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		ctxlog.Error(ctx, err, "problem running manager")
 		os.Exit(1)
