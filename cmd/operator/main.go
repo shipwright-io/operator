@@ -20,14 +20,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/shipwright-io/build/pkg/ctxlog"
 	operatorv1alpha1 "github.com/shipwright-io/operator/api/v1alpha1"
 	"github.com/shipwright-io/operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
 )
 
 // variables to hold command-line flags
@@ -64,7 +64,9 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	l := ctxlog.NewLogger("shipwrightBuild-controller")
+
+	ctx := ctxlog.NewParentContext(l)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -75,32 +77,31 @@ func main() {
 		LeaderElectionID:       "01a9b2d1.shipwright.io",
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		ctxlog.Error(ctx, err, "unable to start manager")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.ShipwrightBuildReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ShipwrightBuild"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ShipwrightBuild")
+		ctxlog.Error(ctx, err, "unable to create controller")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
+		ctxlog.Error(ctx, err, "unable to set up health check")
 		os.Exit(1)
 	}
 	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
+		ctxlog.Error(ctx, err, "unable to set up ready check")
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager")
+	ctxlog.Info(ctx, "Starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+		ctxlog.Error(ctx, err, "problem running manager")
 		os.Exit(1)
 	}
 }
