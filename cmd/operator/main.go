@@ -81,8 +81,8 @@ func main() {
 
 	if err = (&controllers.ShipwrightBuildReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ShipwrightBuild"),
 		Scheme: mgr.GetScheme(),
+		Logger: ctrl.Log.WithName("controllers").WithName("ShipwrightBuild"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ShipwrightBuild")
 		os.Exit(1)
