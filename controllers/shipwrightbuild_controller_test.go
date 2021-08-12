@@ -353,13 +353,14 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 	// Build Controller is created accordingly
 	t.Run("rollout-manifests", func(t *testing.T) {
 		ctx := context.TODO()
-
 		res, err := r.Reconcile(ctx, req)
 		g.Expect(err).To(o.BeNil())
 		g.Expect(res.Requeue).To(o.BeFalse())
-
 		err = c.Get(ctx, deploymentName, &appsv1.Deployment{})
 		g.Expect(err).To(o.BeNil())
+		err = c.Get(ctx, namespacedName, b)
+		g.Expect(err).To(o.BeNil())
+		g.Expect(b.Status.IsReady()).To(o.BeTrue())
 	})
 
 	// rolling back all changes, making sure the main deployment is also not found afterwards
