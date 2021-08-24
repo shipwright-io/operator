@@ -15,6 +15,10 @@ spec:
       kind: ShipwrightBuild
       name: shipwrightbuilds.operator.shipwright.io
       version: v1alpha1
+    required:
+    - kind: TektonConfig
+      name: tektonconfigs.operator.tekton.dev
+      version: v1alpha1
   description: Install Shipwright Builds on your Kubernetes cluster
   displayName: Shipwright Operator
   icon:

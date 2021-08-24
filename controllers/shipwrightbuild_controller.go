@@ -7,13 +7,20 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-
 	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
 	"github.com/manifestival/manifestival"
+	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	"path/filepath"
+
+	corev1 "k8s.io/api/core/v1"
+	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/version"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,11 +39,14 @@ const (
 
 // ShipwrightBuildReconciler reconciles a ShipwrightBuild object
 type ShipwrightBuildReconciler struct {
-	client.Client // controller kubernetes client
+	client.Client        // controller kubernetes client
+	CRDClient            crdclientv1.ApiextensionsV1Interface
+	TektonOperatorClient tektonoperatorv1alpha1client.OperatorV1alpha1Interface
 
-	Logger   logr.Logger           // decorated logger
-	Scheme   *runtime.Scheme       // runtime scheme
-	Manifest manifestival.Manifest // release manifests render
+	Logger         logr.Logger           // decorated logger
+	Scheme         *runtime.Scheme       // runtime scheme
+	Manifest       manifestival.Manifest // release manifests render
+	TektonManifest manifestival.Manifest // Tekton release manifest render
 }
 
 // setFinalizer append finalizer on the resource, and uses local client to update it immediately.
@@ -69,7 +79,71 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	logger := r.Logger.WithValues("namespace", req.Namespace, "name", req.Name)
 	logger.Info("Starting resource reconciliation...")
 
-	// retrieving the ShipwrightBuild instance requested for reconciliation
+	// See if tekton is there
+	_, tektonAPIErr := r.CRDClient.CustomResourceDefinitions().Get(ctx, "taskruns.tekton.dev", metav1.GetOptions{})
+	tektonOpCRD, tektonOPErr := r.CRDClient.CustomResourceDefinitions().Get(ctx, "tektonconfigs.operator.tekton.dev", metav1.GetOptions{})
+	switch {
+	case tektonOPErr == nil && tektonAPIErr == nil:
+		logger.Info("Tekton Pipelines is installed, and the Tekton Operator is also installed.")
+	case tektonAPIErr == nil && tektonOPErr != nil:
+		logger.Info("Tekton Pipelines has been installed without use of its associated operator.")
+	case errors.IsNotFound(tektonAPIErr) && errors.IsNotFound(tektonOPErr):
+		logger.Info("Evidence of neither required Tekton APIs nor the Tekton Operator being installed can be found.  Aborting the Shipwright installation attempt.")
+		return ctrl.Result{Requeue: false}, fmt.Errorf("neither Tekton Pipeliens nor Tekton Operator are available")
+	case tektonAPIErr != nil && tektonOPErr == nil:
+		if tektonOpCRD.Labels == nil {
+			retErr := fmt.Errorf("the CRD TektonConfig does not have labels set, inclding its version")
+			logger.Error(retErr, "Problem confirming Tekton Operator version")
+			return ctrl.Result{Requeue: false}, fmt.Errorf("the Tekton Operator is present, but no specification of its version exists on the CRD in question")
+		}
+		value, exists := tektonOpCRD.Labels["version"]
+		if !exists {
+			retErr := fmt.Errorf("the CRD TektonConfig does not have labels set, inclding its version")
+			logger.Error(retErr, "Problem confirming Tekton Operator version")
+			return ctrl.Result{Requeue: false}, fmt.Errorf("the Tekton Operator is present, but no specification of its version exists on the CRD in question")
+		}
+		version, err := version.ParseSemantic(value)
+		if err != nil {
+			logger.Error(err, "Version label parsing error")
+			return RequeueWithError(err)
+		}
+		if version.Minor() < 49 {
+			retErr := fmt.Errorf("Shipwright requires at least v0.49.0 of the Tekton Operator, but the minor number is %d", version.Minor())
+			return RequeueWithError(retErr)
+		}
+
+		// the tekton operator 'lite' profile is all Shipwright currently needs, so configure that up;
+		// when Shipwright starts leveraging triggers, we will want to bump up to a 'base' or higher
+		list, err := r.TektonOperatorClient.TektonConfigs().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			logger.Error(err, "Problem listing TektonConfigs")
+			return RequeueWithError(err)
+		}
+		if list == nil || len(list.Items) == 0 {
+			tektonOperatorCfg := &tektonoperatorv1alpha1.TektonConfig{}
+			tektonOperatorCfg.Name = "config"
+			tektonOperatorCfg.Spec.TargetNamespace = "tekton-pipelines"
+			tektonOperatorCfg.Spec.Profile = "lite"
+			if _, err := r.TektonOperatorClient.TektonConfigs().Create(ctx, tektonOperatorCfg, metav1.CreateOptions{}); err != nil {
+				logger.Error(err, "Creating Tekton Operator lite config ")
+				return RequeueWithError(err)
+			}
+			logger.Info("A Tekton Operator config with the 'lite' profile has been applied to the cluster")
+
+		} else {
+			logger.Error(tektonAPIErr, "A TektonConfig object was detected, but there was an issue confirming the presence of the TaskRun type")
+			return RequeueWithError(tektonAPIErr)
+		}
+
+	case tektonAPIErr != nil && tektonOPErr != nil:
+		logger.Error(tektonAPIErr, "Problem confirming existence of Tekton API")
+		logger.Error(tektonOPErr, "Problem confirming existing of Tekton Operator")
+		// does not really matter which error we requeue on, but choosing the operator error because if it
+		// resolves, we can proceed with the attempt to set it up to install Tekton
+		return RequeueWithError(tektonOPErr)
+	}
+
+	// retrieving the ShipwrightBuild instance requested for reconcile
 	b := &v1alpha1.ShipwrightBuild{}
 	if err := r.Get(ctx, req.NamespacedName, b); err != nil {
 		if errors.IsNotFound(err) {
@@ -91,6 +165,23 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		targetNamespace = defaultTargetNamespace
 	}
 	logger = logger.WithValues("targetNamespace", targetNamespace)
+	// create if it does not exist
+	ns := &corev1.Namespace{}
+	if err := r.Get(ctx, types.NamespacedName{Name: targetNamespace}, ns); err != nil {
+		if !errors.IsNotFound(err) {
+			logger.Info("retrieving target namespace %s error: %s", targetNamespace, err.Error())
+			return RequeueOnError(err)
+		}
+		ns.Name = targetNamespace
+
+		if err = r.Create(ctx, ns, &client.CreateOptions{Raw: &metav1.CreateOptions{}}); err != nil {
+			if !errors.IsAlreadyExists(err) {
+				logger.Info("creating target namespace %s error: %s", targetNamespace, err.Error())
+				return RequeueOnError(err)
+			}
+		}
+		logger.Info("created target namespace")
+	}
 
 	// filtering out namespace resource, so it does not create new namespaces accidentally, and
 	// transforming object to target the namespace informed on the CRD (.spec.namespace)
@@ -142,7 +233,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	return NoRequeue()
 }
 
-// setupManifestival instantiate manifestival with local controller attributes.
+// setupManifestival instantiate manifestival with local controller attributes, as well as tekton prereqs.
 func (r *ShipwrightBuildReconciler) setupManifestival(managerLogger logr.Logger) error {
 	client := mfc.NewClient(r.Client)
 	logger := managerLogger.WithName("manifestival")

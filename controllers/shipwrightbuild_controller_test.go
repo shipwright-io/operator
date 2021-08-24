@@ -2,23 +2,30 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	o "github.com/onsi/gomega"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	k8stesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/shipwright-io/operator/api/v1alpha1"
+	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
+	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 func init() {
@@ -32,7 +39,9 @@ func init() {
 func bootstrapShipwrightBuildReconciler(
 	t *testing.T,
 	b *v1alpha1.ShipwrightBuild,
-) (client.Client, *ShipwrightBuildReconciler) {
+	tcfg *tektonoperatorv1alpha1.TektonConfig,
+	tcrds []*crdv1.CustomResourceDefinition,
+) (client.Client, *crdclientv1.Clientset, *tektonoperatorv1alpha1client.Clientset, *ShipwrightBuildReconciler) {
 	g := o.NewGomegaWithT(t)
 
 	s := runtime.NewScheme()
@@ -43,7 +52,23 @@ func bootstrapShipwrightBuildReconciler(
 	logger := zap.New()
 
 	c := fake.NewFakeClientWithScheme(s, b)
-	r := &ShipwrightBuildReconciler{Client: c, Scheme: s, Logger: logger}
+	crdClient := &crdclientv1.Clientset{}
+	toClient := &tektonoperatorv1alpha1client.Clientset{}
+	if tcrds != nil && len(tcrds) > 0 {
+		objs := []runtime.Object{}
+		for _, obj := range tcrds {
+			objs = append(objs, obj)
+		}
+		crdClient = crdclientv1.NewSimpleClientset(objs...)
+	} else {
+		crdClient = crdclientv1.NewSimpleClientset()
+	}
+	if tcfg == nil {
+		toClient = tektonoperatorv1alpha1client.NewSimpleClientset()
+	} else {
+		toClient = tektonoperatorv1alpha1client.NewSimpleClientset(tcfg)
+	}
+	r := &ShipwrightBuildReconciler{CRDClient: crdClient.ApiextensionsV1(), TektonOperatorClient: toClient.OperatorV1alpha1(), Client: c, Scheme: s, Logger: logger}
 
 	// creating targetNamespace on which Shipwright-Build will be deployed against, before the other
 	// tests takes place
@@ -66,7 +91,7 @@ func bootstrapShipwrightBuildReconciler(
 		g.Expect(err).To(o.BeNil())
 	})
 
-	return c, r
+	return c, crdClient, toClient, r
 }
 
 // TestShipwrightBuildReconciler_Finalizers testing adding and removing finalizers on the resource.
@@ -74,7 +99,7 @@ func TestShipwrightBuildReconciler_Finalizers(t *testing.T) {
 	g := o.NewGomegaWithT(t)
 
 	b := &v1alpha1.ShipwrightBuild{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "default"}}
-	_, r := bootstrapShipwrightBuildReconciler(t, b)
+	_, _, _, r := bootstrapShipwrightBuildReconciler(t, b, &tektonoperatorv1alpha1.TektonConfig{}, []*crdv1.CustomResourceDefinition{})
 
 	// adding one entry on finalizers slice, making sure it's registered
 	t.Run("setFinalizer", func(t *testing.T) {
@@ -91,6 +116,206 @@ func TestShipwrightBuildReconciler_Finalizers(t *testing.T) {
 		g.Expect(err).To(o.BeNil())
 		g.Expect(b.GetFinalizers()).To(o.Equal([]string{}))
 	})
+}
+
+// TestShipwrightBuildReconciler_ProvisionTekton tests provisioning of the Tekton Operator resources and config
+func TestShipwrightBuildReconciler_ProvisionTekton(t *testing.T) {
+	g := o.NewGomegaWithT(t)
+
+	namespacedName := types.NamespacedName{Namespace: "default", Name: "name"}
+	deploymentName := types.NamespacedName{
+		Namespace: defaultTargetNamespace,
+		Name:      "shipwright-build-controller",
+	}
+	req := reconcile.Request{NamespacedName: namespacedName}
+
+	b := &v1alpha1.ShipwrightBuild{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namespacedName.Name,
+			Namespace: namespacedName.Namespace,
+		},
+		Spec: v1alpha1.ShipwrightBuildSpec{
+			TargetNamespace: defaultTargetNamespace,
+		},
+	}
+
+	t.Logf("Deploying Shipwright Controller against '%s' namespace", defaultTargetNamespace)
+
+	t.Run("provision tekton valid operator version, create TektonConfig object", func(t *testing.T) {
+		ctx := context.TODO()
+		crd := &crdv1.CustomResourceDefinition{}
+		crd.Name = "tektonconfigs.operator.tekton.dev"
+		crd.Labels = map[string]string{"version": "v0.49.0"}
+		crds := []*crdv1.CustomResourceDefinition{crd}
+		c, _, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
+
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).To(o.BeNil())
+		g.Expect(res.Requeue).To(o.BeFalse())
+
+		err = c.Get(ctx, deploymentName, &appsv1.Deployment{})
+		g.Expect(err).To(o.BeNil())
+
+		tkcfg, err := r.TektonOperatorClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+		g.Expect(err).To(o.BeNil())
+		g.Expect(tkcfg.Spec.TargetNamespace).To(o.Equal("tekton-pipelines"))
+		g.Expect(tkcfg.Spec.Profile).To(o.Equal("lite"))
+	})
+
+	t.Run("provision tekton nil operator label", func(t *testing.T) {
+		ctx := context.TODO()
+		crd := &crdv1.CustomResourceDefinition{}
+		crd.Name = "tektonconfigs.operator.tekton.dev"
+		crds := []*crdv1.CustomResourceDefinition{crd}
+		_, _, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
+
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).NotTo(o.BeNil())
+		g.Expect(res.Requeue).To(o.BeFalse())
+
+		_, err = r.TektonOperatorClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+		g.Expect(err).NotTo(o.BeNil())
+	})
+
+	t.Run("provision tekton too old operator label", func(t *testing.T) {
+		ctx := context.TODO()
+		crd := &crdv1.CustomResourceDefinition{}
+		crd.Name = "tektonconfigs.operator.tekton.dev"
+		crd.Labels = map[string]string{"version": "v0.29.0"}
+		crds := []*crdv1.CustomResourceDefinition{crd}
+		_, _, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
+
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).NotTo(o.BeNil())
+		g.Expect(res.Requeue).To(o.BeTrue())
+
+		_, err = r.TektonOperatorClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+		g.Expect(err).NotTo(o.BeNil())
+	})
+
+	t.Run("provision tekton missing version label", func(t *testing.T) {
+		ctx := context.TODO()
+		crd := &crdv1.CustomResourceDefinition{}
+		crd.Name = "tektonconfigs.operator.tekton.dev"
+		crd.Labels = map[string]string{}
+		crds := []*crdv1.CustomResourceDefinition{crd}
+		_, _, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
+
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).NotTo(o.BeNil())
+		g.Expect(res.Requeue).To(o.BeFalse())
+
+		_, err = r.TektonOperatorClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+		g.Expect(err).NotTo(o.BeNil())
+	})
+
+	t.Run("provision tekton error on TektonConfig list", func(t *testing.T) {
+		ctx := context.TODO()
+		crd := &crdv1.CustomResourceDefinition{}
+		crd.Name = "tektonconfigs.operator.tekton.dev"
+		crd.Labels = map[string]string{"version": "v0.49.0"}
+		crds := []*crdv1.CustomResourceDefinition{crd}
+		_, _, toClient, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
+		toClient.PrependReactor("list", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			return true, nil, fmt.Errorf("error on list")
+		})
+
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).NotTo(o.BeNil())
+		g.Expect(err.Error()).To(o.ContainSubstring("error on list"))
+		g.Expect(res.Requeue).To(o.BeTrue())
+
+		_, err = r.TektonOperatorClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+		g.Expect(err).NotTo(o.BeNil())
+	})
+
+	t.Run("provision tekton error on TektonConfig create", func(t *testing.T) {
+		ctx := context.TODO()
+		crd := &crdv1.CustomResourceDefinition{}
+		crd.Name = "tektonconfigs.operator.tekton.dev"
+		crd.Labels = map[string]string{"version": "v0.49.0"}
+		crds := []*crdv1.CustomResourceDefinition{crd}
+		_, _, toClient, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
+		toClient.PrependReactor("create", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			return true, nil, fmt.Errorf("error on create")
+		})
+
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).NotTo(o.BeNil())
+		g.Expect(err.Error()).To(o.ContainSubstring("error on create"))
+		g.Expect(res.Requeue).To(o.BeTrue())
+
+		_, err = r.TektonOperatorClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+		g.Expect(err).NotTo(o.BeNil())
+	})
+
+	t.Run("provision tekton, TektonConfig object exists, error on TaskRun CRD", func(t *testing.T) {
+		ctx := context.TODO()
+		crd := &crdv1.CustomResourceDefinition{}
+		crd.Name = "tektonconfigs.operator.tekton.dev"
+		crd.Labels = map[string]string{"version": "v0.49.0"}
+		crds := []*crdv1.CustomResourceDefinition{crd}
+		_, crdClient, toClient, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
+		toClient.PrependReactor("get", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			tcfg := &tektonoperatorv1alpha1.TektonConfig{}
+			tcfg.Name = "config"
+			return true, tcfg, nil
+		})
+		toClient.PrependReactor("list", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			tcfg := tektonoperatorv1alpha1.TektonConfig{}
+			tcfg.Name = "config"
+			tlist := &tektonoperatorv1alpha1.TektonConfigList{}
+			tlist.Items = append(tlist.Items, tcfg)
+			return true, tlist, nil
+		})
+		returnedTOCRD := false
+		crdClient.PrependReactor("get", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			getAction, _ := action.(k8stesting.GetAction)
+			if getAction.GetName() == "taskruns.tekton.dev" {
+				return true, nil, fmt.Errorf("error on get")
+			}
+			crd := &crdv1.CustomResourceDefinition{}
+			crd.Name = getAction.GetName()
+			crd.Labels = map[string]string{"version": "v0.49.0"}
+			returnedTOCRD = true
+			return true, crd, nil
+		})
+
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).NotTo(o.BeNil())
+		g.Expect(err.Error()).To(o.ContainSubstring("error on get"))
+		g.Expect(res.Requeue).To(o.BeTrue())
+		g.Expect(returnedTOCRD).To(o.BeTrue())
+	})
+
+	t.Run("provision tekton, neither CRD found", func(t *testing.T) {
+		ctx := context.TODO()
+		crd := &crdv1.CustomResourceDefinition{}
+		crd.Name = "tektonconfigs.operator.tekton.dev"
+		crd.Labels = map[string]string{"version": "v0.49.0"}
+		_, _, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, nil)
+
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).NotTo(o.BeNil())
+		g.Expect(res.Requeue).To(o.BeFalse())
+	})
+
+	t.Run("provision tekton, both have errors other than not found", func(t *testing.T) {
+		ctx := context.TODO()
+		crd := &crdv1.CustomResourceDefinition{}
+		crd.Name = "tektonconfigs.operator.tekton.dev"
+		crd.Labels = map[string]string{"version": "v0.49.0"}
+		_, crdClient, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, nil)
+		crdClient.PrependReactor("get", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			return true, nil, fmt.Errorf("error on all crd gets")
+		})
+
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).NotTo(o.BeNil())
+		g.Expect(err.Error()).To(o.ContainSubstring("error on all crd gets"))
+		g.Expect(res.Requeue).To(o.BeTrue())
+	})
+
 }
 
 // testShipwrightBuildReconcilerReconcile simulates the reconciliation process for rolling out and
@@ -114,7 +339,13 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 			TargetNamespace: targetNamespace,
 		},
 	}
-	c, r := bootstrapShipwrightBuildReconciler(t, b)
+	crd1 := &crdv1.CustomResourceDefinition{}
+	crd1.Name = "taskruns.tekton.dev"
+	crd2 := &crdv1.CustomResourceDefinition{}
+	crd2.Name = "tektonconfigs.operator.tekton.dev"
+	crd2.Labels = map[string]string{"version": "v0.49.0"}
+	crds := []*crdv1.CustomResourceDefinition{crd1, crd2}
+	c, _, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
 
 	t.Logf("Deploying Shipwright Controller against '%s' namespace", targetNamespace)
 

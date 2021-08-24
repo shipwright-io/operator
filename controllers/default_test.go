@@ -6,6 +6,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -34,10 +35,94 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 	// build Build instance employed during testing
 	var build *v1alpha1.ShipwrightBuild
 
+	baseClusterRole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "shipwright-build-controller",
+		},
+	}
+	baseClusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "shipwright-build-controller",
+		},
+	}
+	baseServiceAccount := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: targetNamespace,
+			Name:      "shipwright-build-controller",
+		},
+	}
+	baseDeployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: targetNamespace,
+			Name:      "shipwright-build-controller",
+		},
+	}
+
+	truePtr := true
 	g.BeforeEach(func() {
 		// setting up the namespaces, where Shipwright Controller will be deployed
 		createNamespace(namespace)
-		createNamespace(targetNamespace)
+
+		g.By("does tekton taskrun crd exist")
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: "taskruns.tekton.dev"}, &crdv1.CustomResourceDefinition{})
+		if errors.IsNotFound(err) {
+			g.By("creating tekton taskrun crd")
+			taskRunCRD := &crdv1.CustomResourceDefinition{}
+			taskRunCRD.Name = "taskruns.tekton.dev"
+			taskRunCRD.Spec.Group = "tekton.dev"
+			taskRunCRD.Spec.Scope = crdv1.NamespaceScoped
+			taskRunCRD.Spec.Versions = []crdv1.CustomResourceDefinitionVersion{
+				{
+					Name:    "v1beta1",
+					Storage: true,
+					Schema: &crdv1.CustomResourceValidation{
+						OpenAPIV3Schema: &crdv1.JSONSchemaProps{
+							Type:                   "object",
+							XPreserveUnknownFields: &truePtr,
+						},
+					},
+				},
+			}
+			taskRunCRD.Spec.Names.Plural = "taskruns"
+			taskRunCRD.Spec.Names.Singular = "taskrun"
+			taskRunCRD.Spec.Names.Kind = "TaskRun"
+			taskRunCRD.Spec.Names.ListKind = "TaskRunList"
+			taskRunCRD.Status.StoredVersions = []string{"v1beta1"}
+			err = k8sClient.Create(ctx, taskRunCRD, &client.CreateOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("does tektonconfig crd exist")
+		err = k8sClient.Get(ctx, types.NamespacedName{Name: "tektonconfigs.operator.tekton.dev"}, &crdv1.CustomResourceDefinition{})
+		if errors.IsNotFound(err) {
+			tektonOpCRD := &crdv1.CustomResourceDefinition{}
+			tektonOpCRD.Name = "tektonconfigs.operator.tekton.dev"
+			tektonOpCRD.Labels = map[string]string{"version": "v0.49.0"}
+			tektonOpCRD.Spec.Group = "operator.tekton.dev"
+			tektonOpCRD.Spec.Scope = crdv1.ClusterScoped
+			tektonOpCRD.Spec.Versions = []crdv1.CustomResourceDefinitionVersion{
+				{
+					Name:    "v1alpha1",
+					Storage: true,
+					Schema: &crdv1.CustomResourceValidation{
+						OpenAPIV3Schema: &crdv1.JSONSchemaProps{
+							Type:                   "object",
+							XPreserveUnknownFields: &truePtr,
+						},
+					},
+				},
+			}
+			tektonOpCRD.Spec.Names.Plural = "tektonconfigs"
+			tektonOpCRD.Spec.Names.Singular = "tektonconfig"
+			tektonOpCRD.Spec.Names.Kind = "TektonConfig"
+			tektonOpCRD.Spec.Names.ListKind = "TektonConfigList"
+			tektonOpCRD.Status.StoredVersions = []string{"v1alpha1"}
+			err = k8sClient.Create(ctx, tektonOpCRD, &client.CreateOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("creating a ShipwrightBuild instance")
 		build = &v1alpha1.ShipwrightBuild{
@@ -49,7 +134,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 				TargetNamespace: targetNamespace,
 			},
 		}
-		err := k8sClient.Create(ctx, build, &client.CreateOptions{})
+		err = k8sClient.Create(ctx, build, &client.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		// when the finalizer is in place, the deployment of manifest elements is done, and therefore
@@ -68,54 +153,32 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		err = k8sClient.Delete(ctx, build, &client.DeleteOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		// the delete e2e's can delete this object before this AfterEach runs
+		o.Expect(err).To(o.BeNil(), o.MatchError(metav1.StatusReasonNotFound))
 
 		g.By("waiting for ShipwrightBuild instance to be completely removed")
 		test.EventuallyRemoved(ctx, k8sClient, build)
 
 		g.By("checking that the shipwright-build-controller deployment has been removed")
-		deployment := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: targetNamespace,
-				Name:      "shipwright-build-controller",
-			},
-		}
+		deployment := baseDeployment.DeepCopy()
 		test.EventuallyRemoved(ctx, k8sClient, deployment)
 	})
 
 	g.When("a ShipwrightBuild object is created", func() {
 
 		g.It("creates RBAC for the Shipwright build controller", func() {
-			expectedClusterRole := &rbacv1.ClusterRole{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "shipwright-build-controller",
-				},
-			}
+			expectedClusterRole := baseClusterRole.DeepCopy()
 			test.EventuallyExists(ctx, k8sClient, expectedClusterRole)
 
-			expectedClusterRoleBinding := &rbacv1.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "shipwright-build-controller",
-				},
-			}
+			expectedClusterRoleBinding := baseClusterRoleBinding.DeepCopy()
 			test.EventuallyExists(ctx, k8sClient, expectedClusterRoleBinding)
 
-			expectedServiceAccount := &corev1.ServiceAccount{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: targetNamespace,
-					Name:      "shipwright-build-controller",
-				},
-			}
+			expectedServiceAccount := baseServiceAccount.DeepCopy()
 			test.EventuallyExists(ctx, k8sClient, expectedServiceAccount)
 		})
 
 		g.It("creates a deployment for the Shipwright build controller", func() {
-			expectedDeployment := &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: targetNamespace,
-					Name:      "shipwright-build-controller",
-				},
-			}
+			expectedDeployment := baseDeployment.DeepCopy()
 			test.EventuallyExists(ctx, k8sClient, expectedDeployment)
 		})
 
@@ -130,24 +193,9 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 	g.When("a ShipwrightBuild object is deleted", func() {
 
 		g.It("deletes the RBAC for the Shipwright build controller", func() {
-			expectedClusterRole := &rbacv1.ClusterRole{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: targetNamespace,
-					Name:      "shipwright-build-controller",
-				},
-			}
-			expectedClusterRoleBinding := &rbacv1.ClusterRoleBinding{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: targetNamespace,
-					Name:      "shipwright-build-controller",
-				},
-			}
-			expectedServiceAccount := &corev1.ServiceAccount{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: targetNamespace,
-					Name:      "shipwright-build-controller",
-				},
-			}
+			expectedClusterRole := baseClusterRole.DeepCopy()
+			expectedClusterRoleBinding := baseClusterRoleBinding.DeepCopy()
+			expectedServiceAccount := baseServiceAccount.DeepCopy()
 
 			// Setup - ensure the objects we want exist
 			test.EventuallyExists(ctx, k8sClient, expectedClusterRole)
@@ -165,12 +213,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		})
 
 		g.It("deletes the deployment for the Shipwright build controller", func() {
-			expectedDeployment := &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: targetNamespace,
-					Name:      "shipwright-build-controller",
-				},
-			}
+			expectedDeployment := baseDeployment.DeepCopy()
 			// Setup - ensure the objects we want exist
 			test.EventuallyExists(ctx, k8sClient, expectedDeployment)
 

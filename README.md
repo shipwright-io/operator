@@ -14,13 +14,6 @@ operator is up-and-running, and then create the following:
 
 ```yml
 ---
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: shipwright-build
-spec: {}
-
----
 apiVersion: operator.shipwright.io/v1alpha1
 kind: ShipwrightBuild
 metadata:
@@ -33,5 +26,8 @@ spec:
 It will deploy the Build-Controller in `shipwright-build` namespace. When `.spec.namespace` is not
 set, it will use the `shipwright-build` namespace, this namespace needs to be created before the
 actual deployment takes place.
+
+It will also ensure Tekton is sufficient installed at the required level if the minimally required version
+of the [Tekton Operator](https://github.com/tektoncd/operator) is installed on the cluster.
 
 [build-controller]: https://github.com/shipwright-io/build

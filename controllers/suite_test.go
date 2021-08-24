@@ -6,6 +6,8 @@ package controllers
 
 import (
 	"context"
+	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"path/filepath"
 	"testing"
 	"time"
@@ -70,10 +72,15 @@ var _ = BeforeSuite(func() {
 		Scheme: scheme.Scheme,
 	})
 	Expect(err).NotTo(HaveOccurred())
+	crdClient, err := crdclientv1.NewForConfig(mgr.GetConfig())
+	Expect(err).NotTo(HaveOccurred())
+	toClient, err := tektonoperatorv1alpha1client.NewForConfig(mgr.GetConfig())
 	err = (&ShipwrightBuildReconciler{
-		Client: mgr.GetClient(),
-		Scheme: scheme.Scheme,
-		Logger: ctrl.Log.WithName("controllers").WithName("shipwrightbuild"),
+		CRDClient:            crdClient,
+		TektonOperatorClient: toClient,
+		Client:               mgr.GetClient(),
+		Scheme:               scheme.Scheme,
+		Logger:               ctrl.Log.WithName("controllers").WithName("shipwrightbuild"),
 	}).SetupWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 

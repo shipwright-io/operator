@@ -29,6 +29,10 @@ spec:
       kind: ShipwrightBuild
       name: shipwrightbuilds.operator.shipwright.io
       version: v1alpha1
+    required:
+    - kind: TektonConfig
+      name: tektonconfigs.operator.tekton.dev
+      version: v1alpha1
   description: Install Shipwright Builds on your Kubernetes cluster
   displayName: Shipwright Operator
   icon:
@@ -200,6 +204,18 @@ spec:
           - update
           - watch
         - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - authentication.k8s.io
           resources:
           - tokenreviews
@@ -211,6 +227,18 @@ spec:
           - subjectaccessreviews
           verbs:
           - create
+        - apiGroups:
+          - operator.tekton.dev
+          resources:
+          - tektonconfigs
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         serviceAccountName: default
       deployments:
       - name: operator-controller-manager
