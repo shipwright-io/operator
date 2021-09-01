@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Desired tag'
+        required: true
+      tags:
+        description: 'Previous tag'
+        required: true
+
+jobs:
+  release:
+    if: ${{ github.repository == 'shipwright-io/operator' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install Go
+      uses: actions/setup-go@v2
+
+    - name: Login to docker
+      env:
+        REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      run: |
+        echo "$REGISTRY_PASSWORD" | docker login --username "$REGISTRY_USERNAME" --password-stdin
+
+    - name: Build and upload Operator Image
+      env:
+        VERSION: ${{ github.events.input.release }}
+      run: |
+        make ko-publish
+
+    - name: Build and upload Operator Bundle Image
+      env:
+        VERSION: ${{ github.events.input.release }}
+      run: |
+        make bundle-push

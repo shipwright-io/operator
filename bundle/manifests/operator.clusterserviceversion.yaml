@@ -16,7 +16,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    operators.operatorframework.io/builder: operator-sdk-v1.4.2
+    operators.operatorframework.io/builder: operator-sdk-v1.9.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: operator.v0.0.1
   namespace: placeholder
@@ -24,7 +24,8 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: ShipwrightBuild represents the deployment of Shipwright's build controller on a Kubernetes cluster.
+    - description: ShipwrightBuild represents the deployment of Shipwright's build
+        controller on a Kubernetes cluster.
       displayName: Shipwright Build
       kind: ShipwrightBuild
       name: shipwrightbuilds.operator.shipwright.io
@@ -241,7 +242,7 @@ spec:
                 - --health-probe-bind-address=:8081
                 - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
-                image: quay.io/shipwright/operator:latest
+                image: quay.io/shipwright/operator:0.0.1
                 livenessProbe:
                   httpGet:
                     path: /healthz
