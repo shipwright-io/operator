@@ -205,18 +205,6 @@ spec:
           - update
           - watch
         - apiGroups:
-          - ""
-          resources:
-          - namespaces
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
           - authentication.k8s.io
           resources:
           - tokenreviews
@@ -240,7 +228,7 @@ spec:
           - patch
           - update
           - watch
-        serviceAccountName: default
+        serviceAccountName: operator-controller-manager
       deployments:
       - name: operator-controller-manager
         spec:
@@ -295,14 +283,25 @@ spec:
                   allowPrivilegeEscalation: false
               securityContext:
                 runAsUser: 65532
+              serviceAccountName: operator-controller-manager
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
         - apiGroups:
           - ""
-          - coordination.k8s.io
           resources:
           - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
           - leases
           verbs:
           - get
@@ -319,7 +318,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: default
+        serviceAccountName: operator-controller-manager
     strategy: deployment
   installModes:
   - supported: false

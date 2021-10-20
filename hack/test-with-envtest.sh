@@ -1,6 +1,7 @@
 #! /bin/bash
 
 set -e
+set -o pipefail
 
 ENVTEST_ASSETS_DIR=$(pwd)/testbin
 mkdir -p "${ENVTEST_ASSETS_DIR}"
