@@ -14,8 +14,11 @@ type ShipwrightBuildSpec struct {
 	TargetNamespace string `json:"targetNamespace,omitempty"`
 }
 
-// ShipwrightBuildStatus defines the observed state of Shipwright-Build
-type ShipwrightBuildStatus struct{}
+// ShipwrightBuildStatus defines the observed state of ShipwrightBuild
+type ShipwrightBuildStatus struct {
+	// Conditions holds the latest available observations of a resource's current state.
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
@@ -43,4 +46,14 @@ type ShipwrightBuildList struct {
 // init registers the current Schema on the Scheme Builder during initialization.
 func init() {
 	SchemeBuilder.Register(&ShipwrightBuild{}, &ShipwrightBuildList{})
+}
+
+// IsReady returns true the Ready condition status is True
+func (status ShipwrightBuildStatus) IsReady() bool {
+	for _, condition := range status.Conditions {
+		if condition.Type == "Ready" && condition.Status == metav1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }

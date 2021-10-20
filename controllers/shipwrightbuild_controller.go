@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,6 +36,9 @@ const (
 	FinalizerAnnotation = "finalizer.operator.shipwright.io"
 	// defaultTargetNamespace fallback namespace when `.spec.namepace` is not informed.
 	defaultTargetNamespace = "shipwright-build"
+
+	// Ready object is providing service.
+	ConditionReady = "Ready"
 )
 
 // ShipwrightBuildReconciler reconciles a ShipwrightBuild object
@@ -150,8 +154,21 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			logger.Info("Resource is not found!")
 			return NoRequeue()
 		}
-		logger.Error(err, "Retrieving ShipwrightBuild object from cache")
+		logger.Error(err, "retrieving ShipwrightBuild object from cache")
 		return RequeueOnError(err)
+	}
+	init := b.Status.Conditions == nil
+	if init {
+		b.Status.Conditions = make([]metav1.Condition, 0)
+		apimeta.SetStatusCondition(&b.Status.Conditions, metav1.Condition{
+			Type:    ConditionReady,
+			Status:  metav1.ConditionUnknown, // we just started trying to reconcile
+			Reason:  "Init",
+			Message: "Initializing Shipwright Operator",
+		})
+		if err := r.Client.Status().Update(ctx, b); err != nil {
+			return RequeueWithError(err)
+		}
 	}
 
 	// selecting the target namespace based on the CRD information, when not informed using the
@@ -189,7 +206,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
 		Transform(manifestival.InjectNamespace(targetNamespace))
 	if err != nil {
-		logger.Error(err, "Transforming manifests, injecting namespace")
+		logger.Error(err, "transforming manifests, injecting namespace")
 		return RequeueWithError(err)
 	}
 
@@ -205,12 +222,12 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 		logger.Info("Deleting manifests...")
 		if err := manifest.Delete(); err != nil {
-			logger.Error(err, "Deleting manifest's resources")
+			logger.Error(err, "deleting manifest's resources")
 			return RequeueWithError(err)
 		}
 		logger.Info("Removing finalizers...")
 		if err := r.unsetFinalizer(ctx, b); err != nil {
-			logger.Error(err, "Removing the finalizer")
+			logger.Error(err, "removing the finalizer")
 			return RequeueWithError(err)
 		}
 		logger.Info("All removed!")
@@ -221,13 +238,30 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// instance with required dependencies
 	logger.Info("Applying manifest's resources...")
 	if err := manifest.Apply(); err != nil {
-		logger.Error(err, "Rolling out manifest's resources")
+		logger.Error(err, "rolling out manifest's resources")
+		apimeta.SetStatusCondition(&b.Status.Conditions, metav1.Condition{
+			Type:    ConditionReady,
+			Status:  metav1.ConditionFalse,
+			Reason:  "Failed",
+			Message: fmt.Sprintf("Reconciling ShipwrightBuild failed: %v", err),
+		})
+		r.Client.Status().Update(ctx, b)
 		return RequeueWithError(err)
 	}
 	if err := r.setFinalizer(ctx, b); err != nil {
 		logger.Info(fmt.Sprintf("%#v", b))
-		logger.Error(err, "Setting the finalizer")
+		logger.Error(err, "setting the finalizer")
 		return RequeueWithError(err)
+	}
+	apimeta.SetStatusCondition(&b.Status.Conditions, metav1.Condition{
+		Type:    ConditionReady,
+		Status:  metav1.ConditionTrue,
+		Reason:  "Success",
+		Message: "Reconciled ShipwrightBuild successfully",
+	})
+	if err := r.Client.Status().Update(ctx, b); err != nil {
+		logger.Error(err, "updating ShipwrightBuild status")
+		RequeueWithError(err)
 	}
 	logger.Info("All done!")
 	return NoRequeue()
