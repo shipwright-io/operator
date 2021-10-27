@@ -1,7 +1,6 @@
 apiVersion: operator.shipwright.io/v1alpha1
 kind: ShipwrightBuild
 metadata:
-  name: shipwrightbuild-sample
+  name: shipwright-build
 spec:
-  # Add fields here
-  foo: bar
+  targetNamespace: shipwright-build
