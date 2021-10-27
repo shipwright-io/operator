@@ -3,6 +3,12 @@ resources:
 - ../samples
 - ../scorecard
 
+# Patch for removing the cert manager for OLM deployments
+# This is only necessary if the cert manager volumes are added to the main deployment as part of
+# adding a mutating/validating admission webhook.
+# See https://sdk.operatorframework.io/docs/building-operators/golang/webhook/ and
+# https://sdk.operatorframework.io/docs/upgrading-sdk-version/v1.6.1/#manifestsv2-add-a-kustomize-patch-to-remove-the-cert-manager-volumevolumemount-from-your-csv
+
 #patchesJson6902:
 #- target:
 #    group: apps
