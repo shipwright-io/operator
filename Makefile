@@ -57,6 +57,10 @@ all: operator
 
 build: operator
 
+clean:
+	rm -rf bin
+	rm -rf testbin
+
 # Run tests
 BINDATA = $(shell pwd)/cmd/operator/kodata
 test: generate fmt vet manifests
