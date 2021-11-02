@@ -9,10 +9,12 @@ contributions to the operator.
 
 ## Usage
 
-To deploy and manage instances of [Shipwright Build-Controller][build-controller], make sure this
-operator is up-and-running, and then create the following:
+To deploy and manage [Shipwright Builds](https://github.com/shipwright-io/build) in your cluster,
+first make sure this operator is installed and running on your cluster.
 
-```yml
+Next, create the following:
+
+```yaml
 ---
 apiVersion: operator.shipwright.io/v1alpha1
 kind: ShipwrightBuild
@@ -20,14 +22,9 @@ metadata:
   name: shipwright-operator
 spec:
   targetNamespace: shipwright-build
-  namespace: default
 ```
 
-It will deploy the Build-Controller in `shipwright-build` namespace. When `.spec.namespace` is not
-set, it will use the `shipwright-build` namespace, this namespace needs to be created before the
-actual deployment takes place.
+The operator will deploy Shipwright Builds in the provided `targetNamespace`.
+When `.spec.targetNamespace` is not set, the namespace will default to `shipwright-build`.
 
-It will also ensure Tekton is sufficient installed at the required level if the minimally required version
-of the [Tekton Operator](https://github.com/tektoncd/operator) is installed on the cluster.
-
-[build-controller]: https://github.com/shipwright-io/build
+_Note: this namespace needs to be created before the actual deployment takes place._
