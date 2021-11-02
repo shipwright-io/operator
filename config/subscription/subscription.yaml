@@ -1,0 +1,12 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: operator
+  namespace: system
+spec:
+  channel: alpha
+  name: shipwright-operator
+  source: shipwright-operator
+  sourceNamespace: shipwright-operator
+  installPlanApproval: Automatic
+  startingCSV: shipwright-operator.v0.0.0

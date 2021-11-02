@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app: shipwright-operator
+  name: system
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: operator
+  namespace: system
+spec:
+  sourceType: grpc
+  image: catalog-source:latest
+  displayName: Shipwright Operator Catalog
+  publisher: The Shipwright Contributors
+  updateStrategy:
+    registryPoll:
+      interval: 10m
