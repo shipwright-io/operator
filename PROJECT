@@ -1,6 +1,6 @@
 domain: shipwright.io
 layout: go.kubebuilder.io/v3
-projectName: operator
+projectName: shipwright-operator
 repo: github.com/shipwright-io/operator
 resources:
 - api:
