@@ -3,8 +3,8 @@ kind: Service
 metadata:
   creationTimestamp: null
   labels:
-    control-plane: controller-manager
-  name: operator-controller-manager-metrics-service
+    app: shipwright-operator
+  name: shipwright-operator-metrics-service
 spec:
   ports:
   - name: https
@@ -12,6 +12,6 @@ spec:
     protocol: TCP
     targetPort: https
   selector:
-    control-plane: controller-manager
+    app: shipwright-operator
 status:
   loadBalancer: {}
