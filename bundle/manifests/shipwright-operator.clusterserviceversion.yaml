@@ -435,6 +435,8 @@ spec:
                   name: https
                   protocol: TCP
                 resources: {}
+                securityContext:
+                  runAsUser: 1000640000
               - args:
                 - --health-probe-bind-address=:8081
                 - --metrics-bind-address=127.0.0.1:8080
@@ -463,7 +465,7 @@ spec:
                 securityContext:
                   allowPrivilegeEscalation: false
               securityContext:
-                runAsUser: 65532
+                runAsNonRoot: true
               serviceAccountName: shipwright-operator
               terminationGracePeriodSeconds: 10
       permissions:

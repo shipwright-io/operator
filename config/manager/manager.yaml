@@ -23,7 +23,7 @@ spec:
         app: shipwright-operator
     spec:
       securityContext:
-        runAsUser: 65532
+        runAsNonRoot: true
       containers:
       - args:
         - --leader-elect
