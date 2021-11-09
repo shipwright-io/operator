@@ -20,6 +20,8 @@ spec:
         - containerPort: 8443
           protocol: TCP
           name: https
+        securityContext:
+          runAsUser: 1000640000
       - name: operator
         args:
         - "--health-probe-bind-address=:8081"
