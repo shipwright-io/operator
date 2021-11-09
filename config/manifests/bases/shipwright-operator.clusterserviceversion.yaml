@@ -9,7 +9,7 @@ metadata:
     description: Shipwright is a framework for building container images on Kubernetes.
     repository: https://github.com/shipwright-io/operator
     support: The Shipwright Contributors
-  name: operator.v0.0.0
+  name: shipwright-operator.v0.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}

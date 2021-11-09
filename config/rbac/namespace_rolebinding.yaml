@@ -8,5 +8,5 @@ roleRef:
   name: namespace-role
 subjects:
   - kind: ServiceAccount
-    name: default
+    name: operator
     namespace: system

@@ -14,4 +14,4 @@ data:
       resourceName: 01a9b2d1.shipwright.io
 kind: ConfigMap
 metadata:
-  name: operator-manager-config
+  name: shipwright-operator-manager-config

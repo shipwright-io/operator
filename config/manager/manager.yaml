@@ -2,25 +2,25 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    control-plane: controller-manager
+    app: shipwright-operator
   name: system
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
+  name: operator
   namespace: system
   labels:
-    control-plane: controller-manager
+    app: shipwright-operator
 spec:
   selector:
     matchLabels:
-      control-plane: controller-manager
+      app: shipwright-operator
   replicas: 1
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        app: shipwright-operator
     spec:
       securityContext:
         runAsUser: 65532
@@ -50,5 +50,5 @@ spec:
           requests:
             cpu: 100m
             memory: 20Mi
-      serviceAccountName: controller-manager
+      serviceAccountName: operator
       terminationGracePeriodSeconds: 10
