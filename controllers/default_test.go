@@ -154,7 +154,10 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 
 		err = k8sClient.Delete(ctx, build, &client.DeleteOptions{})
 		// the delete e2e's can delete this object before this AfterEach runs
-		o.Expect(err).To(o.BeNil(), o.MatchError(metav1.StatusReasonNotFound))
+		if errors.IsNotFound(err) {
+			return
+		}
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("waiting for ShipwrightBuild instance to be completely removed")
 		test.EventuallyRemoved(ctx, k8sClient, build)

@@ -34,8 +34,8 @@ Refer to the [ko documentation](https://github.com/google/ko#local-publishing-op
 
 To test the operator on a Kubernetes cluster, you first must have the following:
 
-* Access to a Kubernetes cluster v1.19 or higher, with cluster admin permissions.
-* Install Tekton v0.21 on the cluster.
+* Access to a Kubernetes cluster v1.20 or higher, with cluster admin permissions.
+* Install [Tekton operator](https://github.com/tektoncd/operator) v0.49 or higher on the cluster.
 
 ```bash
 $ export KUBECONFIG=/path/to/kubeconfig
@@ -60,6 +60,8 @@ Finally, use the `make deploy` command with appropriate `IMAGE_REPO` and `TAG` a
 ```bash
 $ make deploy IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" TAG="<TAG>"
 ```
+
+_Note:_
 
 Scripts in `hack` folder may require `sed` (GNU), therefore in platforms other than Linux you may have it with a different name. For instance, on macOS it's usually named `gsed`, in this case provide the `SED_BIN` make variable with the alternative name.
 

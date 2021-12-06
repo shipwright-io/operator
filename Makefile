@@ -39,19 +39,21 @@ IMAGE_REPO ?= quay.io/shipwright
 TAG ?= $(VERSION)
 IMAGE_PUSH ?= true
 
-BUNDLE_IMG_NAME ?= operator-bundle
-OPERATOR_IMG_NAME ?= operator
+IMAGE_TAG_BASE ?= $(IMAGE_REPO)/operator
 
 # Image URL to use all building/pushing image targets
-IMG ?= $(IMAGE_REPO)/$(OPERATOR_IMG_NAME):$(TAG)
+IMG ?= $(IMAGE_TAG_BASE):$(TAG)
 
 # BUNDLE_IMG defines the image:tag used for the bundle. 
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
-BUNDLE_IMG ?= $(IMAGE_REPO)/$(BUNDLE_IMG_NAME):$(TAG)
+BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:$(TAG)
 
 # operating-system type and architecture based on golang
 OS ?= $(shell go env GOOS)
 ARCH ?= $(shell go env GOARCH)
+
+KUBECTL_BIN ?= kubectl
+SED_BIN ?= sed
 
 all: operator
 
@@ -76,23 +78,22 @@ run: generate fmt vet manifests
 
 # Install CRDs into a cluster
 install: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+	$(KUSTOMIZE) build config/crd | $(KUBECTL_BIN) apply -f -
 
 # Uninstall CRDs from a cluster
 uninstall: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+	$(KUSTOMIZE) build config/crd | $(KUBECTL_BIN) delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image controller="$(IMG)"
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+	$(KUSTOMIZE) build config/default | $(KUBECTL_BIN) apply -f -
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 undeploy:
-	$(KUSTOMIZE) build config/default | kubectl delete -f -
+	$(KUSTOMIZE) build config/default | $(KUBECTL_BIN) delete -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
-SED_BIN ?= sed
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
@@ -185,6 +186,11 @@ bundle-build: bundle
 bundle-push: bundle-build
 	$(CONTAINER_ENGINE) push $(BUNDLE_IMG)
 
+# Install OLM on the current cluster
+.PHONY: install-olm
+install-olm: operator-sdk
+	$(OPERATOR_SDK) olm install
+
 .PHONY: opm
 OPM = ./bin/opm
 opm:
@@ -202,12 +208,45 @@ endif
 endif
 
 BUNDLE_IMGS ?= $(BUNDLE_IMG) 
-CATALOG_IMG ?= $(IMAGE_TAG_BASE)-catalog:v$(VERSION) ifneq ($(origin CATALOG_BASE_IMG), undefined) FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG) endif 
+CATALOG_IMG ?= $(IMAGE_TAG_BASE)-catalog:$(VERSION)
 
+#
+# ifneq ($(origin CATALOG_BASE_IMG), undefined) 
+# FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG)
+# endif
+# $(OPM) index add --container-tool $(CONTAINER_ENGINE) --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
+
+# The main multi-arch operatorhub image has a bug that causes opm index add to fail.
+# This doesn't seem to be an issue for the single-arch x86 image.
+# See https://github.com/operator-framework/operator-registry/issues/870
+CATALOG_INDEX_IMG ?= quay.io/operatorhubio/catalog_sa
+
+# Build a catalog image with the operator bundle included
 .PHONY: catalog-build
 catalog-build: opm
-	$(OPM) index add --container-tool $(CONTAINER_ENGINE) --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
-
+	$(OPM) index add --container-tool $(CONTAINER_ENGINE) --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) --from-index=$(CATALOG_INDEX_IMG)
+	
+# Build and push a catalog image with the operator bundle to a container registry
 .PHONY: catalog-push
-catalog-push: ## Push the catalog image.
+catalog-push: catalog-build
 	$(CONTAINER_ENGINE) push $(CATALOG_IMG)
+
+
+CATALOG_NAMESPACE ?= shipwright-operator
+
+# Run the operator from a catalog image, using an OLM subscription
+.PHONY: catalog-run
+catalog-run:
+	CATALOG_IMG=$(CATALOG_IMG) CSV_VERSION=$(VERSION) KUBECTL_BIN=$(KUBECTL_BIN) NAMESPACE=$(CATALOG_NAMESPACE) SED_BIN=$(SED_BIN) hack/run-operator-catalog.sh
+
+.PHONY: verify-kind
+verify-kind:
+	KUBECTL_BIN=$(KUBECTL_BIN) test/kind/verify-kind.sh
+
+.PHONY: deploy-kind-registry
+deploy-kind-registry:
+	CONTAINER_ENGINE=$(CONTAINER_ENGINE) KUBECTL_BIN=$(KUBECTL_BIN) test/kind/deploy-registry.sh
+
+.PHONY: deploy-kind-registry-post
+deploy-kind-registry-post:
+	CONTAINER_ENGINE=$(CONTAINER_ENGINE) KUBECTL_BIN=$(KUBECTL_BIN) test/kind/deploy-registry-post.sh
