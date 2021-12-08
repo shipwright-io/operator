@@ -16,3 +16,5 @@ resources:
 - auth_proxy_client_clusterrole.yaml
 # Provide dedicated service account for operator deployment
 - service_account.yaml
+- shipwright_build_controller_role.yaml
+- shipwright_build_controller_role_binding.yaml
