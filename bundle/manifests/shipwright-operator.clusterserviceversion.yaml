@@ -212,96 +212,115 @@ spec:
       clusterPermissions:
       - rules:
         - apiGroups:
-          - ""
+          - shipwright.io
           resources:
-          - pods
-          - services
-          - services/finalizers
-          - endpoints
-          - persistentvolumeclaims
-          - events
-          - configmaps
-          - secrets
-          - serviceaccounts
+          - buildruns
           verbs:
-          - create
-          - delete
           - get
           - list
-          - patch
-          - update
           - watch
-        - apiGroups:
-          - apps
-          resources:
-          - deployments
-          - daemonsets
-          - replicasets
-          - statefulsets
-          verbs:
-          - create
+          - update
           - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - monitoring.coreos.com
-          resources:
-          - servicemonitors
-          verbs:
-          - get
-          - create
-        - apiGroups:
-          - apps
-          resourceNames:
-          - shipwright-build
-          resources:
-          - deployments/finalizers
-          verbs:
-          - update
-        - apiGroups:
-          - ""
-          resources:
-          - pods
-          verbs:
-          - get
-        - apiGroups:
-          - apps
-          resources:
-          - replicasets
-          - deployments
-          verbs:
-          - get
         - apiGroups:
           - shipwright.io
           resources:
-          - '*'
-          - buildstrategies
-          - clusterbuildstrategies
-          - buildruns
+          - buildruns/finalizers
           verbs:
-          - create
-          - delete
+          - update
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - buildruns/status
+          verbs:
+          - update
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - builds
+          verbs:
           - get
           - list
-          - patch
+          - watch
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - builds/finalizers
+          verbs:
           - update
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - builds/status
+          verbs:
+          - update
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - buildstrategies
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - clusterbuildstrategies
+          verbs:
+          - get
+          - list
           - watch
         - apiGroups:
           - tekton.dev
           resources:
-          - tasks
           - taskruns
           verbs:
-          - create
-          - delete
           - get
           - list
-          - patch
-          - update
           - watch
+          - create
+          - delete
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - create
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
         - apiGroups:
           - apiextensions.k8s.io
           resources:
