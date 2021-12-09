@@ -108,4 +108,22 @@ if ! wait_for_pod "app=shipwright-operator" "${SUBSCRIPTION_NAMESPACE}" 5m; then
     exit 1
 fi
 
+echo "Deploying Shipwright build controller"
+
+${KUBECTL_BIN} apply -f - <<EOF
+kind: ShipwrightBuild
+apiVersion: operator.shipwright.io/v1alpha1
+metadata:
+  name: shipwright
+spec:
+    targetNamespace: ${SUBSCRIPTION_NAMESPACE}
+EOF
+
+if ! ${KUBECTL_BIN} wait --for=condition=Ready=true shipwrightbuilds.operator.shipwright.io/shipwright --timeout=5m; then
+    echo "Failed to deploy ShipwrightBuild - dumping ShipwrightBuild state"
+    ${KUBECTL_BIN} get shipwrightbuilds -o yaml
+    dump_state
+    exit 1
+fi
+
 exit 0
