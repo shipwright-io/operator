@@ -29,12 +29,68 @@ rules:
   - patch
   - update
 - apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resourceNames:
+  - shipwright-build-controller
+  resources:
+  - deployments
+  verbs:
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - apps
+  resourceNames:
+  - shipwright-build-controller
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resourceNames:
+  - shipwright-build-controller
+  resources:
+  - serviceaccounts
+  verbs:
+  - delete
+  - patch
+  - update
+- apiGroups:
   - operator.shipwright.io
   resources:
   - shipwrightbuilds
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
@@ -55,6 +111,14 @@ rules:
   - patch
   - update
 - apiGroups:
+  - operator.tekton.dev
+  resources:
+  - tektonconfigs
+  verbs:
+  - create
+  - get
+  - list
+- apiGroups:
   - rbac.authorization.k8s.io
   resources:
   - clusterrolebindings
@@ -88,6 +152,44 @@ rules:
   - shipwright-build-controller
   resources:
   - clusterroles
+  verbs:
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resourceNames:
+  - shipwright-build-controller
+  resources:
+  - rolebindings
+  verbs:
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resourceNames:
+  - shipwright-build-controller
+  resources:
+  - roles
   verbs:
   - delete
   - patch
