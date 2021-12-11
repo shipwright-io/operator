@@ -29,20 +29,10 @@ jobs:
             os: [ubuntu-latest]
         runs-on: ${{ matrix.os }}
         steps:
-        - name: Install Go
-          uses: actions/setup-go@v2
-          with:
-            go-version: ${{ matrix.go-version }}
-        - name: Check out code
+        - name: Checkout code
           uses: actions/checkout@v2
-        - name: Verify fmt
-          run: make verify-fmt
-        - name: Verify generated code
-          run: make verify-generate
-        - name: Verify generated manifests
-          run: make verify-manifests
-        - name: Verify OLM bundle
-          run: make verify-bundle
+        - name: Run golangci-lint
+          uses: golangci-lint/golangci-lint-action@v2
     e2e:
         strategy:
           fail-fast: false
