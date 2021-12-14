@@ -4,6 +4,10 @@ on:
     push:
       branches: [ main ]
 name: ci/github
+
+permissions:
+  contents: read
+
 jobs:
     unit:
         strategy:
@@ -32,7 +36,9 @@ jobs:
         - name: Checkout code
           uses: actions/checkout@v2
         - name: Run golangci-lint
-          uses: golangci-lint/golangci-lint-action@v2
+          uses: golangci/golangci-lint-action@v2
+          with:
+            args: --timeout=10m
     e2e:
         strategy:
           fail-fast: false
