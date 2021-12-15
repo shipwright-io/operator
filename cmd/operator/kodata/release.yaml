@@ -5,101 +5,67 @@ metadata:
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: shipwright-build-controller
+  namespace: shipwright-build
+rules:
+  - apiGroups: ['']
+    resources: ['configmaps']
+    verbs: ['get', 'create', 'update']
+  - apiGroups: ['']
+    resources: ['events']
+    verbs: ['create']
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: shipwright-build-controller
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - services
-      - services/finalizers
-      - endpoints
-      - persistentvolumeclaims
-      - events
-      - configmaps
-      - secrets
-      - serviceaccounts
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - apps
-    resources:
-      - deployments
-      - daemonsets
-      - replicasets
-      - statefulsets
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - monitoring.coreos.com
-    resources:
-      - servicemonitors
-    verbs:
-      - get
-      - create
-  - apiGroups:
-      - apps
-    resourceNames:
-      - shipwright-build
-    resources:
-      - deployments/finalizers
-    verbs:
-      - update
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-    verbs:
-      - get
-  - apiGroups:
-      - apps
-    resources:
-      - replicasets
-      - deployments
-    verbs:
-      - get
-  - apiGroups:
-      - shipwright.io
-    resources:
-      - '*'
-      - buildstrategies
-      - clusterbuildstrategies
-      - buildruns
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - tekton.dev
-    resources:
-      - tasks
-      - taskruns
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
+  - apiGroups: ['shipwright.io']
+    resources: ['buildruns']
+    # The build-run-deletion annotation sets an owner ref on BuildRun objects.
+    # With the OwnerReferencesPermissionEnforcement admission controller enabled, controllers need the "delete" permission on objects that they set owner references on.
+    verbs: ['get', 'list', 'watch', 'update', 'delete']
+  - apiGroups: ['shipwright.io']
+    # BuildRuns are set as the owners of Tekton TaskRuns.
+    # With the OwnerReferencesPermissionEnforcement admission controller enabled, controllers need the "update" permission on the finalizer of the parent object in the owner reference.
+    resources: ['buildruns/finalizers']
+    verbs: ['update']
+  - apiGroups: ['shipwright.io']
+    resources: ['buildruns/status']
+    verbs: ['update']
+  - apiGroups: ['shipwright.io']
+    resources: ['builds']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['shipwright.io']
+    # The build-run-deletion annotation makes Builds an owner of BuildRun objects.
+    # With the OwnerReferencesPermissionEnforcement admission controller enabled, controllers need the "update" permission on the finalizer of the parent object in the owner reference.
+    resources: ['builds/finalizers']
+    verbs: ['update']
+  - apiGroups: ['shipwright.io']
+    resources: ['builds/status']
+    verbs: ['update']
+  - apiGroups: ['shipwright.io']
+    resources: ['buildstrategies']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['shipwright.io']
+    resources: ['clusterbuildstrategies']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['tekton.dev']
+    resources: ['taskruns']
+    # BuildRuns are set as the owners of Tekton TaskRuns.
+    # With the OwnerReferencesPermissionEnforcement admission controller enabled, controllers need the "delete" permission on objects that they set owner references on.
+    verbs: ['get', 'list', 'watch', 'create', 'delete', 'patch']
+  - apiGroups: ['']
+    resources: ['pods']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['']
+    resources: ['secrets']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['']
+    resources: ['serviceaccounts']
+    verbs: ['get', 'list', 'watch', 'create', 'update', 'delete']
 
 ---
 kind: ClusterRoleBinding
@@ -112,6 +78,20 @@ subjects:
     namespace: shipwright-build
 roleRef:
   kind: ClusterRole
+  name: shipwright-build-controller
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shipwright-build-controller
+  namespace: shipwright-build
+subjects:
+  - kind: ServiceAccount
+    name: shipwright-build-controller
+    namespace: shipwright-build
+roleRef:
+  kind: Role
   name: shipwright-build-controller
   apiGroup: rbac.authorization.k8s.io
 
@@ -141,7 +121,7 @@ spec:
       serviceAccountName: shipwright-build-controller
       containers:
         - name: shipwright-build
-          image: quay.io/shipwright/shipwright-operator@sha256:20baef5a11c22ab76798221c71bce25f0414301c3f753c366e15b96fe0f142ad
+          image: quay.io/shipwright/shipwright-build-controller:v0.6.0@sha256:7e9dce636fcedcdb4e18cc8d3ccb6bdd4e21fa0c7551efef63aa5464e1b9745b
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -157,18 +137,25 @@ spec:
                   fieldPath: metadata.name
             - name: CONTROLLER_NAME
               value: "shipwright-build"
+            - name: GIT_CONTAINER_IMAGE
+              value: quay.io/shipwright/git:v0.6.0@sha256:42ad649c3eeb3cddebbf30f2886f774477f3907fca27a24cfe2947034ee20eec
+            - name: MUTATE_IMAGE_CONTAINER_IMAGE
+              value: quay.io/shipwright/mutate-image:v0.6.0@sha256:b4af89749dfa2659b1a828b06c17b6d77cb9221abdc52a99795c13ae3cf50753
+            - name: BUNDLE_CONTAINER_IMAGE
+              value: quay.io/shipwright/bundle:v0.6.0@sha256:8677e34c97966921fbf34ba084bc6582c2fdb244afed19aeea51cbc5466dbd1b
+          ports:
+            - containerPort: 8383
+              name: metrics-port
           livenessProbe:
-            exec:
-              command:
-                - stat
-                - /tmp/shipwright-build-ready
+            httpGet:
+              path: /metrics
+              port: metrics-port
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
-            exec:
-              command:
-                - stat
-                - /tmp/shipwright-build-ready
+            httpGet:
+              path: /metrics
+              port: metrics-port
             initialDelaySeconds: 5
             periodSeconds: 10
 
@@ -177,7 +164,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   name: buildruns.shipwright.io
 spec:
@@ -237,9 +224,94 @@ spec:
                   required:
                     - name
                   type: object
+                env:
+                  description: Env contains additional environment variables that should be passed to the build container
+                  items:
+                    description: EnvVar represents an environment variable present in a Container.
+                    properties:
+                      name:
+                        description: Name of the environment variable. Must be a C_IDENTIFIER.
+                        type: string
+                      value:
+                        description: 'Variable references $(VAR_NAME) are expanded using the previous defined environment variables in the container and any service environment variables. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Defaults to "".'
+                        type: string
+                      valueFrom:
+                        description: Source for the environment variable's value. Cannot be used if value is not empty.
+                        properties:
+                          configMapKeyRef:
+                            description: Selects a key of a ConfigMap.
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                type: string
+                              optional:
+                                description: Specify whether the ConfigMap or its key must be defined
+                                type: boolean
+                            required:
+                              - key
+                            type: object
+                          fieldRef:
+                            description: 'Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels[''<KEY>'']`, `metadata.annotations[''<KEY>'']`, spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.'
+                            properties:
+                              apiVersion:
+                                description: Version of the schema the FieldPath is written in terms of, defaults to "v1".
+                                type: string
+                              fieldPath:
+                                description: Path of the field to select in the specified API version.
+                                type: string
+                            required:
+                              - fieldPath
+                            type: object
+                          resourceFieldRef:
+                            description: 'Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.'
+                            properties:
+                              containerName:
+                                description: 'Container name: required for volumes, optional for env vars'
+                                type: string
+                              divisor:
+                                anyOf:
+                                  - type: integer
+                                  - type: string
+                                description: Specifies the output format of the exposed resources, defaults to "1"
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              resource:
+                                description: 'Required: resource to select'
+                                type: string
+                            required:
+                              - resource
+                            type: object
+                          secretKeyRef:
+                            description: Selects a key of a secret in the pod's namespace
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must be a valid secret key.
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                type: string
+                              optional:
+                                description: Specify whether the Secret or its key must be defined
+                                type: boolean
+                            required:
+                              - key
+                            type: object
+                        type: object
+                    required:
+                      - name
+                    type: object
+                  type: array
                 output:
                   description: Output refers to the location where the generated image would be pushed to. It will overwrite the output image in build spec
                   properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations references the additional annotations to be applied on the image
+                      type: object
                     credentials:
                       description: Credentials references a Secret that contains credentials to access the image registry.
                       properties:
@@ -250,9 +322,28 @@ spec:
                     image:
                       description: Image is the reference of the image.
                       type: string
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: Labels references the additional labels to be applied on the image
+                      type: object
                   required:
                     - image
                   type: object
+                paramValues:
+                  description: Params is a list of key/value that could be used to set strategy parameters
+                  items:
+                    description: ParamValue is a key/value that populates a strategy parameter used in the execution of the strategy steps
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                      - name
+                      - value
+                    type: object
+                  type: array
                 serviceAccount:
                   description: ServiceAccount refers to the kubernetes serviceaccount which is used for resource control. Default serviceaccount will be set if it is empty
                   properties:
@@ -263,6 +354,9 @@ spec:
                       description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                       type: string
                   type: object
+                state:
+                  description: State is used for canceling a buildrun (and maybe more later on).
+                  type: string
                 timeout:
                   description: Timeout defines the maximum run time of this BuildRun.
                   format: duration
@@ -279,6 +373,11 @@ spec:
                     builder:
                       description: Builder refers to the image containing the build tools inside which the source code would be built.
                       properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Annotations references the additional annotations to be applied on the image
+                          type: object
                         credentials:
                           description: Credentials references a Secret that contains credentials to access the image registry.
                           properties:
@@ -289,15 +388,105 @@ spec:
                         image:
                           description: Image is the reference of the image.
                           type: string
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: Labels references the additional labels to be applied on the image
+                          type: object
                       required:
                         - image
                       type: object
                     dockerfile:
                       description: Dockerfile is the path to the Dockerfile to be used for build strategies which bank on the Dockerfile for building an image.
                       type: string
+                    env:
+                      description: Env contains additional environment variables that should be passed to the build container
+                      items:
+                        description: EnvVar represents an environment variable present in a Container.
+                        properties:
+                          name:
+                            description: Name of the environment variable. Must be a C_IDENTIFIER.
+                            type: string
+                          value:
+                            description: 'Variable references $(VAR_NAME) are expanded using the previous defined environment variables in the container and any service environment variables. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Defaults to "".'
+                            type: string
+                          valueFrom:
+                            description: Source for the environment variable's value. Cannot be used if value is not empty.
+                            properties:
+                              configMapKeyRef:
+                                description: Selects a key of a ConfigMap.
+                                properties:
+                                  key:
+                                    description: The key to select.
+                                    type: string
+                                  name:
+                                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                    type: string
+                                  optional:
+                                    description: Specify whether the ConfigMap or its key must be defined
+                                    type: boolean
+                                required:
+                                  - key
+                                type: object
+                              fieldRef:
+                                description: 'Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels[''<KEY>'']`, `metadata.annotations[''<KEY>'']`, spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.'
+                                properties:
+                                  apiVersion:
+                                    description: Version of the schema the FieldPath is written in terms of, defaults to "v1".
+                                    type: string
+                                  fieldPath:
+                                    description: Path of the field to select in the specified API version.
+                                    type: string
+                                required:
+                                  - fieldPath
+                                type: object
+                              resourceFieldRef:
+                                description: 'Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.'
+                                properties:
+                                  containerName:
+                                    description: 'Container name: required for volumes, optional for env vars'
+                                    type: string
+                                  divisor:
+                                    anyOf:
+                                      - type: integer
+                                      - type: string
+                                    description: Specifies the output format of the exposed resources, defaults to "1"
+                                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                    x-kubernetes-int-or-string: true
+                                  resource:
+                                    description: 'Required: resource to select'
+                                    type: string
+                                required:
+                                  - resource
+                                type: object
+                              secretKeyRef:
+                                description: Selects a key of a secret in the pod's namespace
+                                properties:
+                                  key:
+                                    description: The key of the secret to select from.  Must be a valid secret key.
+                                    type: string
+                                  name:
+                                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                    type: string
+                                  optional:
+                                    description: Specify whether the Secret or its key must be defined
+                                    type: boolean
+                                required:
+                                  - key
+                                type: object
+                            type: object
+                        required:
+                          - name
+                        type: object
+                      type: array
                     output:
                       description: Output refers to the location where the built image would be pushed.
                       properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Annotations references the additional annotations to be applied on the image
+                          type: object
                         credentials:
                           description: Credentials references a Secret that contains credentials to access the image registry.
                           properties:
@@ -308,13 +497,18 @@ spec:
                         image:
                           description: Image is the reference of the image.
                           type: string
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: Labels references the additional labels to be applied on the image
+                          type: object
                       required:
                         - image
                       type: object
-                    parameters:
-                      description: Parameters contains name-value that could be used to loosely type parameters in the BuildStrategy.
+                    paramValues:
+                      description: Params is a list of key/value that could be used to set strategy parameters
                       items:
-                        description: Parameter defines the data structure that would be used for expressing arbitrary key/value pairs for the execution of a build
+                        description: ParamValue is a key/value that populates a strategy parameter used in the execution of the strategy steps
                         properties:
                           name:
                             type: string
@@ -325,69 +519,18 @@ spec:
                           - value
                         type: object
                       type: array
-                    runtime:
-                      description: Runtime represents the runtime-image.
+                    source:
+                      description: Source refers to the Git repository containing the source code to be built.
                       properties:
-                        base:
-                          description: Base runtime base image.
+                        bundleContainer:
+                          description: BundleContainer
                           properties:
-                            credentials:
-                              description: Credentials references a Secret that contains credentials to access the image registry.
-                              properties:
-                                name:
-                                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
-                                  type: string
-                              type: object
                             image:
-                              description: Image is the reference of the image.
+                              description: Image reference, i.e. quay.io/org/image:tag
                               type: string
                           required:
                             - image
                           type: object
-                        entrypoint:
-                          description: Entrypoint runtime-image entrypoint.
-                          items:
-                            type: string
-                          type: array
-                        env:
-                          additionalProperties:
-                            type: string
-                          description: Env environment variables for runtime.
-                          type: object
-                        labels:
-                          additionalProperties:
-                            type: string
-                          description: Labels map of additional labels to be applied on image.
-                          type: object
-                        paths:
-                          description: Paths list of directories/files to be copied into runtime-image, using colon ":" to split up source and destination paths.
-                          items:
-                            type: string
-                          type: array
-                        run:
-                          description: Run arbitrary commands to run before copying data into runtime-image.
-                          items:
-                            type: string
-                          type: array
-                        user:
-                          description: User definitions of user and group for runtime-image.
-                          properties:
-                            group:
-                              description: Group group name or GID employed in runtime-image.
-                              type: string
-                            name:
-                              description: Name user name to be employed in runtime-image.
-                              type: string
-                          required:
-                            - name
-                          type: object
-                        workDir:
-                          description: WorkDir runtime image working directory `WORKDIR`.
-                          type: string
-                      type: object
-                    source:
-                      description: Source refers to the Git repository containing the source code to be built.
-                      properties:
                         contextDir:
                           description: ContextDir is a path to subfolder in the repo. Optional.
                           type: string
@@ -404,9 +547,23 @@ spec:
                         url:
                           description: URL describes the URL of the Git repository.
                           type: string
-                      required:
-                        - url
                       type: object
+                    sources:
+                      description: Sources slice of BuildSource, defining external build artifacts complementary to VCS (`.spec.source`) data.
+                      items:
+                        description: BuildSource remote artifact definition, also known as "sources". Simple "name" and "url" pairs, initially without "credentials" (authentication) support yet.
+                        properties:
+                          name:
+                            description: Name instance entry.
+                            type: string
+                          url:
+                            description: URL remote artifact location.
+                            type: string
+                        required:
+                          - name
+                          - url
+                        type: object
+                      type: array
                     strategy:
                       description: Strategy references the BuildStrategy to use to build the container image.
                       properties:
@@ -472,15 +629,49 @@ spec:
                 latestTaskRunRef:
                   description: "LatestTaskRunRef is the name of the TaskRun responsible for executing this BuildRun. \n TODO: This should be called something like \"TaskRunName\""
                   type: string
-                reason:
-                  description: "The Succeeded reason of the TaskRun \n Deprecated: Use Conditions instead. This will be removed in a future release."
-                  type: string
+                output:
+                  description: Output holds the results emitted from step definition of an output
+                  properties:
+                    digest:
+                      description: Digest holds the digest of output image
+                      type: string
+                    size:
+                      description: Size holds the compressed size of output image
+                      format: int64
+                      type: integer
+                  type: object
+                sources:
+                  description: Sources holds the results emitted from the step definition of different sources
+                  items:
+                    description: SourceResult holds the results emitted from the different sources
+                    properties:
+                      bundle:
+                        description: Bundle holds the results emitted from from the step definition of bundle source
+                        properties:
+                          digest:
+                            description: Digest hold the image digest result
+                            type: string
+                        type: object
+                      git:
+                        description: Git holds the results emitted from from the step definition of a git source
+                        properties:
+                          commitAuthor:
+                            description: CommitAuthor holds the commit author of a git source
+                            type: string
+                          commitSha:
+                            description: CommitSha holds the commit sha of git source
+                            type: string
+                        type: object
+                      name:
+                        description: Name is the name of source
+                        type: string
+                    required:
+                      - name
+                    type: object
+                  type: array
                 startTime:
                   description: StartTime is the time the build is actually started.
                   format: date-time
-                  type: string
-                succeeded:
-                  description: "The Succeeded status of the TaskRun \n Deprecated: Use Conditions instead. This will be removed in a future release."
                   type: string
               type: object
           type: object
@@ -500,7 +691,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   name: builds.shipwright.io
 spec:
@@ -552,6 +743,11 @@ spec:
                 builder:
                   description: Builder refers to the image containing the build tools inside which the source code would be built.
                   properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations references the additional annotations to be applied on the image
+                      type: object
                     credentials:
                       description: Credentials references a Secret that contains credentials to access the image registry.
                       properties:
@@ -562,15 +758,105 @@ spec:
                     image:
                       description: Image is the reference of the image.
                       type: string
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: Labels references the additional labels to be applied on the image
+                      type: object
                   required:
                     - image
                   type: object
                 dockerfile:
                   description: Dockerfile is the path to the Dockerfile to be used for build strategies which bank on the Dockerfile for building an image.
                   type: string
+                env:
+                  description: Env contains additional environment variables that should be passed to the build container
+                  items:
+                    description: EnvVar represents an environment variable present in a Container.
+                    properties:
+                      name:
+                        description: Name of the environment variable. Must be a C_IDENTIFIER.
+                        type: string
+                      value:
+                        description: 'Variable references $(VAR_NAME) are expanded using the previous defined environment variables in the container and any service environment variables. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Defaults to "".'
+                        type: string
+                      valueFrom:
+                        description: Source for the environment variable's value. Cannot be used if value is not empty.
+                        properties:
+                          configMapKeyRef:
+                            description: Selects a key of a ConfigMap.
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                type: string
+                              optional:
+                                description: Specify whether the ConfigMap or its key must be defined
+                                type: boolean
+                            required:
+                              - key
+                            type: object
+                          fieldRef:
+                            description: 'Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels[''<KEY>'']`, `metadata.annotations[''<KEY>'']`, spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.'
+                            properties:
+                              apiVersion:
+                                description: Version of the schema the FieldPath is written in terms of, defaults to "v1".
+                                type: string
+                              fieldPath:
+                                description: Path of the field to select in the specified API version.
+                                type: string
+                            required:
+                              - fieldPath
+                            type: object
+                          resourceFieldRef:
+                            description: 'Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.'
+                            properties:
+                              containerName:
+                                description: 'Container name: required for volumes, optional for env vars'
+                                type: string
+                              divisor:
+                                anyOf:
+                                  - type: integer
+                                  - type: string
+                                description: Specifies the output format of the exposed resources, defaults to "1"
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              resource:
+                                description: 'Required: resource to select'
+                                type: string
+                            required:
+                              - resource
+                            type: object
+                          secretKeyRef:
+                            description: Selects a key of a secret in the pod's namespace
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must be a valid secret key.
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                                type: string
+                              optional:
+                                description: Specify whether the Secret or its key must be defined
+                                type: boolean
+                            required:
+                              - key
+                            type: object
+                        type: object
+                    required:
+                      - name
+                    type: object
+                  type: array
                 output:
                   description: Output refers to the location where the built image would be pushed.
                   properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations references the additional annotations to be applied on the image
+                      type: object
                     credentials:
                       description: Credentials references a Secret that contains credentials to access the image registry.
                       properties:
@@ -581,13 +867,18 @@ spec:
                     image:
                       description: Image is the reference of the image.
                       type: string
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: Labels references the additional labels to be applied on the image
+                      type: object
                   required:
                     - image
                   type: object
-                parameters:
-                  description: Parameters contains name-value that could be used to loosely type parameters in the BuildStrategy.
+                paramValues:
+                  description: Params is a list of key/value that could be used to set strategy parameters
                   items:
-                    description: Parameter defines the data structure that would be used for expressing arbitrary key/value pairs for the execution of a build
+                    description: ParamValue is a key/value that populates a strategy parameter used in the execution of the strategy steps
                     properties:
                       name:
                         type: string
@@ -598,69 +889,18 @@ spec:
                       - value
                     type: object
                   type: array
-                runtime:
-                  description: Runtime represents the runtime-image.
+                source:
+                  description: Source refers to the Git repository containing the source code to be built.
                   properties:
-                    base:
-                      description: Base runtime base image.
+                    bundleContainer:
+                      description: BundleContainer
                       properties:
-                        credentials:
-                          description: Credentials references a Secret that contains credentials to access the image registry.
-                          properties:
-                            name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
-                              type: string
-                          type: object
                         image:
-                          description: Image is the reference of the image.
+                          description: Image reference, i.e. quay.io/org/image:tag
                           type: string
                       required:
                         - image
                       type: object
-                    entrypoint:
-                      description: Entrypoint runtime-image entrypoint.
-                      items:
-                        type: string
-                      type: array
-                    env:
-                      additionalProperties:
-                        type: string
-                      description: Env environment variables for runtime.
-                      type: object
-                    labels:
-                      additionalProperties:
-                        type: string
-                      description: Labels map of additional labels to be applied on image.
-                      type: object
-                    paths:
-                      description: Paths list of directories/files to be copied into runtime-image, using colon ":" to split up source and destination paths.
-                      items:
-                        type: string
-                      type: array
-                    run:
-                      description: Run arbitrary commands to run before copying data into runtime-image.
-                      items:
-                        type: string
-                      type: array
-                    user:
-                      description: User definitions of user and group for runtime-image.
-                      properties:
-                        group:
-                          description: Group group name or GID employed in runtime-image.
-                          type: string
-                        name:
-                          description: Name user name to be employed in runtime-image.
-                          type: string
-                      required:
-                        - name
-                      type: object
-                    workDir:
-                      description: WorkDir runtime image working directory `WORKDIR`.
-                      type: string
-                  type: object
-                source:
-                  description: Source refers to the Git repository containing the source code to be built.
-                  properties:
                     contextDir:
                       description: ContextDir is a path to subfolder in the repo. Optional.
                       type: string
@@ -677,9 +917,23 @@ spec:
                     url:
                       description: URL describes the URL of the Git repository.
                       type: string
-                  required:
-                    - url
                   type: object
+                sources:
+                  description: Sources slice of BuildSource, defining external build artifacts complementary to VCS (`.spec.source`) data.
+                  items:
+                    description: BuildSource remote artifact definition, also known as "sources". Simple "name" and "url" pairs, initially without "credentials" (authentication) support yet.
+                    properties:
+                      name:
+                        description: Name instance entry.
+                        type: string
+                      url:
+                        description: URL remote artifact location.
+                        type: string
+                    required:
+                      - name
+                      - url
+                    type: object
+                  type: array
                 strategy:
                   description: Strategy references the BuildStrategy to use to build the container image.
                   properties:
@@ -734,7 +988,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   name: buildstrategies.shipwright.io
 spec:
@@ -1340,7 +1594,7 @@ spec:
                             type: object
                         type: object
                       startupProbe:
-                        description: 'StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod''s lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. This is a beta feature enabled by the StartupProbe feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
+                        description: 'StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod''s lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                         properties:
                           exec:
                             description: One and only one of the following should be specified. Exec specifies the action to take.
@@ -1490,6 +1744,24 @@ spec:
                       - name
                     type: object
                   type: array
+                parameters:
+                  items:
+                    description: Parameter holds a name-description with a default value that allows strategy steps to be parameterize. Build users can set a value for parameter via the Build or BuildRun spec.paramValues object.
+                    properties:
+                      default:
+                        description: Reasonable default value for the parameter
+                        type: string
+                      description:
+                        description: Description on the parameter purpose
+                        type: string
+                      name:
+                        description: Name of the parameter
+                        type: string
+                    required:
+                      - description
+                      - name
+                    type: object
+                  type: array
               type: object
             status:
               description: BuildStrategyStatus defines the observed state of BuildStrategy
@@ -1511,7 +1783,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   name: clusterbuildstrategies.shipwright.io
 spec:
@@ -2117,7 +2389,7 @@ spec:
                             type: object
                         type: object
                       startupProbe:
-                        description: 'StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod''s lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. This is a beta feature enabled by the StartupProbe feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
+                        description: 'StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod''s lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                         properties:
                           exec:
                             description: One and only one of the following should be specified. Exec specifies the action to take.
@@ -2264,6 +2536,24 @@ spec:
                         description: Container's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.
                         type: string
                     required:
+                      - name
+                    type: object
+                  type: array
+                parameters:
+                  items:
+                    description: Parameter holds a name-description with a default value that allows strategy steps to be parameterize. Build users can set a value for parameter via the Build or BuildRun spec.paramValues object.
+                    properties:
+                      default:
+                        description: Reasonable default value for the parameter
+                        type: string
+                      description:
+                        description: Description on the parameter purpose
+                        type: string
+                      name:
+                        description: Name of the parameter
+                        type: string
+                    required:
+                      - description
                       - name
                     type: object
                   type: array
