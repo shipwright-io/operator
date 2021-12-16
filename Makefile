@@ -35,7 +35,9 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 CONTAINER_ENGINE ?= docker
-IMAGE_REPO ?= quay.io/shipwright
+IMAGE_HOST ?= quay.io
+IMAGE_NAMESPACE ?= shipwright
+IMAGE_REPO ?= $(IMAGE_HOST)/$(IMAGE_NAMESPACE)
 TAG ?= $(VERSION)
 IMAGE_PUSH ?= true
 
@@ -185,6 +187,10 @@ bundle-build: bundle
 .PHONY: bundle-push
 bundle-push: bundle-build
 	$(CONTAINER_ENGINE) push $(BUNDLE_IMG)
+
+.PHONY: release
+release: ko
+	CONTAINER_ENGINE="$(CONTAINER_ENGINE)" KO_BIN="$(KO)" IMAGE_HOST=${IMAGE_HOST} IMAGE_NAMESPACE=${IMAGE_NAMESPACE} TAG=${TAG} hack/release.sh
 
 # Install OLM on the current cluster
 .PHONY: install-olm
