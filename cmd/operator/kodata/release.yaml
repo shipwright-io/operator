@@ -13,6 +13,9 @@ rules:
   - apiGroups: ['']
     resources: ['configmaps']
     verbs: ['get', 'create', 'update']
+  - apiGroups: ['coordination.k8s.io']
+    resources: ['leases']
+    verbs: ['create', 'get', 'update']
   - apiGroups: ['']
     resources: ['events']
     verbs: ['create']
@@ -121,7 +124,7 @@ spec:
       serviceAccountName: shipwright-build-controller
       containers:
         - name: shipwright-build
-          image: quay.io/shipwright/shipwright-build-controller:v0.6.0@sha256:7e9dce636fcedcdb4e18cc8d3ccb6bdd4e21fa0c7551efef63aa5464e1b9745b
+          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.7.0@sha256:887b76092d0e6f3c4f4c7b781589f41fde1c967ae9ae62f3a6bdbb18251a562f
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -138,11 +141,13 @@ spec:
             - name: CONTROLLER_NAME
               value: "shipwright-build"
             - name: GIT_CONTAINER_IMAGE
-              value: quay.io/shipwright/git:v0.6.0@sha256:42ad649c3eeb3cddebbf30f2886f774477f3907fca27a24cfe2947034ee20eec
+              value: ghcr.io/shipwright-io/build/git:v0.7.0@sha256:2cff62f102e495e95081cd4b56d94c0e001cfc999228ad249d4b9b099d0c0ff2
+            - name: GIT_ENABLE_REWRITE_RULE
+              value: "false"
             - name: MUTATE_IMAGE_CONTAINER_IMAGE
-              value: quay.io/shipwright/mutate-image:v0.6.0@sha256:b4af89749dfa2659b1a828b06c17b6d77cb9221abdc52a99795c13ae3cf50753
+              value: ghcr.io/shipwright-io/build/mutate-image:v0.7.0@sha256:196b4c9867667f82e8c328d13c8b1f105f8ff0005a483345c6512f3fe6aa21bb
             - name: BUNDLE_CONTAINER_IMAGE
-              value: quay.io/shipwright/bundle:v0.6.0@sha256:8677e34c97966921fbf34ba084bc6582c2fdb244afed19aeea51cbc5466dbd1b
+              value: ghcr.io/shipwright-io/build/bundle:v0.7.0@sha256:19bf2412b04f0ce58325e02bfd7286b9cc1721cfbd2aff5b1e67555bc632a0da
           ports:
             - containerPort: 8383
               name: metrics-port
@@ -164,7 +169,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.5.0
+    controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
   name: buildruns.shipwright.io
 spec:
@@ -655,6 +660,9 @@ spec:
                       git:
                         description: Git holds the results emitted from from the step definition of a git source
                         properties:
+                          branchName:
+                            description: BranchName holds the default branch name of the git source this will be set only when revision is not specified in Build object
+                            type: string
                           commitAuthor:
                             description: CommitAuthor holds the commit author of a git source
                             type: string
@@ -691,7 +699,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.5.0
+    controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
   name: builds.shipwright.io
 spec:
@@ -988,7 +996,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.5.0
+    controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
   name: buildstrategies.shipwright.io
 spec:
@@ -1021,7 +1029,7 @@ spec:
               properties:
                 buildSteps:
                   items:
-                    description: BuildStep defines a partial step that needs to run in container for building the image.
+                    description: BuildStep defines a partial step that needs to run in container for building the image. If the build step declares a volumeMount, Shipwright will create an emptyDir volume mount for the named volume. Build steps which share the same named volume in the volumeMount will share the same underlying emptyDir volume. This behavior is deprecated, and will be removed when full volume support is added to build strategies as specified in SHIP-0022.
                     properties:
                       args:
                         description: 'Arguments to the entrypoint. The docker image''s CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container''s environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
@@ -1363,6 +1371,10 @@ spec:
                             required:
                               - port
                             type: object
+                          terminationGracePeriodSeconds:
+                            description: Optional duration in seconds the pod needs to terminate gracefully upon probe failure. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. If this value is nil, the pod's terminationGracePeriodSeconds will be used. Otherwise, this value overrides the value provided by the pod spec. Value must be non-negative integer. The value zero indicates stop immediately via the kill signal (no opportunity to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod feature gate.
+                            format: int64
+                            type: integer
                           timeoutSeconds:
                             description: 'Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                             format: int32
@@ -1482,13 +1494,17 @@ spec:
                             required:
                               - port
                             type: object
+                          terminationGracePeriodSeconds:
+                            description: Optional duration in seconds the pod needs to terminate gracefully upon probe failure. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. If this value is nil, the pod's terminationGracePeriodSeconds will be used. Otherwise, this value overrides the value provided by the pod spec. Value must be non-negative integer. The value zero indicates stop immediately via the kill signal (no opportunity to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod feature gate.
+                            format: int64
+                            type: integer
                           timeoutSeconds:
                             description: 'Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                             format: int32
                             type: integer
                         type: object
                       resources:
-                        description: 'Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                        description: 'Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         properties:
                           limits:
                             additionalProperties:
@@ -1497,7 +1513,7 @@ spec:
                                 - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
                           requests:
                             additionalProperties:
@@ -1506,7 +1522,7 @@ spec:
                                 - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
                         type: object
                       securityContext:
@@ -1673,6 +1689,10 @@ spec:
                             required:
                               - port
                             type: object
+                          terminationGracePeriodSeconds:
+                            description: Optional duration in seconds the pod needs to terminate gracefully upon probe failure. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. If this value is nil, the pod's terminationGracePeriodSeconds will be used. Otherwise, this value overrides the value provided by the pod spec. Value must be non-negative integer. The value zero indicates stop immediately via the kill signal (no opportunity to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod feature gate.
+                            format: int64
+                            type: integer
                           timeoutSeconds:
                             description: 'Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                             format: int32
@@ -1783,7 +1803,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.5.0
+    controller-gen.kubebuilder.io/version: v0.6.2
   creationTimestamp: null
   name: clusterbuildstrategies.shipwright.io
 spec:
@@ -1816,7 +1836,7 @@ spec:
               properties:
                 buildSteps:
                   items:
-                    description: BuildStep defines a partial step that needs to run in container for building the image.
+                    description: BuildStep defines a partial step that needs to run in container for building the image. If the build step declares a volumeMount, Shipwright will create an emptyDir volume mount for the named volume. Build steps which share the same named volume in the volumeMount will share the same underlying emptyDir volume. This behavior is deprecated, and will be removed when full volume support is added to build strategies as specified in SHIP-0022.
                     properties:
                       args:
                         description: 'Arguments to the entrypoint. The docker image''s CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container''s environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
@@ -2158,6 +2178,10 @@ spec:
                             required:
                               - port
                             type: object
+                          terminationGracePeriodSeconds:
+                            description: Optional duration in seconds the pod needs to terminate gracefully upon probe failure. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. If this value is nil, the pod's terminationGracePeriodSeconds will be used. Otherwise, this value overrides the value provided by the pod spec. Value must be non-negative integer. The value zero indicates stop immediately via the kill signal (no opportunity to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod feature gate.
+                            format: int64
+                            type: integer
                           timeoutSeconds:
                             description: 'Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                             format: int32
@@ -2277,13 +2301,17 @@ spec:
                             required:
                               - port
                             type: object
+                          terminationGracePeriodSeconds:
+                            description: Optional duration in seconds the pod needs to terminate gracefully upon probe failure. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. If this value is nil, the pod's terminationGracePeriodSeconds will be used. Otherwise, this value overrides the value provided by the pod spec. Value must be non-negative integer. The value zero indicates stop immediately via the kill signal (no opportunity to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod feature gate.
+                            format: int64
+                            type: integer
                           timeoutSeconds:
                             description: 'Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                             format: int32
                             type: integer
                         type: object
                       resources:
-                        description: 'Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                        description: 'Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         properties:
                           limits:
                             additionalProperties:
@@ -2292,7 +2320,7 @@ spec:
                                 - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
                           requests:
                             additionalProperties:
@@ -2301,7 +2329,7 @@ spec:
                                 - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
                         type: object
                       securityContext:
@@ -2468,6 +2496,10 @@ spec:
                             required:
                               - port
                             type: object
+                          terminationGracePeriodSeconds:
+                            description: Optional duration in seconds the pod needs to terminate gracefully upon probe failure. The grace period is the duration in seconds after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal. Set this value longer than the expected cleanup time for your process. If this value is nil, the pod's terminationGracePeriodSeconds will be used. Otherwise, this value overrides the value provided by the pod spec. Value must be non-negative integer. The value zero indicates stop immediately via the kill signal (no opportunity to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod feature gate.
+                            format: int64
+                            type: integer
                           timeoutSeconds:
                             description: 'Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                             format: int32
