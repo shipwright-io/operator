@@ -219,13 +219,17 @@ CATALOG_IMG ?= $(IMAGE_TAG_BASE)-catalog:$(VERSION)
 # The main multi-arch operatorhub image has a bug that causes opm index add to fail.
 # This doesn't seem to be an issue for the single-arch x86 image.
 # See https://github.com/operator-framework/operator-registry/issues/870
-CATALOG_INDEX_IMG ?= quay.io/operatorhubio/catalog_sa
+CATALOG_INDEX_IMG ?= quay.io/operatorhubio/catalog:latest
 
 # Build a catalog image with the operator bundle included
 .PHONY: catalog-build
 catalog-build: opm
-	$(OPM) index add --container-tool $(CONTAINER_ENGINE) --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) --from-index=$(CATALOG_INDEX_IMG)
-	
+	sudo $(OPM) index add --container-tool $(CONTAINER_ENGINE) --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) --from-index=$(CATALOG_INDEX_IMG) --generate -d catalog.Dockerfile
+	sudo $(CONTAINER_ENGINE) build -t $(CATALOG_IMG) -f catalog.Dockerfile .
+	sudo rm catalog.Dockerfile
+	sudo rm -rf database
+	sudo rm -rf index_tmp_*
+
 # Build and push a catalog image with the operator bundle to a container registry
 .PHONY: catalog-push
 catalog-push: catalog-build
