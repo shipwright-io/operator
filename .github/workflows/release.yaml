@@ -6,36 +6,63 @@ on:
       release:
         description: 'Desired tag'
         required: true
-      tags:
+      previous-tag:
         description: 'Previous tag'
-        required: true
-
+        required: false
 jobs:
   release:
-    if: ${{ github.repository == 'shipwright-io/operator' }}
+    # if: ${{ github.repository == 'shipwright-io/build' }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # To be able to get OIDC ID token to sign images.
+      contents: write  # To be able to update releases.
+      packages: write  # To be able to push images and signatures.
+    env:
+      IMAGE_HOST: ghcr.io
+      IMAGE_NAMESPACE: ${{ github.repository }}
+      VERSION: ${{ github.event.inputs.release }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Install Go
-      uses: actions/setup-go@v2
-
-    - name: Login to docker
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Fetch all history, needed for release note generation.
+    # Install tools
+    - uses: actions/setup-go@v2
+      with:
+        go-version: 1.17.x
+    - uses: sigstore/cosign-installer@v1.2.0
+    - name: Build Release Images
       env:
-        REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-        REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
-      run: |
-        echo "$REGISTRY_PASSWORD" | docker login --username "$REGISTRY_USERNAME" --password-stdin
-
-    - name: Build and upload Operator Image
+        REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        REGISTRY_USERNAME: ${{ github.repository_owner }}
+      run:
+        make release
+    - name: Sign released images
       env:
-        VERSION: ${{ github.events.input.release }}
+        # This enables keyless mode
+        # (https://github.com/sigstore/cosign/blob/main/KEYLESS.md) which signs
+        # images using an ephemeral key tied to the GitHub Actions identity via
+        # OIDC.
+        COSIGN_EXPERIMENTAL: "true"
       run: |
-        make ko-publish
-
-    - name: Build and upload Operator Bundle Image
+        grep -o "ghcr.io[^\"]*" "${GITHUB_WORKSPACE}/bundle/manifests/shipwright-operator.clusterserviceversion.yaml" | xargs cosign sign \
+            -a sha=${{ github.sha }} \
+            -a run_id=${{ github.run_id }} \
+            -a run_attempt=${{ github.run_attempt }}
+    - name: Build Release Changelog
       env:
-        VERSION: ${{ github.events.input.release }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PREVIOUS_TAG: ${{ github.event.inputs.previous-tag }}
+        REPOSITORY: ${{ github.repository }}
       run: |
-        make bundle-push
+        "${GITHUB_WORKSPACE}/.github/draft_release_notes.sh"
+    - name: Draft release
+      id: draft_release
+      uses: actions/create-release@v1
+      with:
+        release_name: ${{ github.event.inputs.release }}
+        tag_name: ${{ github.event.inputs.release }}
+        draft: true
+        prerelease: true
+        body_path: Changes.md
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
