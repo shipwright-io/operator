@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/shipwright/operator
-  newTag: 0.2.0
+  newTag: 0.7.0
