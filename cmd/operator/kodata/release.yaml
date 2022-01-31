@@ -124,7 +124,7 @@ spec:
       serviceAccountName: shipwright-build-controller
       containers:
         - name: shipwright-build
-          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.7.0@sha256:887b76092d0e6f3c4f4c7b781589f41fde1c967ae9ae62f3a6bdbb18251a562f
+          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.8.0@sha256:984df5f60a4c6bea68d6ae298abad4e861c6ca9b2e75432d57729bbcfbc5073f
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -141,13 +141,15 @@ spec:
             - name: CONTROLLER_NAME
               value: "shipwright-build"
             - name: GIT_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/git:v0.7.0@sha256:2cff62f102e495e95081cd4b56d94c0e001cfc999228ad249d4b9b099d0c0ff2
+              value: ghcr.io/shipwright-io/build/git:v0.8.0@sha256:0ade6417b6ae41fc9adc191b56cd4284915abdb3849a5669a4efb018dc054d2b
             - name: GIT_ENABLE_REWRITE_RULE
               value: "false"
             - name: MUTATE_IMAGE_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/mutate-image:v0.7.0@sha256:196b4c9867667f82e8c328d13c8b1f105f8ff0005a483345c6512f3fe6aa21bb
+              value: ghcr.io/shipwright-io/build/mutate-image:v0.8.0@sha256:f353f861aaee4dab5c1dd659295fb36af9c966ca47f7c7664d2ff1179fbc3f72
             - name: BUNDLE_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/bundle:v0.7.0@sha256:19bf2412b04f0ce58325e02bfd7286b9cc1721cfbd2aff5b1e67555bc632a0da
+              value: ghcr.io/shipwright-io/build/bundle:v0.8.0@sha256:a6895fe36f81fc8314580c8c97a4a6aef0668ee9b6738787ab9f001627473dc3
+            - name: WAITER_CONTAINER_IMAGE
+              value: ghcr.io/shipwright-io/build/waiter:v0.8.0@sha256:3dc5ded5f5cf52dc3536c36f9a6254518447ea9794a6c904e05123ee2d3251f1
           ports:
             - containerPort: 8383
               name: metrics-port
@@ -340,13 +342,88 @@ spec:
                   items:
                     description: ParamValue is a key/value that populates a strategy parameter used in the execution of the strategy steps
                     properties:
+                      configMapValue:
+                        description: The ConfigMap value of the parameter
+                        properties:
+                          format:
+                            description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                            type: string
+                          key:
+                            description: Key inside the object
+                            type: string
+                          name:
+                            description: Name of the object
+                            type: string
+                        required:
+                          - key
+                          - name
+                        type: object
                       name:
+                        description: Name of the parameter
                         type: string
+                      secretValue:
+                        description: The secret value of the parameter
+                        properties:
+                          format:
+                            description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                            type: string
+                          key:
+                            description: Key inside the object
+                            type: string
+                          name:
+                            description: Name of the object
+                            type: string
+                        required:
+                          - key
+                          - name
+                        type: object
                       value:
+                        description: The value of the parameter
                         type: string
+                      values:
+                        description: Values of an array parameter
+                        items:
+                          description: The value type contains the properties for a value, this allows for an easy extension in the future to support more kinds
+                          properties:
+                            configMapValue:
+                              description: The ConfigMap value of the parameter
+                              properties:
+                                format:
+                                  description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                                  type: string
+                                key:
+                                  description: Key inside the object
+                                  type: string
+                                name:
+                                  description: Name of the object
+                                  type: string
+                              required:
+                                - key
+                                - name
+                              type: object
+                            secretValue:
+                              description: The secret value of the parameter
+                              properties:
+                                format:
+                                  description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                                  type: string
+                                key:
+                                  description: Key inside the object
+                                  type: string
+                                name:
+                                  description: Name of the object
+                                  type: string
+                              required:
+                                - key
+                                - name
+                              type: object
+                            value:
+                              description: The value of the parameter
+                              type: string
+                          type: object
+                        type: array
                     required:
                       - name
-                      - value
                     type: object
                   type: array
                 serviceAccount:
@@ -359,6 +436,27 @@ spec:
                       description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                       type: string
                   type: object
+                sources:
+                  description: Sources slice of BuildSource, defining external build artifacts complementary to VCS (`.spec.source`) data.
+                  items:
+                    description: BuildSource remote artifact definition, also known as "sources". Simple "name" and "url" pairs, initially without "credentials" (authentication) support yet.
+                    properties:
+                      name:
+                        description: Name instance entry.
+                        type: string
+                      timeout:
+                        description: Timeout how long the BuildSource execution must take.
+                        type: string
+                      type:
+                        description: Type is the BuildSource qualifier, the type of the data-source.
+                        type: string
+                      url:
+                        description: URL remote artifact location.
+                        type: string
+                    required:
+                      - name
+                    type: object
+                  type: array
                 state:
                   description: State is used for canceling a buildrun (and maybe more later on).
                   type: string
@@ -515,13 +613,88 @@ spec:
                       items:
                         description: ParamValue is a key/value that populates a strategy parameter used in the execution of the strategy steps
                         properties:
+                          configMapValue:
+                            description: The ConfigMap value of the parameter
+                            properties:
+                              format:
+                                description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                                type: string
+                              key:
+                                description: Key inside the object
+                                type: string
+                              name:
+                                description: Name of the object
+                                type: string
+                            required:
+                              - key
+                              - name
+                            type: object
                           name:
+                            description: Name of the parameter
                             type: string
+                          secretValue:
+                            description: The secret value of the parameter
+                            properties:
+                              format:
+                                description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                                type: string
+                              key:
+                                description: Key inside the object
+                                type: string
+                              name:
+                                description: Name of the object
+                                type: string
+                            required:
+                              - key
+                              - name
+                            type: object
                           value:
+                            description: The value of the parameter
                             type: string
+                          values:
+                            description: Values of an array parameter
+                            items:
+                              description: The value type contains the properties for a value, this allows for an easy extension in the future to support more kinds
+                              properties:
+                                configMapValue:
+                                  description: The ConfigMap value of the parameter
+                                  properties:
+                                    format:
+                                      description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                                      type: string
+                                    key:
+                                      description: Key inside the object
+                                      type: string
+                                    name:
+                                      description: Name of the object
+                                      type: string
+                                  required:
+                                    - key
+                                    - name
+                                  type: object
+                                secretValue:
+                                  description: The secret value of the parameter
+                                  properties:
+                                    format:
+                                      description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                                      type: string
+                                    key:
+                                      description: Key inside the object
+                                      type: string
+                                    name:
+                                      description: Name of the object
+                                      type: string
+                                  required:
+                                    - key
+                                    - name
+                                  type: object
+                                value:
+                                  description: The value of the parameter
+                                  type: string
+                              type: object
+                            type: array
                         required:
                           - name
-                          - value
                         type: object
                       type: array
                     source:
@@ -561,12 +734,17 @@ spec:
                           name:
                             description: Name instance entry.
                             type: string
+                          timeout:
+                            description: Timeout how long the BuildSource execution must take.
+                            type: string
+                          type:
+                            description: Type is the BuildSource qualifier, the type of the data-source.
+                            type: string
                           url:
                             description: URL remote artifact location.
                             type: string
                         required:
                           - name
-                          - url
                         type: object
                       type: array
                     strategy:
@@ -624,11 +802,27 @@ spec:
                     type: object
                   type: array
                 failedAt:
-                  description: FailedAt points to the resource where the BuildRun failed
+                  description: 'Deprecated: FailedAt points to the resource where the BuildRun failed'
                   properties:
                     container:
                       type: string
                     pod:
+                      type: string
+                  type: object
+                failureDetails:
+                  description: FailureDetails contains error details that are collected and surfaced from TaskRun
+                  properties:
+                    location:
+                      description: FailedAt describes the location where the failure happened
+                      properties:
+                        container:
+                          type: string
+                        pod:
+                          type: string
+                      type: object
+                    message:
+                      type: string
+                    reason:
                       type: string
                   type: object
                 latestTaskRunRef:
@@ -888,13 +1082,88 @@ spec:
                   items:
                     description: ParamValue is a key/value that populates a strategy parameter used in the execution of the strategy steps
                     properties:
+                      configMapValue:
+                        description: The ConfigMap value of the parameter
+                        properties:
+                          format:
+                            description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                            type: string
+                          key:
+                            description: Key inside the object
+                            type: string
+                          name:
+                            description: Name of the object
+                            type: string
+                        required:
+                          - key
+                          - name
+                        type: object
                       name:
+                        description: Name of the parameter
                         type: string
+                      secretValue:
+                        description: The secret value of the parameter
+                        properties:
+                          format:
+                            description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                            type: string
+                          key:
+                            description: Key inside the object
+                            type: string
+                          name:
+                            description: Name of the object
+                            type: string
+                        required:
+                          - key
+                          - name
+                        type: object
                       value:
+                        description: The value of the parameter
                         type: string
+                      values:
+                        description: Values of an array parameter
+                        items:
+                          description: The value type contains the properties for a value, this allows for an easy extension in the future to support more kinds
+                          properties:
+                            configMapValue:
+                              description: The ConfigMap value of the parameter
+                              properties:
+                                format:
+                                  description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                                  type: string
+                                key:
+                                  description: Key inside the object
+                                  type: string
+                                name:
+                                  description: Name of the object
+                                  type: string
+                              required:
+                                - key
+                                - name
+                              type: object
+                            secretValue:
+                              description: The secret value of the parameter
+                              properties:
+                                format:
+                                  description: An optional format to add pre- or suffix to the object value. For example 'KEY=${SECRET_VALUE}' or 'KEY=${CONFIGMAP_VALUE}' depending on the context.
+                                  type: string
+                                key:
+                                  description: Key inside the object
+                                  type: string
+                                name:
+                                  description: Name of the object
+                                  type: string
+                              required:
+                                - key
+                                - name
+                              type: object
+                            value:
+                              description: The value of the parameter
+                              type: string
+                          type: object
+                        type: array
                     required:
                       - name
-                      - value
                     type: object
                   type: array
                 source:
@@ -934,12 +1203,17 @@ spec:
                       name:
                         description: Name instance entry.
                         type: string
+                      timeout:
+                        description: Timeout how long the BuildSource execution must take.
+                        type: string
+                      type:
+                        description: Type is the BuildSource qualifier, the type of the data-source.
+                        type: string
                       url:
                         description: URL remote artifact location.
                         type: string
                     required:
                       - name
-                      - url
                     type: object
                   type: array
                 strategy:
@@ -1769,13 +2043,21 @@ spec:
                     description: Parameter holds a name-description with a default value that allows strategy steps to be parameterize. Build users can set a value for parameter via the Build or BuildRun spec.paramValues object.
                     properties:
                       default:
-                        description: Reasonable default value for the parameter
+                        description: Default value for a string parameter
                         type: string
+                      defaults:
+                        description: Default values for an array parameter
+                        items:
+                          type: string
+                        type: array
                       description:
                         description: Description on the parameter purpose
                         type: string
                       name:
                         description: Name of the parameter
+                        type: string
+                      type:
+                        description: Type of the parameter. The possible types are "string" and "array", and "string" is the default.
                         type: string
                     required:
                       - description
@@ -2576,13 +2858,21 @@ spec:
                     description: Parameter holds a name-description with a default value that allows strategy steps to be parameterize. Build users can set a value for parameter via the Build or BuildRun spec.paramValues object.
                     properties:
                       default:
-                        description: Reasonable default value for the parameter
+                        description: Default value for a string parameter
                         type: string
+                      defaults:
+                        description: Default values for an array parameter
+                        items:
+                          type: string
+                        type: array
                       description:
                         description: Description on the parameter purpose
                         type: string
                       name:
                         description: Name of the parameter
+                        type: string
+                      type:
+                        description: Type of the parameter. The possible types are "string" and "array", and "string" is the default.
                         type: string
                     required:
                       - description
