@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: ghcr.io/shipwright-io/operator/operator
-  newTag: 0.7.1-snapshot
+  newTag: 0.8.0-snapshot
