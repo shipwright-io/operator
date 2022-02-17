@@ -26,6 +26,8 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.23
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -67,8 +69,9 @@ clean:
 
 # Run tests
 BINDATA = $(shell pwd)/cmd/operator/kodata
-test: generate fmt vet manifests
-	KO_DATA_PATH=${BINDATA} hack/test-with-envtest.sh
+.PHONY: test
+test: manifests generate fmt vet envtest ## Run tests.
+	KO_DATA_PATH=${BINDATA} KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out -p 1 -failfast -test.v -test.failfast
 
 # Build manager binary
 operator: generate fmt vet
@@ -146,7 +149,11 @@ KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize:
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
 
-# Installs operator-sdk on specified location
+ENVTEST = $(shell pwd)/bin/setup-envtest
+.PHONY: envtest
+envtest: ## Download envtest-setup locally if necessary.
+	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
 operator-sdk: bin-dir
 	OS=${OS} ARCH=${ARCH} hack/install-operator-sdk.sh $(OPERATOR_SDK)
