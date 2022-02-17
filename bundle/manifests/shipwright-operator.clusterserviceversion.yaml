@@ -540,6 +540,8 @@ spec:
           strategy: {}
           template:
             metadata:
+              annotations:
+                kubectl.kubernetes.io/default-container: operator
               labels:
                 app: shipwright-operator
             spec:
