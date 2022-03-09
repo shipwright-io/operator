@@ -51,10 +51,10 @@ func bootstrapShipwrightBuildReconciler(
 
 	logger := zap.New()
 
-	c := fake.NewFakeClientWithScheme(s, b)
-	crdClient := &crdclientv1.Clientset{}
-	toClient := &tektonoperatorv1alpha1client.Clientset{}
-	if tcrds != nil && len(tcrds) > 0 {
+	c := fake.NewFakeClientWithScheme(s, b) //nolint:golint,staticcheck
+	var crdClient *crdclientv1.Clientset
+	var toClient *tektonoperatorv1alpha1client.Clientset
+	if len(tcrds) > 0 {
 		objs := []runtime.Object{}
 		for _, obj := range tcrds {
 			objs = append(objs, obj)

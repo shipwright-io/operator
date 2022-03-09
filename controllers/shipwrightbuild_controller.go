@@ -7,12 +7,13 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+
 	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
 	"github.com/manifestival/manifestival"
 	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
@@ -112,7 +113,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			return RequeueWithError(err)
 		}
 		if version.Minor() < 49 {
-			retErr := fmt.Errorf("Shipwright requires at least v0.49.0 of the Tekton Operator, but the minor number is %d", version.Minor())
+			retErr := fmt.Errorf("shipwright requires at least v0.49.0 of the Tekton Operator, but the minor number is %d", version.Minor())
 			return RequeueWithError(retErr)
 		}
 
@@ -245,7 +246,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			Reason:  "Failed",
 			Message: fmt.Sprintf("Reconciling ShipwrightBuild failed: %v", err),
 		})
-		r.Client.Status().Update(ctx, b)
+		err = r.Client.Status().Update(ctx, b)
 		return RequeueWithError(err)
 	}
 	if err := r.setFinalizer(ctx, b); err != nil {
@@ -261,7 +262,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	})
 	if err := r.Client.Status().Update(ctx, b); err != nil {
 		logger.Error(err, "updating ShipwrightBuild status")
-		RequeueWithError(err)
+		RequeueWithError(err) //nolint:errcheck
 	}
 	logger.Info("All done!")
 	return NoRequeue()

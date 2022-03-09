@@ -6,18 +6,18 @@ package controllers
 
 import (
 	"context"
-	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"path/filepath"
 	"testing"
 	"time"
+
+	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -32,7 +32,6 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
 var k8sClient client.Client
 var ctx context.Context
 var testEnv *envtest.Environment
@@ -74,7 +73,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	crdClient, err := crdclientv1.NewForConfig(mgr.GetConfig())
 	Expect(err).NotTo(HaveOccurred())
-	toClient, err := tektonoperatorv1alpha1client.NewForConfig(mgr.GetConfig())
+	toClient, _ := tektonoperatorv1alpha1client.NewForConfig(mgr.GetConfig())
 	err = (&ShipwrightBuildReconciler{
 		CRDClient:            crdClient,
 		TektonOperatorClient: toClient,
