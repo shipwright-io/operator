@@ -32,11 +32,14 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var k8sClient client.Client
-var ctx context.Context
-var testEnv *envtest.Environment
-var restTimeout = 5 * time.Second
-var restRetry = 100 * time.Millisecond
+var (
+	k8sClient   client.Client
+	ctx         context.Context
+	cancel      context.CancelFunc
+	testEnv     *envtest.Environment
+	restTimeout = 5 * time.Second
+	restRetry   = 100 * time.Millisecond
+)
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -50,9 +53,12 @@ func TestAPIs(t *testing.T) {
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
+	ctx, cancel = context.WithCancel(context.TODO())
+
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
+		ErrorIfCRDPathMissing: true,
 	}
 
 	cfg, err := testEnv.Start()
@@ -73,7 +79,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	crdClient, err := crdclientv1.NewForConfig(mgr.GetConfig())
 	Expect(err).NotTo(HaveOccurred())
-	toClient, _ := tektonoperatorv1alpha1client.NewForConfig(mgr.GetConfig())
+	toClient, err := tektonoperatorv1alpha1client.NewForConfig(mgr.GetConfig())
+	Expect(err).NotTo(HaveOccurred())
 	err = (&ShipwrightBuildReconciler{
 		CRDClient:            crdClient,
 		TektonOperatorClient: toClient,
@@ -82,8 +89,6 @@ var _ = BeforeSuite(func() {
 		Logger:               ctrl.Log.WithName("controllers").WithName("shipwrightbuild"),
 	}).SetupWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
-
-	ctx = ctrl.SetupSignalHandler()
 
 	go func() {
 		err := mgr.Start(ctx)
@@ -97,6 +102,7 @@ var _ = BeforeSuite(func() {
 }, 60)
 
 var _ = AfterSuite(func() {
+	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
