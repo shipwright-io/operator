@@ -95,8 +95,8 @@ jobs:
         - name: Build Operator Bundle
           run: |
             make bundle-push IMAGE_REPO=localhost:5000
-        # - name: Build Catalog Source
-        #   run: |
-        #     make catalog-push IMAGE_REPO=localhost:5000
-        # - name: Run Operator with Catalog
-        #   run: make catalog-run IMAGE_REPO=localhost:5000
+        - name: Build Catalog Source
+          run: |
+            make catalog-push IMAGE_REPO=localhost:5000 OPM_USE_HTTP=true
+        - name: Run Operator with Catalog
+          run: make catalog-run IMAGE_REPO=localhost:5000
