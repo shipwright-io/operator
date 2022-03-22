@@ -1,0 +1,10 @@
+{
+    "schema": "olm.channel",
+    "name": "alpha",
+    "package": "shipwright-operator",
+    "entries": [
+        {
+            "name": "shipwright-operator.v0.8.0"
+        }
+    ]
+}

@@ -1,0 +1,45 @@
+{
+    "schema": "olm.bundle",
+    "name": "shipwright-operator.v0.8.0",
+    "package": "shipwright-operator",
+    "image": "quay.io/operatorhubio/shipwright-operator:v0.8.0",
+    "properties": [
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "operator.shipwright.io",
+                "kind": "ShipwrightBuild",
+                "version": "v1alpha1"
+            }
+        },
+        {
+            "type": "olm.gvk.required",
+            "value": {
+                "group": "operator.tekton.dev",
+                "kind": "TektonConfig",
+                "version": "v1alpha1"
+            }
+        },
+        {
+            "type": "olm.package",
+            "value": {
+                "packageName": "shipwright-operator",
+                "version": "0.8.0"
+            }
+        }
+    ],
+    "relatedImages": [
+        {
+            "name": "",
+            "image": "gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0"
+        },
+        {
+            "name": "",
+            "image": "ghcr.io/shipwright-io/operator/operator:0.8.0@sha256:03e20472494da0ec057135df4ced68360c949a4a7001caa40304bf4e231e0cce"
+        },
+        {
+            "name": "",
+            "image": "quay.io/operatorhubio/shipwright-operator:v0.8.0"
+        }
+    ]
+}

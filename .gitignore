@@ -26,3 +26,6 @@ testbin/*
 *.swp
 *.swo
 *~
+
+# Output directory for tests
+_output/
