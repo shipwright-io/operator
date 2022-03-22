@@ -23,7 +23,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/shipwright-io/operator
     support: The Shipwright Contributors
-  name: shipwright-operator.v0.8.0
+  name: shipwright-operator.v0.8.1-snapshot
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -568,7 +568,7 @@ spec:
                 - --health-probe-bind-address=:8081
                 - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
-                image: ghcr.io/shipwright-io/operator/operator:0.8.0
+                image: ghcr.io/shipwright-io/operator/operator:0.8.1-snapshot
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -656,4 +656,4 @@ spec:
   provider:
     name: The Shipwright Contributors
     url: https://shipwright.io
-  version: 0.8.0
+  version: 0.8.1-snapshot
