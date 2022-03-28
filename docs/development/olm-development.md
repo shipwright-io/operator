@@ -35,6 +35,12 @@ Be sure to use the same container registry for the `IMAGE_REPO` argument.
 Next, run `make catalog-push IMAGE_REPO=<your-registry>`.
 This will build and push an [operator catalog](https://olm.operatorframework.io/docs/tasks/creating-a-catalog/),
 which packages your test operator bundle with the other operators available on [operatorhub.io](https://operatorhub.io).
+The built catalog uses the new [file-based catalog](https://olm.operatorframework.io/docs/reference/file-based-catalogs/)
+architecture, and packages the upstream Tekton operator along with the current released Shipwright
+operator.
+The catalog is rendered from JSON manifests in the `test/catalog` directory, and full contents of
+the built catalog can be inspected in the `_output/catalog` directory.
+
 As in step 2, be sure to use the same container registry for the `IMAGE_REPO` argument.
 
 ## Step 4: Deploy the operator using the catalog image

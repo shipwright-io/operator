@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.8.0
+VERSION ?= 0.8.1-snapshot
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -170,6 +170,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 clean: ## Cleans out all downloaded dependencies for development and testing
 	rm -rf bin
 	rm -rf testbin
+	rm -rf _output
 
 .PHONY: bin-dir
 bin-dir: ## Creates a local "bin" directory for helper applications.
@@ -250,13 +251,16 @@ ifeq (,$(shell which opm 2>/dev/null))
 	@{ \
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.19.1/$(OS)-$(ARCH)-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.21.0/$(OS)-$(ARCH)-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else
 OPM = $(shell which opm)
 endif
 endif
+
+# Use HTTP for opm registry operations
+OPM_USE_HTTP ?= false
 
 # A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
 # These images MUST exist in a registry and be pull-able.
@@ -270,15 +274,14 @@ ifneq ($(origin CATALOG_BASE_IMG), undefined)
 FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG)
 endif
 
-# Build a catalog image by adding bundle images to an empty catalog using the operator package manager tool, 'opm'.
-# This recipe invokes 'opm' in 'semver' bundle add mode. For more information on add modes, see:
-# https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
+# Build a catalog image by adding a bundle image to a candidate file-based OLM catalog.
 .PHONY: catalog-build
-catalog-build: opm ## Build a catalog image.
-	$(OPM) index add --container-tool $(CONTAINER_ENGINE) --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
+catalog-build: opm ## Build a file-based OLM catalog image containing a candidate operator bundle.
+	BUNDLE_IMG=$(BUNDLE_IMG) OPM_BIN=$(OPM) SED_BIN=$(SED_BIN) CSV_VERSION=$(VERSION) USE_HTTP=$(OPM_USE_HTTP) hack/render-candidate-catalog.sh
+	$(CONTAINER_ENGINE) build -f _output/catalog.Dockerfile -t $(CATALOG_IMG) _output
 
 .PHONY: catalog-push
-catalog-push: ## Push a catalog image.
+catalog-push: catalog-build ## Build and push an OLM catalog image with a candidate operator bundle.
 	$(CONTAINER_ENGINE) push $(CATALOG_IMG)
 
 ##@ CI Testing
