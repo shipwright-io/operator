@@ -63,8 +63,7 @@ spec:
 
     The operator will deploy Shipwright Builds in the provided `targetNamespace`.
     When `.spec.targetNamespace` is not set, the namespace will default to `shipwright-build`.
-
-    _Note: this namespace needs to be created before the actual deployment takes place._
+    Refer to the [ShipwrightBuild documentation](https://github.com/shipwright-io/operator/blob/main/docs/shipwrightbuild.md) for more information about this custom resource.
   displayName: Shipwright Operator
   icon:
   - base64data: |
