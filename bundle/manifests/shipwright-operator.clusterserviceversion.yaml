@@ -23,7 +23,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/shipwright-io/operator
     support: The Shipwright Contributors
-  name: shipwright-operator.v0.8.1-snapshot
+  name: shipwright-operator.v0.9.0-rc.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -211,6 +211,50 @@ spec:
     spec:
       clusterPermissions:
       - rules:
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - clusterbuildstrategies
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - buildstrategies
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - builds
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - buildruns
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
         - apiGroups:
           - shipwright.io
           resources:
@@ -568,7 +612,7 @@ spec:
                 - --health-probe-bind-address=:8081
                 - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
-                image: ghcr.io/shipwright-io/operator/operator:0.8.1-snapshot
+                image: ghcr.io/shipwright-io/operator/operator:0.9.0-rc.0
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -656,4 +700,4 @@ spec:
   provider:
     name: The Shipwright Contributors
     url: https://shipwright.io
-  version: 0.8.1-snapshot
+  version: 0.9.0-rc.0
