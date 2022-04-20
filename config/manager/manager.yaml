@@ -29,7 +29,7 @@ spec:
       containers:
       - args:
         - --leader-elect
-        image: controller:latest
+        image: ko://github.com/shipwright-io/operator
         name: operator
         securityContext:
           allowPrivilegeEscalation: false

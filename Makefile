@@ -41,6 +41,17 @@ IMAGE_TAG_BASE ?= $(IMAGE_REPO)/operator
 # TAG allows the tag for the operator image to be changed. Defaults to the VERSION
 TAG ?= $(VERSION)
 
+# IMAGE_PUSH indicates if any of the images should be pushed. By default, images are not pushed
+# unless a command indicates that a push occurs.
+IMAGE_PUSH ?= false
+
+# Format for the SBOM produced by ko.
+# Defaults to "spdx", use "none" to disable SBOM generation
+SBOM ?= "spdx"
+
+# Pass in options directly to ko
+KO_OPTS ?= -B -t ${TAG} --sbom=${SBOM}
+
 # BUNDLE_IMG defines the image:tag used for the bundle. 
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
 BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
@@ -64,7 +75,6 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 CONTAINER_ENGINE ?= docker
-IMAGE_PUSH ?= true
 
 KUBECTL_BIN ?= kubectl
 SED_BIN ?= sed
@@ -123,7 +133,7 @@ verify-fmt: fmt ## Verify formatting and ensure git status is clean
 vet: ## Run go vet against code.
 	go vet ./...
 
-BINDATA = $(shell pwd)/cmd/operator/kodata
+BINDATA = $(shell pwd)/kodata
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
 	KO_DATA_PATH=${BINDATA} KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out -p 1 -failfast -test.v -test.failfast
@@ -132,16 +142,19 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: generate fmt vet ## Build operator binary.
-	go build -o bin/operator ./cmd/operator
+	go build -o bin/operator main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/operator
+	go run main.go
 
-# ko-publish replaces the "docker-build" and "docker-push" targets for operator-sdk projects.
-.PHONY: ko-publish
-ko-publish: ko ## Build and push the image with ko.
-	KO_DOCKER_REPO=${IMAGE_REPO} $(KO) publish --base-import-paths --push=${IMAGE_PUSH} -t ${TAG} ./cmd/operator
+.PHONY: container-build
+container-build: test ko ## Build the container image with the operator.
+	KO_DOCKER_REPO=${IMAGE_REPO} $(KO) build . --push=false ${KO_OPTS}
+
+.PHONY: container-push
+container-push: ko ## Push the container image with the operator.
+	KO_DOCKER_REPO=${IMAGE_REPO} $(KO) build . ${KO_OPTS}
 
 ##@ Deployment
 
@@ -158,9 +171,9 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 	$(KUSTOMIZE) build config/crd | $(KUBECTL_BIN) delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
-deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | $(KUBECTL_BIN) apply -f -
+
+deploy: manifests kustomize ko ## Deploy controller to the K8s cluster specified in ~/.kube/config. This will also build and push the operator image.
+	$(KUSTOMIZE) build config/default | KO_DOCKER_REPO=${IMAGE_REPO} $(KO) apply ${KO_OPTS} -f -
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -175,11 +188,6 @@ clean: ## Cleans out all downloaded dependencies for development and testing
 .PHONY: bin-dir
 bin-dir: ## Creates a local "bin" directory for helper applications.
 	@mkdir ./bin || true
-
-KO = $(shell pwd)/bin/ko
-.PHONY: ko
-ko: bin-dir ## Installs ko locally if necessary.
-	OS=${OS} ARCH=${ARCH} hack/install-ko.sh $(KO)
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 .PHONY: controller-gen
@@ -217,9 +225,8 @@ rm -rf $$TMP_DIR ;\
 endef
 
 .PHONY: bundle
-bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metadata, then validate generated files.
+bundle: manifests kustomize operator-sdk ko ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests --interactive=false -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 
@@ -227,12 +234,20 @@ bundle: manifests kustomize operator-sdk ## Generate bundle manifests and metada
 verify-bundle: bundle ## Verify bundle manifests were generated and committed to git
 	hack/check-git-status.sh bundle
 
+OPERATOR_CSV = bundle/manifests/shipwright-operator.clusterserviceversion.yaml
+
 .PHONY: bundle-build
-bundle-build: bundle ## Build the bundle image.
-	$(CONTAINER_ENGINE) build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+bundle-build: bundle ko ## Build the bundle image. If IMAGE_PUSH is set to true, this will also build and push the operator image.
+	rm -rf _output/olm
+	mkdir -p _output/olm
+	cp -r bundle _output/olm/
+	cp bundle.Dockerfile _output/olm/
+	KO_DOCKER_REPO=${IMAGE_REPO} $(KO) resolve --push=${IMAGE_PUSH} ${KO_OPTS} -f ${OPERATOR_CSV} > _output/olm/${OPERATOR_CSV}
+	$(CONTAINER_ENGINE) build -f _output/olm/bundle.Dockerfile -t $(BUNDLE_IMG) _output/olm
 
 .PHONY: bundle-push
-bundle-push: bundle-build ## Push the bundle image to the registry
+bundle-push: IMAGE_PUSH=true
+bundle-push: bundle-build ## Push the bundle image to the registry. This will also build and push the operator image.
 	$(CONTAINER_ENGINE) push $(BUNDLE_IMG)
 
 .PHONY: release
@@ -303,3 +318,23 @@ deploy-kind-registry:
 .PHONY: deploy-kind-registry-post
 deploy-kind-registry-post:
 	CONTAINER_ENGINE=$(CONTAINER_ENGINE) KUBECTL_BIN=$(KUBECTL_BIN) test/kind/deploy-registry-post.sh
+
+##@ Build Dependencies
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN): ## Ensure that the directory exists
+	mkdir -p $(LOCALBIN)
+
+## Tool Binaries
+
+KO ?= $(LOCALBIN)/ko
+
+## Tool Versions
+
+KO_VERSION ?= v0.11.2
+
+.PHONY: ko
+ko: $(KO) ## Download ko locally if necessary
+$(KO):
+	GOBIN=$(LOCALBIN) go install github.com/google/ko@$(KO_VERSION)
