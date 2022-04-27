@@ -89,9 +89,6 @@ jobs:
         - name: Install OLM
           run: make install-olm
         # Builds the operator and makes the image readable in the KinD cluster
-        - name: Build Operator Image
-          run: |
-            make ko-publish IMAGE_REPO=localhost:5000
         - name: Build Operator Bundle
           run: |
             make bundle-push IMAGE_REPO=localhost:5000

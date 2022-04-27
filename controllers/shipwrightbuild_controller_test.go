@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -25,12 +24,6 @@ import (
 	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
 	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
-
-func init() {
-	// exporting the environment variable which points Manifestival to the release.yaml file,
-	// containing all resources managed by it
-	_ = os.Setenv("KO_DATA_PATH", "../cmd/operator/kodata")
-}
 
 // bootstrapShipwrightBuildReconciler start up a new instance of ShipwrightBuildReconciler which is
 // ready to interact with Manifestival, returning the Manifestival instance and the client.

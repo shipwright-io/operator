@@ -6,6 +6,7 @@ metadata:
     capabilities: Basic Install
     categories: Developer Tools
     certified: "false"
+    containerImage: ko://github.com/shipwright-io/operator
     description: Shipwright is a framework for building container images on Kubernetes.
     repository: https://github.com/shipwright-io/operator
     support: The Shipwright Contributors

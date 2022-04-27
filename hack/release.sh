@@ -24,8 +24,5 @@ else
     echo "Skipping registry login - build will rely on existing credentials"
 fi
 
-echo "Building and pushing operator image"
-make ko-publish
-
-echo "Regenerating bundle and pushing bundle image"
-make bundle-push CONTAINER_ENGINE="${CONTAINER_ENGINE}"
+echo "Building and pushing the operator and bundle"
+make bundle-push CONTAINER_ENGINE="${CONTAINER_ENGINE}" IMAGE_PUSH=true

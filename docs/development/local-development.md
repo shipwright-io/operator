@@ -10,7 +10,7 @@
 Run `make build` to compile the operator binary.
 The resulting binary will be saved to `bin/operator`.
 
-To build the container image for local use, run `make ko-publish IMAGE_REPO=ko.local`.
+To build the container image for local use, run `make container-push IMAGE_REPO=ko.local`.
 This will do the following:
 
 1. Compile the application.
@@ -19,14 +19,14 @@ This will do the following:
 
 The following make options can be set:
 
-* `IMAGE_REPO` - defaults to `quay.io/shipwright`.
+* `IMAGE_REPO` - defaults to `ghcr.io/shipwright-io/operator`.
   The following special repositories can be used for testing:
 
   * `ko.local` - this pushes the image to the local Docker daemon.
   * `kind.local` - pushes to a local KinD cluster.
 
-* `TAG` - defaults to `latest`.
-* `IMAGE_PUSH` - if false, does not push the image. Defaults to true.
+* `VERSION` - defaults to the current version of Shipwright.
+  This must be a valid [semantic version](https://semver.org/), and will be used as the tag for the resulting image.
 
 Refer to the [ko documentation](https://github.com/google/ko#local-publishing-options) for more information.
 
@@ -49,16 +49,10 @@ $ make ko
 $ ko login <IMAGE_REGISTRY> -u <USERNAME> -p <PASSWORD>
 ```
 
-Next, build the operator image as specified above, and push to a container registry that can be accessed by the cluster:
+Next, use the `make deploy` command with appropriate `IMAGE_REPO` and `VERSION` arguments to deploy the operator to the cluster.
 
 ```bash
-$ make build IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" TAG="<TAG>"
-```
-
-Finally, use the `make deploy` command with appropriate `IMAGE_REPO` and `TAG` arguments to deploy to the cluster.
-
-```bash
-$ make deploy IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" TAG="<TAG>"
+$ make deploy IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" VERSION="<VERSION>"
 ```
 
 _Note:_
