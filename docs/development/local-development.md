@@ -3,7 +3,7 @@
 ## Prerequisites
 
 * Ensure you have access to a Kubernetes cluster via `kubectl` with cluster admin permissions.
-* Install Go version 1.17 or higher.
+* Install Go version 1.18 or higher.
 
 ## Building locally
 
