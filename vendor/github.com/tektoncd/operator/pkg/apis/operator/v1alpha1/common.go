@@ -23,15 +23,9 @@ import (
 )
 
 const (
-	// DependenciesInstalled is a Condition indicating that potential dependencies have
-	// been installed correctly.
-	DependenciesInstalled apis.ConditionType = "DependenciesInstalled"
 	// InstallSucceeded is a Condition indiciating that the installation of the component
 	// itself has been successful.
 	InstallSucceeded apis.ConditionType = "InstallSucceeded"
-	// DeploymentsAvailable is a Condition indicating whether or not the Deployments of
-	// the respective component have come up successfully.
-	DeploymentsAvailable apis.ConditionType = "DeploymentsAvailable"
 )
 
 // TektonComponent is a common interface for accessing meta, spec and status of all known types.
@@ -100,8 +94,8 @@ func (c *CommonSpec) GetTargetNamespace() string {
 
 // Param declares an string value to use for the parameter called name.
 type Param struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Name  string `json:"name,omitempty"`
+	Value string `json:"value,omitempty"`
 }
 
 // ParamValue defines a default value and possible values for a param

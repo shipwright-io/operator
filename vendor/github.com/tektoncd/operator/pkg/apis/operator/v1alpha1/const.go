@@ -16,7 +16,16 @@ limitations under the License.
 
 package v1alpha1
 
+import (
+	"fmt"
+	"knative.dev/pkg/controller"
+	"time"
+)
+
 const (
+	// operatorVersion
+	VersionEnvKey = "VERSION"
+
 	// Profiles
 	ProfileAll   = "all"
 	ProfileBasic = "basic"
@@ -25,9 +34,41 @@ const (
 	// Addon Params
 	ClusterTasksParam      = "clusterTasks"
 	PipelineTemplatesParam = "pipelineTemplates"
+	CommunityClusterTasks  = "communityClusterTasks"
 
-	PipelineApiFieldAlpha  = "alpha"
-	PipelineApiFieldStable = "stable"
+	// Hub Params
+	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
+
+	ApiFieldAlpha  = "alpha"
+	ApiFieldStable = "stable"
+
+	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
+	CreatedByKey           = "operator.tekton.dev/created-by"
+	ReleaseVersionKey      = "operator.tekton.dev/release-version"
+	Component              = "operator.tekton.dev/component" // Used in case a component has sub-components eg TektonHub
+	ReleaseMinorVersionKey = "operator.tekton.dev/release-minor-version"
+	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
+	InstallerSetType       = "operator.tekton.dev/type"
+
+	UpgradePending = "upgrade pending"
+
+	RequeueDelay = 10 * time.Second
+)
+
+var (
+	// RECONCILE_AGAIN_ERR
+	// When we updates spec or status we reconcile again and then proceed so
+	// that we proceed ahead with updated object
+	RECONCILE_AGAIN_ERR = fmt.Errorf("reconcile again and proceed")
+
+	REQUEUE_EVENT_AFTER = controller.NewRequeueAfter(RequeueDelay)
+
+	// DEPENDENCY_UPGRADE_PENDING_ERR
+	// When a reconciler cannot proceed due to an upgrade in progress of a dependency
+	DEPENDENCY_UPGRADE_PENDING_ERR = fmt.Errorf("dependency upgrade pending")
+
+	// VERSION_ENV_NOT_SET_ERR Error when VERSION environment variable is not set
+	VERSION_ENV_NOT_SET_ERR = fmt.Errorf("version environment variable %s is not set or empty", VersionEnvKey)
 )
 
 var (
@@ -51,5 +92,21 @@ var (
 	AddonParams = map[string]ParamValue{
 		ClusterTasksParam:      defaultParamValue,
 		PipelineTemplatesParam: defaultParamValue,
+		CommunityClusterTasks:  defaultParamValue,
 	}
+
+	HubParams = map[string]ParamValue{
+		EnableDevconsoleIntegrationParam: defaultParamValue,
+	}
+)
+
+var (
+	PipelineResourceName  = "pipeline"
+	TriggerResourceName   = "trigger"
+	DashboardResourceName = "dashboard"
+	AddonResourceName     = "addon"
+	ConfigResourceName    = "config"
+	ResultResourceName    = "result"
+	HubResourceName       = "hub"
+	ChainResourceName     = "chain"
 )

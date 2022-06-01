@@ -32,12 +32,24 @@ func (c *FakeOperatorV1alpha1) TektonAddons() v1alpha1.TektonAddonInterface {
 	return &FakeTektonAddons{c}
 }
 
+func (c *FakeOperatorV1alpha1) TektonChains() v1alpha1.TektonChainInterface {
+	return &FakeTektonChains{c}
+}
+
 func (c *FakeOperatorV1alpha1) TektonConfigs() v1alpha1.TektonConfigInterface {
 	return &FakeTektonConfigs{c}
 }
 
 func (c *FakeOperatorV1alpha1) TektonDashboards() v1alpha1.TektonDashboardInterface {
 	return &FakeTektonDashboards{c}
+}
+
+func (c *FakeOperatorV1alpha1) TektonHubs() v1alpha1.TektonHubInterface {
+	return &FakeTektonHubs{c}
+}
+
+func (c *FakeOperatorV1alpha1) TektonInstallerSets() v1alpha1.TektonInstallerSetInterface {
+	return &FakeTektonInstallerSets{c}
 }
 
 func (c *FakeOperatorV1alpha1) TektonPipelines() v1alpha1.TektonPipelineInterface {
