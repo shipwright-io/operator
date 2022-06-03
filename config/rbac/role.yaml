@@ -148,6 +148,26 @@ rules:
 - apiGroups:
   - rbac.authorization.k8s.io
   resourceNames:
+  - shipwright-build-aggregate-edit
+  resources:
+  - clusterroles
+  verbs:
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resourceNames:
+  - shipwright-build-aggregate-view
+  resources:
+  - clusterroles
+  verbs:
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resourceNames:
   - shipwright-build-controller
   resources:
   - clusterroles
