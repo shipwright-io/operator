@@ -24,11 +24,6 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-var (
-	_ TektonComponent     = (*TektonConfig)(nil)
-	_ TektonComponentSpec = (*TektonConfigSpec)(nil)
-)
-
 // TektonConfig is the Schema for the TektonConfigs API
 // +genclient
 // +genreconciler:krshapedlogic=false
@@ -58,7 +53,12 @@ type Prune struct {
 	Resources []string `json:"resources,omitempty"`
 	// The number of resource to keep
 	// You dont want to delete all the pipelinerun/taskrun's by a cron
+	// +optional
 	Keep *uint `json:"keep,omitempty"`
+	// KeepSince keeps the resources younger than the specified value
+	// Its value is taken in minutes
+	// +optional
+	KeepSince *uint `json:"keep-since,omitempty"`
 	// How frequent pruning should happen
 	Schedule string `json:"schedule,omitempty"`
 }
@@ -80,22 +80,38 @@ type TektonConfigSpec struct {
 	// Addon holds the addons config
 	// +optional
 	Addon Addon `json:"addon,omitempty"`
+	// Hub holds the hub config
+	// +optional
+	Hub Hub `json:"hub,omitempty"`
 	// Pipeline holds the customizable option for pipeline component
 	// +optional
 	Pipeline Pipeline `json:"pipeline,omitempty"`
+	// Trigger holds the customizable option for triggers component
+	// +optional
+	Trigger Trigger `json:"trigger,omitempty"`
+	// Dashboard holds the customizable options for dashboards component
+	// +optional
+	Dashboard Dashboard `json:"dashboard,omitempty"`
+	// Params is the list of params passed for all platforms
+	// +optional
+	Params []Param `json:"params,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
 type TektonConfigStatus struct {
 	duckv1.Status `json:",inline"`
 
+	// The profile installed
+	// +optional
+	Profile string `json:"profile,omitempty"`
+
 	// The version of the installed release
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The url links of the manifests, separated by comma
+	// The current installer set name
 	// +optional
-	Manifests []string `json:"manifests,omitempty"`
+	TektonInstallerSet map[string]string `json:"tektonInstallerSets,omitempty"`
 }
 
 // TektonConfigList contains a list of TektonConfig
@@ -104,22 +120,6 @@ type TektonConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonConfig `json:"items"`
-}
-
-// Addon defines the field to customize Addon component
-type Addon struct {
-	// Params is the list of params passed for Addon customization
-	// +optional
-	Params []Param `json:"params,omitempty"`
-}
-
-func (a Addon) IsEmpty() bool {
-	return reflect.DeepEqual(a, Addon{})
-}
-
-// Pipeline defines the field to customize Pipeline component
-type Pipeline struct {
-	PipelineProperties `json:",inline"`
 }
 
 type Config struct {

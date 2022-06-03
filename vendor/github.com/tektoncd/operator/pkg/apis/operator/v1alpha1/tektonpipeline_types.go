@@ -21,11 +21,6 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-var (
-	_ TektonComponent     = (*TektonPipeline)(nil)
-	_ TektonComponentSpec = (*TektonPipelineSpec)(nil)
-)
-
 // TektonPipeline is the Schema for the tektonpipelines API
 // +genclient
 // +genreconciler:krshapedlogic=false
@@ -39,20 +34,18 @@ type TektonPipeline struct {
 	Status TektonPipelineStatus `json:"status,omitempty"`
 }
 
-// GetSpec implements TektonComponent
 func (tp *TektonPipeline) GetSpec() TektonComponentSpec {
 	return &tp.Spec
 }
 
-// GetStatus implements TektonComponent
 func (tp *TektonPipeline) GetStatus() TektonComponentStatus {
 	return &tp.Status
 }
 
 // TektonPipelineSpec defines the desired state of TektonPipeline
 type TektonPipelineSpec struct {
-	CommonSpec         `json:",inline"`
-	PipelineProperties `json:",inline"`
+	CommonSpec `json:",inline"`
+	Pipeline   `json:",inline"`
 	// Config holds the configuration for resources created by TektonPipeline
 	// +optional
 	Config Config `json:"config,omitempty"`
@@ -61,14 +54,17 @@ type TektonPipelineSpec struct {
 // TektonPipelineStatus defines the observed state of TektonPipeline
 type TektonPipelineStatus struct {
 	duckv1.Status `json:",inline"`
-
 	// The version of the installed release
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The url links of the manifests, separated by comma
+	// The current installer set name for TektonPipeline
 	// +optional
-	Manifests []string `json:"manifests,omitempty"`
+	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
+
+	// The installer sets created for extension components
+	// +optional
+	ExtentionInstallerSets map[string]string `json:"extTektonInstallerSets,omitempty"`
 }
 
 // TektonPipelineList contains a list of TektonPipeline
@@ -79,17 +75,31 @@ type TektonPipelineList struct {
 	Items           []TektonPipeline `json:"items"`
 }
 
+// Pipeline defines the field to customize Pipeline component
+type Pipeline struct {
+	PipelineProperties `json:",inline"`
+	// The params to customize different components of Pipelines
+	// +optional
+	Params []Param `json:"params,omitempty"`
+}
+
 // PipelineProperties defines customizable flags for Pipeline Component.
 type PipelineProperties struct {
-	DisableAffinityAssistant                 *bool  `json:"disable-affinity-assistant,omitempty"`
-	DisableHomeEnvOverwrite                  *bool  `json:"disable-home-env-overwrite,omitempty"`
-	DisableWorkingDirectoryOverwrite         *bool  `json:"disable-working-directory-overwrite,omitempty"`
+	DisableAffinityAssistant *bool `json:"disable-affinity-assistant,omitempty"`
+
+	// DEPRECATED:  (Removed in Pipelines v0.33.0): to be removed in next release
+	DisableHomeEnvOverwrite *bool `json:"disable-home-env-overwrite,omitempty"`
+	// DEPRECATED: (Removed in Pipelines v0.33.0): to be removed in next release
+	DisableWorkingDirectoryOverwrite *bool `json:"disable-working-directory-overwrite,omitempty"`
+
 	DisableCredsInit                         *bool  `json:"disable-creds-init,omitempty"`
 	RunningInEnvironmentWithInjectedSidecars *bool  `json:"running-in-environment-with-injected-sidecars,omitempty"`
 	RequireGitSshSecretKnownHosts            *bool  `json:"require-git-ssh-secret-known-hosts,omitempty"`
 	EnableTektonOciBundles                   *bool  `json:"enable-tekton-oci-bundles,omitempty"`
 	EnableCustomTasks                        *bool  `json:"enable-custom-tasks,omitempty"`
 	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
+	ScopeWhenExpressionsToTask               *bool  `json:"scope-when-expressions-to-task,omitempty"`
+	PipelineMetricsProperties                `json:",inline"`
 	// +optional
 	OptionalPipelineProperties `json:",inline"`
 }
@@ -103,4 +113,13 @@ type OptionalPipelineProperties struct {
 	DefaultPodTemplate             string `json:"default-pod-template,omitempty"`
 	DefaultCloudEventsSink         string `json:"default-cloud-events-sink,omitempty"`
 	DefaultTaskRunWorkspaceBinding string `json:"default-task-run-workspace-binding,omitempty"`
+}
+
+// PipelineMetricsProperties defines the fields which are configurable for
+// metrics
+type PipelineMetricsProperties struct {
+	MetricsTaskrunLevel            string `json:"metrics.taskrun.level,omitempty"`
+	MetricsTaskrunDurationType     string `json:"metrics.taskrun.duration-type,omitempty"`
+	MetricsPipelinerunLevel        string `json:"metrics.pipelinerun.level,omitempty"`
+	MetricsPipelinerunDurationType string `json:"metrics.pipelinerun.duration-type,omitempty"`
 }

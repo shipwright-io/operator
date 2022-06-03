@@ -22,20 +22,27 @@ import (
 	"knative.dev/pkg/ptr"
 )
 
+const (
+	DefaultMetricsPipelinerunLevel       = "pipeline"
+	DefaultMetricsTaskrunLevel           = "task"
+	DefaultMetricsPipelierunDurationType = "histogram"
+	DefaultMetricsTaskrunDurationType    = "histogram"
+)
+
 func (tp *TektonPipeline) SetDefaults(ctx context.Context) {
 	tp.Spec.PipelineProperties.setDefaults()
 }
 
 func (p *PipelineProperties) setDefaults() {
-	if p.DisableAffinityAssistant == nil {
-		p.DisableAffinityAssistant = ptr.Bool(false)
+	// Disabling this for now and will be removed in next release
+	// disabling will hide this from users in TektonConfig/TektonPipeline
+	if p.DisableHomeEnvOverwrite != nil {
+		p.DisableHomeEnvOverwrite = nil
 	}
-	if p.DisableHomeEnvOverwrite == nil {
-		p.DisableHomeEnvOverwrite = ptr.Bool(true)
+	if p.DisableWorkingDirectoryOverwrite != nil {
+		p.DisableWorkingDirectoryOverwrite = nil
 	}
-	if p.DisableWorkingDirectoryOverwrite == nil {
-		p.DisableWorkingDirectoryOverwrite = ptr.Bool(true)
-	}
+
 	if p.DisableCredsInit == nil {
 		p.DisableCredsInit = ptr.Bool(false)
 	}
@@ -52,6 +59,22 @@ func (p *PipelineProperties) setDefaults() {
 		p.EnableCustomTasks = ptr.Bool(false)
 	}
 	if p.EnableApiFields == "" {
-		p.EnableApiFields = PipelineApiFieldStable
+		p.EnableApiFields = ApiFieldStable
 	}
+	if p.ScopeWhenExpressionsToTask == nil {
+		p.ScopeWhenExpressionsToTask = ptr.Bool(false)
+	}
+	if p.MetricsPipelinerunDurationType == "" {
+		p.MetricsPipelinerunDurationType = DefaultMetricsPipelierunDurationType
+	}
+	if p.MetricsPipelinerunLevel == "" {
+		p.MetricsPipelinerunLevel = DefaultMetricsPipelinerunLevel
+	}
+	if p.MetricsTaskrunDurationType == "" {
+		p.MetricsTaskrunDurationType = DefaultMetricsTaskrunDurationType
+	}
+	if p.MetricsTaskrunLevel == "" {
+		p.MetricsTaskrunLevel = DefaultMetricsTaskrunLevel
+	}
+
 }
