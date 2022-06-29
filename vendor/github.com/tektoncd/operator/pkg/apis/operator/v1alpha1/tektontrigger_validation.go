@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	"knative.dev/pkg/apis"
 )
@@ -28,12 +29,25 @@ func (tr *TektonTrigger) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return nil
 	}
 
+	if tr.GetName() != TriggerResourceName {
+		errMsg := fmt.Sprintf("metadata.name,  Only one instance of TektonTrigger is allowed by name, %s", TriggerResourceName)
+		errs = errs.Also(apis.ErrInvalidValue(tr.GetName(), errMsg))
+	}
+
 	if tr.Spec.TargetNamespace == "" {
 		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
 	}
 
-	return errs
+	return errs.Also(tr.Spec.TriggersProperties.validate("spec"))
 }
 
-func (tr *TektonTrigger) SetDefaults(ctx context.Context) {
+func (tr *TriggersProperties) validate(path string) (errs *apis.FieldError) {
+
+	if tr.EnableApiFields != "" {
+		if tr.EnableApiFields == ApiFieldStable || tr.EnableApiFields == ApiFieldAlpha {
+			return errs
+		}
+		errs = errs.Also(apis.ErrInvalidValue(tr.EnableApiFields, path+".enable-api-fields"))
+	}
+	return errs
 }

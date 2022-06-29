@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	"knative.dev/pkg/apis"
 )
@@ -26,6 +27,11 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	if apis.IsInDelete(ctx) {
 		return nil
+	}
+
+	if tc.GetName() != ConfigResourceName {
+		errMsg := fmt.Sprintf("metadata.name,  Only one instance of TektonConfig is allowed by name, %s", ConfigResourceName)
+		errs = errs.Also(apis.ErrInvalidValue(tc.GetName(), errMsg))
 	}
 
 	if tc.Spec.TargetNamespace == "" {
@@ -46,7 +52,13 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(validateAddonParams(tc.Spec.Addon.Params, "spec.addon.params"))
 	}
 
-	return errs.Also(tc.Spec.Pipeline.PipelineProperties.validate("spec.pipeline"))
+	if !tc.Spec.Hub.IsEmpty() {
+		errs = errs.Also(validateHubParams(tc.Spec.Hub.Params, "spec.hub.params"))
+	}
+
+	errs = errs.Also(tc.Spec.Pipeline.PipelineProperties.validate("spec.pipeline"))
+
+	return errs.Also(tc.Spec.Trigger.TriggersProperties.validate("spec.trigger"))
 }
 
 func (p Prune) validate() *apis.FieldError {
@@ -62,10 +74,15 @@ func (p Prune) validate() *apis.FieldError {
 		errs = errs.Also(apis.ErrMissingField("spec.pruner.resources"))
 	}
 
-	if p.Keep == nil {
-		errs = errs.Also(apis.ErrMissingField("spec.pruner.keep"))
-	} else if *p.Keep == 0 {
+	if p.Keep != nil && p.KeepSince != nil {
+		errs = errs.Also(apis.ErrMultipleOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
+	}
+	if p.Keep == nil && p.KeepSince == nil {
+		errs = errs.Also(apis.ErrMissingOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
+	} else if p.Keep != nil && *p.Keep == 0 {
 		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep"))
+	} else if p.KeepSince != nil && *p.KeepSince == 0 {
+		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep-since"))
 	}
 
 	if p.Schedule == "" {
