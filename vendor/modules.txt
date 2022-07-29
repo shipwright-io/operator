@@ -215,7 +215,7 @@ github.com/prometheus/statsd_exporter/pkg/mapper/fsm
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/tektoncd/operator v0.60.0
+# github.com/tektoncd/operator v0.60.1
 ## explicit; go 1.17
 github.com/tektoncd/operator/pkg/apis/operator/v1alpha1
 github.com/tektoncd/operator/pkg/client/clientset/versioned

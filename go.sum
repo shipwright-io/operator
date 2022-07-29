@@ -626,9 +626,9 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
-github.com/tektoncd/operator v0.60.0 h1:xspBfuinh6iTk4DuF5KyaRu6If2qod2Pkdre0e5Z7Ww=
-github.com/tektoncd/operator v0.60.0/go.mod h1:mY10+SKPrUw//2XqZF8WuNFbU0YMlQ1gg+iOMV9EORE=
-github.com/tektoncd/pipeline v0.37.0 h1:Fhxd9y1XRK3ugcuuOvLHxqYj+JDk/Ilksf22qKqHpjo=
+github.com/tektoncd/operator v0.60.1 h1:bzJX87jAHfwkQin5qt4f0SKfswmA8zYnsBs8Ma0evtA=
+github.com/tektoncd/operator v0.60.1/go.mod h1:DrMwox5DylI6oLPRP+H42OiB2L2u6kUDYmn2NgeMP24=
+github.com/tektoncd/pipeline v0.37.2 h1:JIp410ktvJPkprPqK0sgUGpRlZosy2B0C1jbUTwWd9c=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
