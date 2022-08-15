@@ -1,99 +1,96 @@
-on: 
-    pull_request:
-      branches: [ main ]
-    push:
-      branches: [ main ]
 name: ci/github
+
+on: 
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
 
 permissions:
   contents: read
 
 jobs:
-    unit:
-        strategy:
-          matrix:
-            go-version: [1.18.x]
-            os: [ubuntu-latest]
-        runs-on: ${{ matrix.os }}
-        steps:
-        - name: Install Go
-          uses: actions/setup-go@v2
-          with:
-            go-version: ${{ matrix.go-version }}
-        - name: Check out code
-          uses: actions/checkout@v2
-        - name: Build
-          run: make build
-        - name: Test
-          run: make test
-    verify:
-        strategy:
-          matrix:
-            go-version: [1.18.x]
-            os: [ubuntu-latest]
-        runs-on: ${{ matrix.os }}
-        steps:
-        - name: Install Go
-          uses: actions/setup-go@v2
-          with:
-            go-version: ${{ matrix.go-version }}
-        - name: Checkout code
-          uses: actions/checkout@v2
-        - name: Verify fmt
-          run: make verify-fmt
-        - name: Verify generated code
-          run: make verify-generate
-        - name: Verify generated manifests
-          run: make verify-manifests
-        - name: Verify OLM bundle
-          run: make verify-bundle
-        - name: Run golangci-lint
-          uses: golangci/golangci-lint-action@v2
-          with:
-            args: --timeout=10m
-    e2e:
-        strategy:
-          fail-fast: false
-          matrix:
-            go-version: [1.18.x]
-            os: [ubuntu-latest]
-            kubernetes:
-              - v1.20.7
-          max-parallel: 2
-        runs-on: ${{ matrix.os }}
-        steps:
-        - name: Install Go
-          uses: actions/setup-go@v2
-          with:
-            go-version: ${{ matrix.go-version }}
-        - name: Check out code
-          uses: actions/checkout@v2
-        - name: Install kubectl
-          uses: azure/setup-kubectl@v1
-          with:
-            version: ${{ matrix.kubernetes }}
-        - name: Deploy KinD Local Container Registry
-          run: make deploy-kind-registry
-        - name: Create KinD cluster
-          uses: helm/kind-action@v1.2.0
-          with:
-            version: v0.11.1
-            node_image: kindest/node:${{ matrix.kubernetes }}
-            cluster_name: kind
-            config: test/kind/config.yaml
-            wait: 120s
-        - name: Verify KinD cluster
-          run: make verify-kind
-        - name: Install KinD post-actions
-          run: make deploy-kind-registry-post
-        - name: Install OLM
-          run: make install-olm
-        # Builds the operator and makes the image readable in the KinD cluster
-        - name: Build Operator Bundle
-          run: |
-            make bundle-push IMAGE_REPO=localhost:5000
-        - name: Build Catalog Source
-          run: |
-            make catalog-push IMAGE_REPO=localhost:5000 OPM_USE_HTTP=true
-        - name: Run Operator with Catalog
-          run: make catalog-run IMAGE_REPO=localhost:5000
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19.x
+        cache: true
+        check-latest: true
+    - name: Build
+      run: make build
+    - name: Test
+      run: make test
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19.x
+        cache: true
+        check-latest: true
+    - name: Verify fmt
+      run: make verify-fmt
+    - name: Verify generated code
+      run: make verify-generate
+    - name: Verify generated manifests
+      run: make verify-manifests
+    - name: Verify OLM bundle
+      run: make verify-bundle
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v2
+      with:
+        args: --timeout=10m
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        kubernetes:
+          - v1.23.13
+      max-parallel: 2
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19.x
+        cache: true
+        check-latest: true
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v1
+      with:
+        version: ${{ matrix.kubernetes }}
+    - name: Deploy KinD Local Container Registry
+      run: make deploy-kind-registry
+    - name: Create KinD cluster
+      uses: helm/kind-action@v1
+      with:
+        version: v0.17.0
+        node_image: kindest/node:${{ matrix.kubernetes }}
+        cluster_name: kind
+        config: test/kind/config.yaml
+        wait: 120s
+    - name: Verify KinD cluster
+      run: make verify-kind
+    - name: Install KinD post-actions
+      run: make deploy-kind-registry-post
+    - name: Install OLM
+      run: make install-olm
+    # Builds the operator and makes the image readable in the KinD cluster
+    - name: Build Operator Bundle
+      run: |
+        make bundle-push IMAGE_REPO=localhost:5000
+    - name: Build Catalog Source
+      run: |
+        make catalog-push IMAGE_REPO=localhost:5000 OPM_USE_HTTP=true
+    - name: Run Operator with Catalog
+      run: make catalog-run IMAGE_REPO=localhost:5000
