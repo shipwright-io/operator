@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shipwright-io/operator/pkg/common"
+
 	o "github.com/onsi/gomega"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -134,7 +136,7 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 	crd1.Name = "taskruns.tekton.dev"
 	crd2 := &crdv1.CustomResourceDefinition{}
 	crd2.Name = "tektonconfigs.operator.tekton.dev"
-	crd2.Labels = map[string]string{"version": "v0.49.0"}
+	crd2.Labels = map[string]string{"operator.tekton.dev/release": common.TektonOpMinSupportedVersion}
 	crds := []*crdv1.CustomResourceDefinition{crd1, crd2}
 	c, _, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
 

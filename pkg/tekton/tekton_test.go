@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/shipwright-io/operator/pkg/common"
+
 	o "github.com/onsi/gomega"
 
 	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -57,7 +59,7 @@ func TestReconcileTekton(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "tektonconfigs.operator.tekton.dev",
 					Labels: map[string]string{
-						"version": "v0.36.0",
+						"operator.tekton.dev/release": "v0.36.0",
 					},
 				},
 			},
@@ -70,7 +72,7 @@ func TestReconcileTekton(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "tektonconfigs.operator.tekton.dev",
 					Labels: map[string]string{
-						"version": "v0.49.0",
+						"operator.tekton.dev/release": common.TektonOpMinSupportedVersion,
 					},
 				},
 			},
@@ -82,7 +84,7 @@ func TestReconcileTekton(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "tektonconfigs.operator.tekton.dev",
 					Labels: map[string]string{
-						"version": "v0.49.0",
+						"operator.tekton.dev/release": common.TektonOpMinSupportedVersion,
 					},
 				},
 			},
@@ -97,7 +99,7 @@ func TestReconcileTekton(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "tektonconfigs.operator.tekton.dev",
 					Labels: map[string]string{
-						"version": "v0.49.0",
+						"operator.tekton.dev/release": common.TektonOpMinSupportedVersion,
 					},
 				},
 			},
@@ -289,7 +291,7 @@ func TestGetTektonOperatorVersion(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "No version label on TektonConfig CRD",
+			name: "No release label on TektonConfig CRD",
 			tektonConfigCRD: &apiextensionsv1.CustomResourceDefinition{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "tektonconfigs.operator.tekton.dev",
@@ -301,12 +303,12 @@ func TestGetTektonOperatorVersion(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "Version label on TektonConfig CRD is not a semver",
+			name: "release label on TektonConfig CRD is not a semver",
 			tektonConfigCRD: &apiextensionsv1.CustomResourceDefinition{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "tektonconfigs.operator.tekton.dev",
 					Labels: map[string]string{
-						"version": "value",
+						"operator.tekton.dev/release": "value",
 					},
 				},
 			},
@@ -318,11 +320,11 @@ func TestGetTektonOperatorVersion(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "tektonconfigs.operator.tekton.dev",
 					Labels: map[string]string{
-						"version": "v0.49.0",
+						"operator.tekton.dev/release": common.TektonOpMinSupportedVersion,
 					},
 				},
 			},
-			expectedVersion: version.MustParseSemantic("0.49.0"),
+			expectedVersion: version.MustParseSemantic(common.TektonOpMinSupportedVersion),
 		},
 	}
 	for _, tc := range cases {

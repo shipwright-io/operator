@@ -35,7 +35,7 @@ Refer to the [ko documentation](https://github.com/google/ko#local-publishing-op
 To test the operator on a Kubernetes cluster, you first must have the following:
 
 * Access to a Kubernetes cluster v1.20 or higher, with cluster admin permissions.
-* Install [Tekton operator](https://github.com/tektoncd/operator) v0.49 or higher on the cluster.
+* Install [Tekton operator](https://github.com/tektoncd/operator) v0.50 or higher on the cluster.
 
 ```bash
 $ export KUBECONFIG=/path/to/kubeconfig

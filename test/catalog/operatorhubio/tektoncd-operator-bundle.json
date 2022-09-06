@@ -1,8 +1,8 @@
 {
     "schema": "olm.bundle",
-    "name": "tektoncd-operator.v0.49.0",
+    "name": "tektoncd-operator.v0.61.0",
     "package": "tektoncd-operator",
-    "image": "quay.io/operatorhubio/tektoncd-operator:v0.49.0",
+    "image": "quay.io/operatorhubio/tektoncd-operator:v0.61.0",
     "properties": [
         {
             "type": "olm.gvk",
@@ -48,7 +48,7 @@
             "type": "olm.package",
             "value": {
                 "packageName": "tektoncd-operator",
-                "version": "0.49.0"
+                "version": "0.61.0"
             }
         }
     ],
@@ -63,7 +63,7 @@
         },
         {
             "name": "",
-            "image": "quay.io/operatorhubio/tektoncd-operator:v0.49.0"
+            "image": "quay.io/operatorhubio/tektoncd-operator:v0.61.0"
         }
     ]
 }
