@@ -127,7 +127,7 @@ spec:
       serviceAccountName: shipwright-build-controller
       containers:
         - name: shipwright-build
-          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.10.0@sha256:1994c5513aff5c0cd113e604f80bd8a8ae0e5f954ef3ab8a5821b916bc15b6a3
+          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.11.0@sha256:b1214ac6c924c5b1b7081891f9e57631de691d61364d3f68ff9a89d4cd39daa9
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -144,15 +144,15 @@ spec:
             - name: CONTROLLER_NAME
               value: "shipwright-build"
             - name: GIT_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/git:v0.10.0@sha256:a933fc661fd1dfe4f8ea3a2f091ff8a92717acbd573c56d3c960137e5bfadf6e
+              value: ghcr.io/shipwright-io/build/git:v0.11.0@sha256:aecf8bdc01ea00be83e933162a0b6d063846b315fe9dcae60e4be1a34e85d514
             - name: GIT_ENABLE_REWRITE_RULE
               value: "false"
             - name: MUTATE_IMAGE_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/mutate-image:v0.10.0@sha256:2aaf02ab9acb0b63e25ada712bf63bdbb7581dce69b91661c701c402881b94de
+              value: ghcr.io/shipwright-io/build/mutate-image:v0.11.0@sha256:665b1aa477606a91d889b134a43a52f8bd7a66a36d2f15fcd355bda677c252df
             - name: BUNDLE_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/bundle:v0.10.0@sha256:61ba0636de85637541c518e1fbf8a8d4c2154692391787105d9743211b5360ba
+              value: ghcr.io/shipwright-io/build/bundle:v0.11.0@sha256:3be6c1e9c5ff4706500ebef3a182823fddd368d81eabf464c76feef6192807cc
             - name: WAITER_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/waiter:v0.10.0@sha256:f87cd7710680a18477e19d1c1a761573579cfc97aa45f4a485cc6231325b4f3d
+              value: ghcr.io/shipwright-io/build/waiter:v0.11.0@sha256:12e773153909c1e3d28d649ffd23839e32fb3817ec1c9392b721de39c2c63282
           ports:
             - containerPort: 8383
               name: metrics-port
@@ -281,7 +281,7 @@ spec:
                   description: BuildSpec refers to an embedded build specification
                   properties:
                     builder:
-                      description: Builder refers to the image containing the build tools inside which the source code would be built.
+                      description: "Builder refers to the image containing the build tools inside which the source code would be built. \n NOTICE: Builder is deprecated, and will be removed in a future release. Build strategies which rely on \"builder\" should provide an equivalent parameter instead."
                       properties:
                         annotations:
                           additionalProperties:
@@ -307,7 +307,7 @@ spec:
                         - image
                       type: object
                     dockerfile:
-                      description: Dockerfile is the path to the Dockerfile to be used for build strategies which bank on the Dockerfile for building an image.
+                      description: "Dockerfile is the path to the Dockerfile to be used for build strategies which bank on the Dockerfile for building an image. \n NOTICE: Dockerfile is deprecated, and will be removed in a future release. Build strategies which rely on \"dockerfile\" should provide an equivalent parameter instead."
                       type: string
                     env:
                       description: Env contains additional environment variables that should be passed to the build container
@@ -557,7 +557,7 @@ spec:
                           type: string
                       type: object
                     sources:
-                      description: Sources slice of BuildSource, defining external build artifacts complementary to VCS (`.spec.source`) data.
+                      description: "Sources slice of BuildSource, defining external build artifacts complementary to VCS (`.spec.source`) data. \n NOTICE: Multiple sources in a build are deprecated. This feature will be removed in a future release."
                       items:
                         description: BuildSource remote artifact definition, also known as "sources". Simple "name" and "url" pairs, initially without "credentials" (authentication) support yet.
                         properties:
@@ -596,6 +596,75 @@ spec:
                       description: Timeout defines the maximum amount of time the Build should take to execute.
                       format: duration
                       type: string
+                    trigger:
+                      description: Trigger defines the scenarios where a new build should be triggered.
+                      properties:
+                        secretRef:
+                          description: SecretRef points to a local object carrying the secret token to validate webhook request.
+                          properties:
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                          type: object
+                        when:
+                          description: When the list of scenarios when a new build should take place.
+                          items:
+                            description: TriggerWhen a given scenario where the webhook trigger is applicable.
+                            properties:
+                              github:
+                                description: GitHub describes how to trigger builds based on GitHub (SCM) events.
+                                properties:
+                                  branches:
+                                    description: Branches slice of branch names where the event applies.
+                                    items:
+                                      type: string
+                                    type: array
+                                  events:
+                                    description: Events GitHub event names.
+                                    items:
+                                      description: GitHubEventName set of WhenGitHub valid event names.
+                                      type: string
+                                    minItems: 1
+                                    type: array
+                                type: object
+                              image:
+                                description: Image slice of image names where the event applies.
+                                properties:
+                                  names:
+                                    description: Names fully qualified image names.
+                                    items:
+                                      type: string
+                                    type: array
+                                type: object
+                              name:
+                                description: Name name or the short description of the trigger condition.
+                                type: string
+                              objectRef:
+                                description: ObjectRef describes how to match a foreign resource, either using the name or the label selector, plus the current resource status.
+                                properties:
+                                  name:
+                                    description: Name target object name.
+                                    type: string
+                                  selector:
+                                    additionalProperties:
+                                      type: string
+                                    description: Selector label selector.
+                                    type: object
+                                  status:
+                                    description: Status object status.
+                                    items:
+                                      type: string
+                                    type: array
+                                type: object
+                              type:
+                                description: Type the event type
+                                type: string
+                            required:
+                              - name
+                              - type
+                            type: object
+                          type: array
+                      type: object
                     volumes:
                       description: Volumes contains volume Overrides of the BuildStrategy volumes in case those are allowed to be overridden. Must only contain volumes that exist in the corresponding BuildStrategy
                       items:
@@ -1731,7 +1800,7 @@ spec:
                   description: ServiceAccount refers to the kubernetes serviceaccount which is used for resource control. Default serviceaccount will be set if it is empty
                   properties:
                     generate:
-                      description: If generates a new ServiceAccount for the build
+                      description: "If generates a new ServiceAccount for the build \n NOTICE: Generated ServiceAccounts are deprecated, and will be removed in a future release."
                       type: boolean
                     name:
                       description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
@@ -2692,7 +2761,7 @@ spec:
                   description: BuildSpec is the Build Spec of this BuildRun.
                   properties:
                     builder:
-                      description: Builder refers to the image containing the build tools inside which the source code would be built.
+                      description: "Builder refers to the image containing the build tools inside which the source code would be built. \n NOTICE: Builder is deprecated, and will be removed in a future release. Build strategies which rely on \"builder\" should provide an equivalent parameter instead."
                       properties:
                         annotations:
                           additionalProperties:
@@ -2718,7 +2787,7 @@ spec:
                         - image
                       type: object
                     dockerfile:
-                      description: Dockerfile is the path to the Dockerfile to be used for build strategies which bank on the Dockerfile for building an image.
+                      description: "Dockerfile is the path to the Dockerfile to be used for build strategies which bank on the Dockerfile for building an image. \n NOTICE: Dockerfile is deprecated, and will be removed in a future release. Build strategies which rely on \"dockerfile\" should provide an equivalent parameter instead."
                       type: string
                     env:
                       description: Env contains additional environment variables that should be passed to the build container
@@ -2968,7 +3037,7 @@ spec:
                           type: string
                       type: object
                     sources:
-                      description: Sources slice of BuildSource, defining external build artifacts complementary to VCS (`.spec.source`) data.
+                      description: "Sources slice of BuildSource, defining external build artifacts complementary to VCS (`.spec.source`) data. \n NOTICE: Multiple sources in a build are deprecated. This feature will be removed in a future release."
                       items:
                         description: BuildSource remote artifact definition, also known as "sources". Simple "name" and "url" pairs, initially without "credentials" (authentication) support yet.
                         properties:
@@ -3007,6 +3076,75 @@ spec:
                       description: Timeout defines the maximum amount of time the Build should take to execute.
                       format: duration
                       type: string
+                    trigger:
+                      description: Trigger defines the scenarios where a new build should be triggered.
+                      properties:
+                        secretRef:
+                          description: SecretRef points to a local object carrying the secret token to validate webhook request.
+                          properties:
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                          type: object
+                        when:
+                          description: When the list of scenarios when a new build should take place.
+                          items:
+                            description: TriggerWhen a given scenario where the webhook trigger is applicable.
+                            properties:
+                              github:
+                                description: GitHub describes how to trigger builds based on GitHub (SCM) events.
+                                properties:
+                                  branches:
+                                    description: Branches slice of branch names where the event applies.
+                                    items:
+                                      type: string
+                                    type: array
+                                  events:
+                                    description: Events GitHub event names.
+                                    items:
+                                      description: GitHubEventName set of WhenGitHub valid event names.
+                                      type: string
+                                    minItems: 1
+                                    type: array
+                                type: object
+                              image:
+                                description: Image slice of image names where the event applies.
+                                properties:
+                                  names:
+                                    description: Names fully qualified image names.
+                                    items:
+                                      type: string
+                                    type: array
+                                type: object
+                              name:
+                                description: Name name or the short description of the trigger condition.
+                                type: string
+                              objectRef:
+                                description: ObjectRef describes how to match a foreign resource, either using the name or the label selector, plus the current resource status.
+                                properties:
+                                  name:
+                                    description: Name target object name.
+                                    type: string
+                                  selector:
+                                    additionalProperties:
+                                      type: string
+                                    description: Selector label selector.
+                                    type: object
+                                  status:
+                                    description: Status object status.
+                                    items:
+                                      type: string
+                                    type: array
+                                type: object
+                              type:
+                                description: Type the event type
+                                type: string
+                            required:
+                              - name
+                              - type
+                            type: object
+                          type: array
+                      type: object
                     volumes:
                       description: Volumes contains volume Overrides of the BuildStrategy volumes in case those are allowed to be overridden. Must only contain volumes that exist in the corresponding BuildStrategy
                       items:
@@ -4108,7 +4246,7 @@ spec:
               description: BuildSpec defines the desired state of Build
               properties:
                 builder:
-                  description: Builder refers to the image containing the build tools inside which the source code would be built.
+                  description: "Builder refers to the image containing the build tools inside which the source code would be built. \n NOTICE: Builder is deprecated, and will be removed in a future release. Build strategies which rely on \"builder\" should provide an equivalent parameter instead."
                   properties:
                     annotations:
                       additionalProperties:
@@ -4134,7 +4272,7 @@ spec:
                     - image
                   type: object
                 dockerfile:
-                  description: Dockerfile is the path to the Dockerfile to be used for build strategies which bank on the Dockerfile for building an image.
+                  description: "Dockerfile is the path to the Dockerfile to be used for build strategies which bank on the Dockerfile for building an image. \n NOTICE: Dockerfile is deprecated, and will be removed in a future release. Build strategies which rely on \"dockerfile\" should provide an equivalent parameter instead."
                   type: string
                 env:
                   description: Env contains additional environment variables that should be passed to the build container
@@ -4384,7 +4522,7 @@ spec:
                       type: string
                   type: object
                 sources:
-                  description: Sources slice of BuildSource, defining external build artifacts complementary to VCS (`.spec.source`) data.
+                  description: "Sources slice of BuildSource, defining external build artifacts complementary to VCS (`.spec.source`) data. \n NOTICE: Multiple sources in a build are deprecated. This feature will be removed in a future release."
                   items:
                     description: BuildSource remote artifact definition, also known as "sources". Simple "name" and "url" pairs, initially without "credentials" (authentication) support yet.
                     properties:
@@ -4423,6 +4561,75 @@ spec:
                   description: Timeout defines the maximum amount of time the Build should take to execute.
                   format: duration
                   type: string
+                trigger:
+                  description: Trigger defines the scenarios where a new build should be triggered.
+                  properties:
+                    secretRef:
+                      description: SecretRef points to a local object carrying the secret token to validate webhook request.
+                      properties:
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                      type: object
+                    when:
+                      description: When the list of scenarios when a new build should take place.
+                      items:
+                        description: TriggerWhen a given scenario where the webhook trigger is applicable.
+                        properties:
+                          github:
+                            description: GitHub describes how to trigger builds based on GitHub (SCM) events.
+                            properties:
+                              branches:
+                                description: Branches slice of branch names where the event applies.
+                                items:
+                                  type: string
+                                type: array
+                              events:
+                                description: Events GitHub event names.
+                                items:
+                                  description: GitHubEventName set of WhenGitHub valid event names.
+                                  type: string
+                                minItems: 1
+                                type: array
+                            type: object
+                          image:
+                            description: Image slice of image names where the event applies.
+                            properties:
+                              names:
+                                description: Names fully qualified image names.
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          name:
+                            description: Name name or the short description of the trigger condition.
+                            type: string
+                          objectRef:
+                            description: ObjectRef describes how to match a foreign resource, either using the name or the label selector, plus the current resource status.
+                            properties:
+                              name:
+                                description: Name target object name.
+                                type: string
+                              selector:
+                                additionalProperties:
+                                  type: string
+                                description: Selector label selector.
+                                type: object
+                              status:
+                                description: Status object status.
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          type:
+                            description: Type the event type
+                            type: string
+                        required:
+                          - name
+                          - type
+                        type: object
+                      type: array
+                  type: object
                 volumes:
                   description: Volumes contains volume Overrides of the BuildStrategy volumes in case those are allowed to be overridden. Must only contain volumes that exist in the corresponding BuildStrategy
                   items:
@@ -5348,7 +5555,7 @@ spec:
                 - strategy
               type: object
             status:
-              description: BuildStatus defines the observed state of Build
+              description: "BuildStatus defines the observed state of Build \n NOTICE: This is deprecated and will be removed in a future release."
               properties:
                 message:
                   description: The message of the registered Build, either an error or succeed message

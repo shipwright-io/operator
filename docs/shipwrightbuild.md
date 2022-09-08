@@ -3,7 +3,7 @@
 When the Shipwright Operator is installed with the Operator Lifecycle Manager, the
 `ShipwrightBuild` [custom resource definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) is added to your cluster.
 This custom resource is used to install and configure Shipwright Builds on your cluster.
-The current operator will install version `0.10.0` of Builds.
+The current operator will install version `0.11.0` of Builds.
 
 ## ShipwrightBuild Reference
 
