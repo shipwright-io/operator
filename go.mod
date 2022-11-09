@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/go-logr/logr v1.2.3
 	github.com/manifestival/controller-runtime-client v0.4.0
-	github.com/manifestival/manifestival v0.7.1
+	github.com/manifestival/manifestival v0.7.2
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.2
 	github.com/tektoncd/operator v0.60.0
