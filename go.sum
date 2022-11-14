@@ -475,8 +475,8 @@ github.com/mailru/easyjson v0.7.6/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJ
 github.com/manifestival/controller-runtime-client v0.4.0 h1:AK+nTZ1rhPTfAc3upnSe3TiOvAWuRmxi1vjEr55dSUM=
 github.com/manifestival/controller-runtime-client v0.4.0/go.mod h1:DrsviSegfdlpVsynTUZonKE5gFkMQupenlzVmDbC6S0=
 github.com/manifestival/manifestival v0.6.0/go.mod h1:3Qq9cnPy7sv7FVhg2Kvw0ebb35R4OdctS4UjTjHlHm4=
-github.com/manifestival/manifestival v0.7.1 h1:3y2bhqOV4YjW9p5MXXTomoFzgVu0i5ptI29XT3NXSJ8=
-github.com/manifestival/manifestival v0.7.1/go.mod h1:nl3T6HlfHCeidooWVTMI9vYNTBkQ1GdhLNb+smozbdk=
+github.com/manifestival/manifestival v0.7.2 h1:l4uFdWX/xQK4QcRfqGoMtBvaZeWPEuwD6hVsCwUqZY4=
+github.com/manifestival/manifestival v0.7.2/go.mod h1:nl3T6HlfHCeidooWVTMI9vYNTBkQ1GdhLNb+smozbdk=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-isatty v0.0.3/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
 github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
