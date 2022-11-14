@@ -85,21 +85,20 @@ type Pipeline struct {
 
 // PipelineProperties defines customizable flags for Pipeline Component.
 type PipelineProperties struct {
-	DisableAffinityAssistant *bool `json:"disable-affinity-assistant,omitempty"`
-
-	// DEPRECATED:  (Removed in Pipelines v0.33.0): to be removed in next release
-	DisableHomeEnvOverwrite *bool `json:"disable-home-env-overwrite,omitempty"`
-	// DEPRECATED: (Removed in Pipelines v0.33.0): to be removed in next release
-	DisableWorkingDirectoryOverwrite *bool `json:"disable-working-directory-overwrite,omitempty"`
-
+	DisableAffinityAssistant                 *bool  `json:"disable-affinity-assistant,omitempty"`
 	DisableCredsInit                         *bool  `json:"disable-creds-init,omitempty"`
+	AwaitSidecarReadiness                    *bool  `json:"await-sidecar-readiness,omitempty"`
 	RunningInEnvironmentWithInjectedSidecars *bool  `json:"running-in-environment-with-injected-sidecars,omitempty"`
 	RequireGitSshSecretKnownHosts            *bool  `json:"require-git-ssh-secret-known-hosts,omitempty"`
 	EnableTektonOciBundles                   *bool  `json:"enable-tekton-oci-bundles,omitempty"`
 	EnableCustomTasks                        *bool  `json:"enable-custom-tasks,omitempty"`
 	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
-	ScopeWhenExpressionsToTask               *bool  `json:"scope-when-expressions-to-task,omitempty"`
-	PipelineMetricsProperties                `json:",inline"`
+	EmbeddedStatus                           string `json:"embedded-status,omitempty"`
+	SendCloudEventsForRuns                   *bool  `json:"send-cloudevents-for-runs,omitempty"`
+
+	// ScopeWhenExpressionsToTask Deprecated: remove in next release
+	ScopeWhenExpressionsToTask *bool `json:"scope-when-expressions-to-task,omitempty"`
+	PipelineMetricsProperties  `json:",inline"`
 	// +optional
 	OptionalPipelineProperties `json:",inline"`
 }
@@ -107,12 +106,14 @@ type PipelineProperties struct {
 // OptionalPipelineProperties defines the fields which are to be
 // defined for pipelines only if user pass them
 type OptionalPipelineProperties struct {
-	DefaultTimeoutMinutes          *uint  `json:"default-timeout-minutes,omitempty"`
-	DefaultServiceAccount          string `json:"default-service-account,omitempty"`
-	DefaultManagedByLabelValue     string `json:"default-managed-by-label-value,omitempty"`
-	DefaultPodTemplate             string `json:"default-pod-template,omitempty"`
-	DefaultCloudEventsSink         string `json:"default-cloud-events-sink,omitempty"`
-	DefaultTaskRunWorkspaceBinding string `json:"default-task-run-workspace-binding,omitempty"`
+	DefaultTimeoutMinutes               *uint  `json:"default-timeout-minutes,omitempty"`
+	DefaultServiceAccount               string `json:"default-service-account,omitempty"`
+	DefaultManagedByLabelValue          string `json:"default-managed-by-label-value,omitempty"`
+	DefaultPodTemplate                  string `json:"default-pod-template,omitempty"`
+	DefaultCloudEventsSink              string `json:"default-cloud-events-sink,omitempty"`
+	DefaultAffinityAssistantPodTemplate string `json:"default-affinity-assistant-pod-template,omitempty"`
+	DefaultTaskRunWorkspaceBinding      string `json:"default-task-run-workspace-binding,omitempty"`
+	DefaultMaxMatrixCombinationsCount   string `json:"default-max-matrix-combinations-count,omitempty"`
 }
 
 // PipelineMetricsProperties defines the fields which are configurable for

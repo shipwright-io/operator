@@ -40,9 +40,6 @@ const (
 	// Hub Params
 	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
 
-	ApiFieldAlpha  = "alpha"
-	ApiFieldStable = "stable"
-
 	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
 	CreatedByKey           = "operator.tekton.dev/created-by"
 	ReleaseVersionKey      = "operator.tekton.dev/release-version"
@@ -51,6 +48,7 @@ const (
 	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
 	InstallerSetType       = "operator.tekton.dev/type"
 	LabelOperandName       = "operator.tekton.dev/operand-name"
+	DbSecretHash           = "operator.tekton.dev/db-secret-hash"
 
 	UpgradePending = "upgrade pending"
 
