@@ -1,13 +1,20 @@
 # See the OWNERS docs: https://git.k8s.io/community/contributors/guide/owners.md
 
 approvers:
-- sbose78
-- adambkaplan
+- coreydaley
+- otaviof
 - qu1queee
+- adambkaplan
+- SaschaSchwarze0
+- HeavyWombat
 
 reviewers:
+- coreydaley
 - otaviof
+- qu1queee
+- adambkaplan
 - SaschaSchwarze0
-- gabemontero
 - HeavyWombat
-- ImJasonH
+
+emeritus_approvers:
+- sbose78 #2022-09-12
