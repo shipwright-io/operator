@@ -12,16 +12,16 @@ jobs:
     unit:
         strategy:
           matrix:
-            go-version: [1.18.x]
+            go-version: [1.19.x]
             os: [ubuntu-latest]
         runs-on: ${{ matrix.os }}
         steps:
         - name: Install Go
-          uses: actions/setup-go@v2
+          uses: actions/setup-go@v3
           with:
             go-version: ${{ matrix.go-version }}
         - name: Check out code
-          uses: actions/checkout@v2
+          uses: actions/checkout@v3
         - name: Build
           run: make build
         - name: Test
@@ -29,16 +29,16 @@ jobs:
     verify:
         strategy:
           matrix:
-            go-version: [1.18.x]
+            go-version: [1.19.x]
             os: [ubuntu-latest]
         runs-on: ${{ matrix.os }}
         steps:
         - name: Install Go
-          uses: actions/setup-go@v2
+          uses: actions/setup-go@v3
           with:
             go-version: ${{ matrix.go-version }}
         - name: Checkout code
-          uses: actions/checkout@v2
+          uses: actions/checkout@v3
         - name: Verify fmt
           run: make verify-fmt
         - name: Verify generated code
@@ -55,7 +55,7 @@ jobs:
         strategy:
           fail-fast: false
           matrix:
-            go-version: [1.18.x]
+            go-version: [1.19.x]
             os: [ubuntu-latest]
             kubernetes:
               - v1.20.7
@@ -63,11 +63,11 @@ jobs:
         runs-on: ${{ matrix.os }}
         steps:
         - name: Install Go
-          uses: actions/setup-go@v2
+          uses: actions/setup-go@v3
           with:
             go-version: ${{ matrix.go-version }}
         - name: Check out code
-          uses: actions/checkout@v2
+          uses: actions/checkout@v3
         - name: Install kubectl
           uses: azure/setup-kubectl@v1
           with:

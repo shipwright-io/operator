@@ -22,13 +22,13 @@ jobs:
       IMAGE_NAMESPACE: ${{ github.repository }}
       VERSION: ${{ github.event.inputs.release }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0  # Fetch all history, needed for release note generation.
     # Install tools
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - uses: sigstore/cosign-installer@v2.3.0
     - name: Build Release Images
       env:
