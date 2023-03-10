@@ -40,9 +40,6 @@ const (
 	// Hub Params
 	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
 
-	ApiFieldAlpha  = "alpha"
-	ApiFieldStable = "stable"
-
 	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
 	CreatedByKey           = "operator.tekton.dev/created-by"
 	ReleaseVersionKey      = "operator.tekton.dev/release-version"
@@ -51,8 +48,10 @@ const (
 	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
 	InstallerSetType       = "operator.tekton.dev/type"
 	LabelOperandName       = "operator.tekton.dev/operand-name"
+	DbSecretHash           = "operator.tekton.dev/db-secret-hash"
 
 	UpgradePending = "upgrade pending"
+	Reinstalling   = "reinstalling"
 
 	RequeueDelay = 10 * time.Second
 )
@@ -103,18 +102,19 @@ var (
 )
 
 var (
-	ConfigResourceName       = "config"
-	PipelineResourceName     = "pipeline"
-	OperandTektoncdPipeline  = "tektoncd-pipelines"
-	TriggerResourceName      = "trigger"
-	OperandTektoncdTriggers  = "tektoncd-triggers"
-	DashboardResourceName    = "dashboard"
-	OperandTektoncdDashboard = "tektoncd-dashboard"
-	AddonResourceName        = "addon"
-	ResultResourceName       = "result"
-	OperandTektoncdResults   = "tektoncd-results"
-	HubResourceName          = "hub"
-	OperandTektoncdHub       = "tektoncd-hub"
-	ChainResourceName        = "chain"
-	OperandTektoncdChains    = "tektoncd-chains"
+	ConfigResourceName           = "config"
+	PipelineResourceName         = "pipeline"
+	OperandTektoncdPipeline      = "tektoncd-pipelines"
+	TriggerResourceName          = "trigger"
+	OperandTektoncdTriggers      = "tektoncd-triggers"
+	DashboardResourceName        = "dashboard"
+	OperandTektoncdDashboard     = "tektoncd-dashboard"
+	AddonResourceName            = "addon"
+	ResultResourceName           = "result"
+	OperandTektoncdResults       = "tektoncd-results"
+	HubResourceName              = "hub"
+	OperandTektoncdHub           = "tektoncd-hub"
+	ChainResourceName            = "chain"
+	OperandTektoncdChains        = "tektoncd-chains"
+	OpenShiftPipelinesAsCodeName = "pipelines-as-code"
 )

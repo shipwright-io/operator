@@ -19,62 +19,126 @@ package v1alpha1
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/ptr"
 )
 
 const (
-	DefaultMetricsPipelinerunLevel       = "pipeline"
-	DefaultMetricsTaskrunLevel           = "task"
-	DefaultMetricsPipelierunDurationType = "histogram"
-	DefaultMetricsTaskrunDurationType    = "histogram"
+	// openshift specific
+	enableMetricsKey                         = "enableMetrics"
+	enableMetricsDefaultValue                = "true"
+	openshiftDefaultDisableAffinityAssistant = true
+	openshiftDefaultEmbeddedStatus           = "full"
+	ospDefaultSA                             = "pipeline"
 )
 
 func (tp *TektonPipeline) SetDefaults(ctx context.Context) {
-	tp.Spec.PipelineProperties.setDefaults()
+	tp.Spec.setDefaults()
 }
 
-func (p *PipelineProperties) setDefaults() {
-	// Disabling this for now and will be removed in next release
-	// disabling will hide this from users in TektonConfig/TektonPipeline
-	if p.DisableHomeEnvOverwrite != nil {
-		p.DisableHomeEnvOverwrite = nil
-	}
-	if p.DisableWorkingDirectoryOverwrite != nil {
-		p.DisableWorkingDirectoryOverwrite = nil
-	}
-
+func (p *Pipeline) setDefaults() {
 	if p.DisableCredsInit == nil {
-		p.DisableCredsInit = ptr.Bool(false)
+		p.DisableCredsInit = ptr.Bool(config.DefaultDisableCredsInit)
+	}
+	if p.AwaitSidecarReadiness == nil {
+		p.AwaitSidecarReadiness = ptr.Bool(config.DefaultAwaitSidecarReadiness)
 	}
 	if p.RunningInEnvironmentWithInjectedSidecars == nil {
-		p.RunningInEnvironmentWithInjectedSidecars = ptr.Bool(true)
+		p.RunningInEnvironmentWithInjectedSidecars = ptr.Bool(config.DefaultRunningInEnvWithInjectedSidecars)
 	}
 	if p.RequireGitSshSecretKnownHosts == nil {
-		p.RequireGitSshSecretKnownHosts = ptr.Bool(false)
+		p.RequireGitSshSecretKnownHosts = ptr.Bool(config.DefaultRequireGitSSHSecretKnownHosts)
 	}
 	if p.EnableTektonOciBundles == nil {
-		p.EnableTektonOciBundles = ptr.Bool(false)
+		p.EnableTektonOciBundles = ptr.Bool(config.DefaultEnableTektonOciBundles)
 	}
 	if p.EnableCustomTasks == nil {
-		p.EnableCustomTasks = ptr.Bool(false)
+		// EnableCustomTask is always enable
+		p.EnableCustomTasks = ptr.Bool(true)
+	}
+	if p.SendCloudEventsForRuns == nil {
+		p.SendCloudEventsForRuns = ptr.Bool(config.DefaultSendCloudEventsForRuns)
 	}
 	if p.EnableApiFields == "" {
-		p.EnableApiFields = ApiFieldStable
+		p.EnableApiFields = config.DefaultEnableAPIFields
 	}
-	if p.ScopeWhenExpressionsToTask == nil {
-		p.ScopeWhenExpressionsToTask = ptr.Bool(false)
+	if p.VerificationMode == "" {
+		p.VerificationMode = config.DefaultResourceVerificationMode
 	}
-	if p.MetricsPipelinerunDurationType == "" {
-		p.MetricsPipelinerunDurationType = DefaultMetricsPipelierunDurationType
-	}
-	if p.MetricsPipelinerunLevel == "" {
-		p.MetricsPipelinerunLevel = DefaultMetricsPipelinerunLevel
-	}
-	if p.MetricsTaskrunDurationType == "" {
-		p.MetricsTaskrunDurationType = DefaultMetricsTaskrunDurationType
-	}
-	if p.MetricsTaskrunLevel == "" {
-		p.MetricsTaskrunLevel = DefaultMetricsTaskrunLevel
+	if p.EnableProvenanceInStatus == nil {
+		p.EnableProvenanceInStatus = ptr.Bool(config.DefaultEnableProvenanceInStatus)
 	}
 
+	// Deprecated: set to nil, remove in further release
+	p.ScopeWhenExpressionsToTask = nil
+
+	if p.MetricsPipelinerunDurationType == "" {
+		p.MetricsPipelinerunDurationType = config.DefaultDurationPipelinerunType
+	}
+	if p.MetricsPipelinerunLevel == "" {
+		p.MetricsPipelinerunLevel = config.DefaultPipelinerunLevel
+	}
+	if p.MetricsTaskrunDurationType == "" {
+		p.MetricsTaskrunDurationType = config.DefaultDurationTaskrunType
+	}
+	if p.MetricsTaskrunLevel == "" {
+		p.MetricsTaskrunLevel = config.DefaultTaskrunLevel
+	}
+
+	// Resolvers
+	if p.EnableBundlesResolver == nil {
+		p.EnableBundlesResolver = ptr.Bool(true)
+	}
+	if p.EnableClusterResolver == nil {
+		p.EnableClusterResolver = ptr.Bool(true)
+	}
+	if p.EnableHubResolver == nil {
+		p.EnableHubResolver = ptr.Bool(true)
+	}
+	if p.EnableGitResolver == nil {
+		p.EnableGitResolver = ptr.Bool(true)
+	}
+
+	// run platform specific defaulting
+	if IsOpenShiftPlatform() {
+		p.openshiftDefaulting()
+	}
+
+	if p.EmbeddedStatus == "" {
+		p.EmbeddedStatus = config.DefaultEmbeddedStatus
+	}
+}
+
+func (p *Pipeline) openshiftDefaulting() {
+	if p.DefaultServiceAccount == "" {
+		p.DefaultServiceAccount = ospDefaultSA
+	}
+
+	if p.DisableAffinityAssistant == nil {
+		p.DisableAffinityAssistant = ptr.Bool(openshiftDefaultDisableAffinityAssistant)
+	}
+
+	if p.EmbeddedStatus == "" {
+		p.EmbeddedStatus = openshiftDefaultEmbeddedStatus
+	}
+
+	// Add params with default values if not defined by user
+	var found = false
+	for i, param := range p.Params {
+		if param.Name == enableMetricsKey {
+			found = true
+			// If the value set is invalid then set key to default value
+			if param.Value != "false" && param.Value != "true" {
+				p.Params[i].Value = enableMetricsDefaultValue
+			}
+			break
+		}
+	}
+
+	if !found {
+		p.Params = append(p.Params, Param{
+			Name:  enableMetricsKey,
+			Value: enableMetricsDefaultValue,
+		})
+	}
 }
