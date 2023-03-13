@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"os"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
@@ -47,37 +49,23 @@ type TektonComponentSpec interface {
 
 // TektonComponentStatus is a common interface for status mutations of all known types.
 type TektonComponentStatus interface {
-	// MarkInstallSucceeded marks the InstallationSucceeded status as true.
-	MarkInstallSucceeded()
-	// MarkInstallFailed marks the InstallationSucceeded status as false with the given
-	// message.
-	MarkInstallFailed(msg string)
+	MarkNotReady(string)
+	MarkInstallerSetReady()
 
-	// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
-	MarkDeploymentsAvailable()
-	// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
-	// it's waiting for deployments.
-	MarkDeploymentsNotReady()
+	MarkInstallerSetNotReady(string)
+	MarkInstallerSetAvailable()
 
-	// MarkDependenciesInstalled marks the DependenciesInstalled status as true.
-	MarkDependenciesInstalled()
-	// MarkDependencyInstalling marks the DependenciesInstalled status as false with the
-	// given message.
-	MarkDependencyInstalling(msg string)
-	// MarkDependencyMissing marks the DependenciesInstalled status as false with the
-	// given message.
-	MarkDependencyMissing(msg string)
+	MarkPreReconcilerFailed(string)
+	MarkPostReconcilerFailed(string)
 
 	// GetVersion gets the currently installed version of the component.
 	GetVersion() string
 	// SetVersion sets the currently installed version of the component.
 	SetVersion(version string)
-
-	// GetManifests gets the url links of the manifests
-	GetManifests() []string
-
 	// IsReady return true if all conditions are satisfied
 	IsReady() bool
+	// ConditionAccessor Implement to interact with a condition
+	apis.ConditionAccessor
 }
 
 // CommonSpec unifies common fields and functions on the Spec.
@@ -111,4 +99,8 @@ func ParseParams(params []Param) map[string]string {
 		paramsMap[p.Name] = p.Value
 	}
 	return paramsMap
+}
+
+func IsOpenShiftPlatform() bool {
+	return os.Getenv("PLATFORM") == "openshift"
 }

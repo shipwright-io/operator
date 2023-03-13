@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -44,15 +45,27 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 
 	if p.EnableApiFields != "" {
-		if p.EnableApiFields == ApiFieldStable || p.EnableApiFields == ApiFieldAlpha {
-			return errs
+		if p.EnableApiFields != config.StableAPIFields && p.EnableApiFields != config.AlphaAPIFields {
+			errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, path+".enable-api-fields"))
 		}
-		errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, path+".enable-api-fields"))
 	}
 	if p.DefaultTimeoutMinutes != nil {
 		if *p.DefaultTimeoutMinutes == 0 {
 			errs = errs.Also(apis.ErrInvalidValue(p.DefaultTimeoutMinutes, path+".default-timeout-minutes"))
 		}
 	}
+
+	if p.EmbeddedStatus != "" {
+		if p.EmbeddedStatus != config.FullEmbeddedStatus && p.EmbeddedStatus != config.BothEmbeddedStatus && p.EmbeddedStatus != config.MinimalEmbeddedStatus {
+			errs = errs.Also(apis.ErrInvalidValue(p.EmbeddedStatus, path+".embedded-status"))
+		}
+	}
+
+	if p.VerificationMode != "" {
+		if p.VerificationMode != config.SkipResourceVerificationMode && p.VerificationMode != config.WarnResourceVerificationMode && p.VerificationMode != config.EnforceResourceVerificationMode {
+			errs = errs.Also(apis.ErrInvalidValue(p.VerificationMode, path+".verification-mode"))
+		}
+	}
+
 	return errs
 }

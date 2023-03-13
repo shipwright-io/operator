@@ -18,6 +18,8 @@ package v1alpha1
 
 import (
 	"context"
+
+	"knative.dev/pkg/ptr"
 )
 
 func (tc *TektonConfig) SetDefaults(ctx context.Context) {
@@ -25,10 +27,37 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 		tc.Spec.Profile = ProfileBasic
 	}
 
-	tc.Spec.Pipeline.PipelineProperties.setDefaults()
-	tc.Spec.Trigger.TriggersProperties.setDefaults()
+	tc.Spec.Pipeline.setDefaults()
+	tc.Spec.Trigger.setDefaults()
 
-	setAddonDefaults(&tc.Spec.Addon)
+	if IsOpenShiftPlatform() {
+		if tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil {
+			tc.Spec.Platforms.OpenShift.PipelinesAsCode = &PipelinesAsCode{
+				Enable: ptr.Bool(true),
+				PACSettings: PACSettings{
+					Settings: map[string]string{},
+				},
+			}
+		} else {
+			tc.Spec.Addon.EnablePAC = nil
+		}
+
+		// check if PAC is disabled through addon before enabling through OpenShiftPipelinesAsCode
+		if tc.Spec.Addon.EnablePAC != nil && !*tc.Spec.Addon.EnablePAC {
+			tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable = ptr.Bool(false)
+			tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings = nil
+		}
+
+		// pac defaulting
+		if *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
+			setPACDefaults(tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings)
+		}
+
+		setAddonDefaults(&tc.Spec.Addon)
+	} else {
+		tc.Spec.Addon = Addon{}
+		tc.Spec.Platforms.OpenShift = OpenShift{}
+	}
 
 	// before adding webhook we had default value for pruner's keep as 1
 	// but we expect user to define all values now otherwise webhook reject
