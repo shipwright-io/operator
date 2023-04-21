@@ -142,11 +142,12 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		logger.Info("created target namespace")
 	}
 
+	images := toLowerCaseKeys(imagesFromEnv(ShipwrightImagePrefix))
 	// filtering out namespace resource, so it does not create new namespaces accidentally, and
 	// transforming object to target the namespace informed on the CRD (.spec.namespace)
 	manifest, err := r.Manifest.
 		Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
-		Transform(manifestival.InjectNamespace(targetNamespace))
+		Transform(manifestival.InjectNamespace(targetNamespace), deploymentImages(images))
 	if err != nil {
 		logger.Error(err, "transforming manifests, injecting namespace")
 		return RequeueWithError(err)
