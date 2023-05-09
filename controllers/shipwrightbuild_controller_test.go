@@ -138,6 +138,16 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 	crds := []*crdv1.CustomResourceDefinition{crd1, crd2}
 	c, _, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds)
 
+	images := []struct {
+		key, value string
+	}{
+		{"IMAGE_SHIPWRIGHT_SHIPWRIGHT_BUILD", "ghcr.io/shipwright-io/build/shipwright-build-controller:nightly-2023-05-05-1683263383"},
+		{"IMAGE_SHIPWRIGHT_GIT_CONTAINER_IMAGE", "ghcr.io/shipwright-io/build/git:nightly-2023-05-02-1683004171"},
+		{"IMAGE_SHIPWRIGHT_WAITER_CONTAINER_IMAGE", "ghcr.io/shipwright-io/build/waiter:nightly-2023-05-05-1683263383"},
+		{"IMAGE_SHIPWRIGHT_MUTATE_IMAGE_CONTAINER_IMAGE", "ghcr.io/shipwright-io/build/mutate-image:nightly-2023-04-18-1681794585"},
+		{"IMAGE_SHIPWRIGHT_BUNDLE_CONTAINER_IMAGE", "ghcr.io/shipwright-io/build/bundle:nightly-2023-05-05-1683263383"},
+	}
+
 	t.Logf("Deploying Shipwright Controller against '%s' namespace", targetNamespace)
 
 	// rolling out all manifests on the desired namespace, making sure the deployment for Shipwright
@@ -149,6 +159,24 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 		g.Expect(res.Requeue).To(o.BeFalse())
 		err = c.Get(ctx, deploymentName, &appsv1.Deployment{})
 		g.Expect(err).To(o.BeNil())
+		err = c.Get(ctx, namespacedName, b)
+		g.Expect(err).To(o.BeNil())
+		g.Expect(b.Status.IsReady()).To(o.BeTrue())
+	})
+
+	t.Run("rollout-manifests-with-images-env-vars", func(t *testing.T) {
+		ctx := context.TODO()
+		for _, v := range images {
+			t.Setenv(v.key, v.value)
+		}
+		deployment := &appsv1.Deployment{}
+		res, err := r.Reconcile(ctx, req)
+		g.Expect(err).To(o.BeNil())
+		g.Expect(res.Requeue).To(o.BeFalse())
+		err = c.Get(ctx, deploymentName, deployment)
+		g.Expect(err).To(o.BeNil())
+		containers := deployment.Spec.Template.Spec.Containers
+		g.Expect(containers[0].Image).To(o.Equal("ghcr.io/shipwright-io/build/shipwright-build-controller:nightly-2023-05-05-1683263383"))
 		err = c.Get(ctx, namespacedName, b)
 		g.Expect(err).To(o.BeNil())
 		g.Expect(b.Status.IsReady()).To(o.BeTrue())

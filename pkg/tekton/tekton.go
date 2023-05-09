@@ -36,7 +36,7 @@ func ReconcileTekton(ctx context.Context,
 	if err != nil {
 		return nil, true, fmt.Errorf("failed to determine Tekton Operator version: %v", err)
 	}
-	if tektonVersion.Minor() < 49 {
+	if tektonVersion.Major() < 1 && tektonVersion.Minor() < 49 {
 		return nil, true, fmt.Errorf("insufficient Tekton Operator version - must be greater than v0.49.0")
 	}
 	tektonConfigPresent, err := IsTektonConfigPresent(ctx, tektonOperatorClient)

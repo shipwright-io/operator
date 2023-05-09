@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: test
+  template:
+    metadata:
+      labels:
+        run: test
+    spec:
+      containers:
+        - image: busybox
+          name: SHIPWRIGHT_CONTROLLER
+          args: [
+            "-bash-image", "busybox",
+            "-nop=nop"
+          ]
+        - image: busybox
+          name: sidecar
+          env:
+            - name: IMAGE_SHPWRIGHT_GIT_CONTAINER_IMAGE
+              value: ghcr.io/shipwright-io/build/git:v0.11.0@sha256:aecf8bdc01ea00be83e933162a0b6d063846b315fe9dcae60e4be1a34e85d514
+           
+
