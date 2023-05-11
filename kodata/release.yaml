@@ -147,8 +147,8 @@ spec:
               value: ghcr.io/shipwright-io/build/git:v0.11.0@sha256:aecf8bdc01ea00be83e933162a0b6d063846b315fe9dcae60e4be1a34e85d514
             - name: GIT_ENABLE_REWRITE_RULE
               value: "false"
-            - name: MUTATE_IMAGE_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/mutate-image:v0.11.0@sha256:665b1aa477606a91d889b134a43a52f8bd7a66a36d2f15fcd355bda677c252df
+            - name: IMAGE_PROCESSING_CONTAINER_IMAGE
+              value: ghcr.io/shipwright-io/build/image-processing:0.11@sha256:e05d37529ef6d3d63fe161d54467733786b5117d888322f8b5804f27fb333624
             - name: BUNDLE_CONTAINER_IMAGE
               value: ghcr.io/shipwright-io/build/bundle:v0.11.0@sha256:3be6c1e9c5ff4706500ebef3a182823fddd368d81eabf464c76feef6192807cc
             - name: WAITER_CONTAINER_IMAGE
