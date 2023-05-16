@@ -36,11 +36,13 @@ Refer to the [ShipwrightBuild documentation](docs/shipwrightbuild.md) for more i
 
 The operator handles differents environment variables to customize Shiprwright controller installation:
 KO_DATA_PATH : defines the shipwright controller manifest to install
+INSTALL_TRIGGERS: if set to true the operator will install Shipwright Triggers
 IMAGE_SHIPWRIGHT_SHIPWRIGHT_BUILD : defines the Shipwright Build Controller Image to use
 IMAGE_SHIPWRIGHT_GIT_CONTAINER_IMAGE: defines the Shipwright Git Container Image to use
 IMAGE_SHIPWRIGHT_MUTATE_IMAGE_CONTAINER_IMAGE:  defines the Shipwright Mutate Image to use
 IMAGE_SHIPWRIGHT_BUNDLE_CONTAINER_IMAGE: defines the Shipwright Bundle Image to use
 IMAGE_SHIPWRIGHT_WAITER_CONTAINER_IMAGE: defines the Shipwright Waiter Image to use
+IMAGE_SHIPWRIGHT_SHIPWRIGHT_TRIGGERS: defines the Shipwright Triggers Image to use
 
 ## Contributing
 

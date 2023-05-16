@@ -146,6 +146,7 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 		{"IMAGE_SHIPWRIGHT_WAITER_CONTAINER_IMAGE", "ghcr.io/shipwright-io/build/waiter:nightly-2023-05-05-1683263383"},
 		{"IMAGE_SHIPWRIGHT_MUTATE_IMAGE_CONTAINER_IMAGE", "ghcr.io/shipwright-io/build/mutate-image:nightly-2023-04-18-1681794585"},
 		{"IMAGE_SHIPWRIGHT_BUNDLE_CONTAINER_IMAGE", "ghcr.io/shipwright-io/build/bundle:nightly-2023-05-05-1683263383"},
+		{"IMAGE_SHIPWRIGHT_SHIPWRIGHT_TRIGGERS", "quay.io/jkhelil/openshift-builds-triggers"},
 	}
 
 	t.Logf("Deploying Shipwright Controller against '%s' namespace", targetNamespace)

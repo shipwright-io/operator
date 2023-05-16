@@ -112,6 +112,38 @@ rules:
 - apiGroups:
   - operator.tekton.dev
   resources:
+  - customruns
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - operator.tekton.dev
+  resources:
+  - customruns/finalizers
+  verbs:
+  - patch
+  - update
+- apiGroups:
+  - operator.tekton.dev
+  resources:
+  - customruns/status
+  verbs:
+  - patch
+  - update
+- apiGroups:
+  - operator.tekton.dev
+  resources:
+  - pipelineruns
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.tekton.dev
+  resources:
   - tektonconfigs
   verbs:
   - create
