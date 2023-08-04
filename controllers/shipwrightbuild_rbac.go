@@ -26,3 +26,7 @@ package controllers
 // +kubebuilder:rbac:groups=operator.shipwright.io,resources=shipwrightbuilds/finalizers,verbs=update
 // +kubebuilder:rbac:groups=operator.shipwright.io,resources=shipwrightbuilds/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.tekton.dev,resources=tektonconfigs,verbs=get;list;create
+// +kubebuilder:rbac:groups=operator.tekton.dev,resources=customruns,verbs=get;list;watch
+// +kubebuilder:rbac:groups=operator.tekton.dev,resources=customruns/finalizers,verbs=patch;update
+// +kubebuilder:rbac:groups=operator.tekton.dev,resources=customruns/status,verbs=patch;update
+// +kubebuilder:rbac:groups=operator.tekton.dev,resources=pipelineruns,verbs=get;list;patch;update;watch

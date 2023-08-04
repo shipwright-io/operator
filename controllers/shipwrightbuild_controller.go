@@ -219,6 +219,7 @@ func (r *ShipwrightBuildReconciler) setupManifestival(managerLogger logr.Logger)
 	if err != nil {
 		return err
 	}
+
 	buildManifest := filepath.Join(dataPath, "release.yaml")
 
 	r.Manifest, err = manifestival.NewManifest(
@@ -226,6 +227,15 @@ func (r *ShipwrightBuildReconciler) setupManifestival(managerLogger logr.Logger)
 		manifestival.UseClient(client),
 		manifestival.UseLogger(logger),
 	)
+
+	if withTriggers() {
+		triggersManifest := filepath.Join(dataPath, "triggers.yaml")
+		m, err := manifestival.ManifestFrom(manifestival.Recursive(triggersManifest))
+		if err != nil {
+			return err
+		}
+		r.Manifest = r.Manifest.Append(m)
+	}
 	return err
 }
 

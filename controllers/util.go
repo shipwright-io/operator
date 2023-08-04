@@ -15,6 +15,7 @@ import (
 // koDataPathEnv ko data-path environment variable.
 const (
 	koDataPathEnv         = "KO_DATA_PATH"
+	InstallTriggers       = "INSTALL_TRIGGERS"
 	ShipwrightImagePrefix = "IMAGE_SHIPWRIGHT_"
 )
 
@@ -116,4 +117,8 @@ func replaceContainersEnvImage(container corev1.Container, images map[string]str
 			container.Env[index].Value = url
 		}
 	}
+}
+
+func withTriggers() bool {
+	return os.Getenv(InstallTriggers) == "true"
 }
