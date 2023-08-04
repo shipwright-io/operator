@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shipwright-io/operator/pkg/common"
 	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonoperatorclientv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
@@ -36,8 +37,8 @@ func ReconcileTekton(ctx context.Context,
 	if err != nil {
 		return nil, true, fmt.Errorf("failed to determine Tekton Operator version: %v", err)
 	}
-	if tektonVersion.Major() < 1 && tektonVersion.Minor() < 49 {
-		return nil, true, fmt.Errorf("insufficient Tekton Operator version - must be greater than v0.49.0")
+	if tektonVersion.Major() < common.TektonOpMinSupportedMajor+1 && tektonVersion.Minor() < common.TektonOpMinSupportedMinor {
+		return nil, true, fmt.Errorf("insufficient Tekton Operator version - must be greater than %s", common.TektonOpMinSupportedVersion)
 	}
 	tektonConfigPresent, err := IsTektonConfigPresent(ctx, tektonOperatorClient)
 	if err != nil {
@@ -85,11 +86,11 @@ func GetTektonOperatorVersion(ctx context.Context, client crdclientv1.Apiextensi
 		return nil, err
 	}
 	if tektonOpCRD.Labels == nil {
-		return nil, fmt.Errorf("the CRD TektonConfig does not have labels set, inclding its version")
+		return nil, fmt.Errorf("the CRD TektonConfig does not have the label operator.tekton.dev/release to get its version")
 	}
-	value, exists := tektonOpCRD.Labels["version"]
+	value, exists := tektonOpCRD.Labels["operator.tekton.dev/release"]
 	if !exists {
-		return nil, fmt.Errorf("the CRD TektonConfig does not have labels set, inclding its version")
+		return nil, fmt.Errorf("the CRD TektonConfig does not have the label operator.tekton.dev/release to get its version")
 	}
 	version, err := version.ParseSemantic(value)
 	if err != nil {

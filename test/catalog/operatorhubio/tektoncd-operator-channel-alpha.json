@@ -4,7 +4,7 @@
     "package": "tektoncd-operator",
     "entries": [
         {
-            "name": "tektoncd-operator.v0.49.0"
+            "name": "tektoncd-operator.v0.61.0"
         }
     ]
 }

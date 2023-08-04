@@ -3,6 +3,7 @@ package controllers
 import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
+	"github.com/shipwright-io/operator/pkg/common"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -99,7 +100,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		if errors.IsNotFound(err) {
 			tektonOpCRD := &crdv1.CustomResourceDefinition{}
 			tektonOpCRD.Name = "tektonconfigs.operator.tekton.dev"
-			tektonOpCRD.Labels = map[string]string{"version": "v0.49.0"}
+			tektonOpCRD.Labels = map[string]string{"operator.tekton.dev/release": common.TektonOpMinSupportedVersion}
 			tektonOpCRD.Spec.Group = "operator.tekton.dev"
 			tektonOpCRD.Spec.Scope = crdv1.ClusterScoped
 			tektonOpCRD.Spec.Versions = []crdv1.CustomResourceDefinitionVersion{
