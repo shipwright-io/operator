@@ -24,6 +24,7 @@ import (
 	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 
 	operatorv1alpha1 "github.com/shipwright-io/operator/api/v1alpha1"
+	operatorv1beta1 "github.com/shipwright-io/operator/api/v1beta1"
 	"github.com/shipwright-io/operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
@@ -59,6 +60,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(operatorv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(apiextv1.AddToScheme(scheme))
+	utilruntime.Must(operatorv1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
