@@ -13,6 +13,21 @@ metadata:
           "spec": {
             "targetNamespace": "shipwright-build"
           }
+        },
+        {
+          "apiVersion": "operator.shipwright.io/v1beta1",
+          "kind": "ShipwrightBuild",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/created-by": "shipwright-operator",
+              "app.kubernetes.io/instance": "shipwrightbuild-sample",
+              "app.kubernetes.io/managed-by": "kustomize",
+              "app.kubernetes.io/name": "shipwrightbuild",
+              "app.kubernetes.io/part-of": "shipwright-operator"
+            },
+            "name": "shipwrightbuild-sample"
+          },
+          "spec": null
         }
       ]
     capabilities: Basic Install
@@ -36,6 +51,11 @@ spec:
       kind: ShipwrightBuild
       name: shipwrightbuilds.operator.shipwright.io
       version: v1alpha1
+    - description: ShipwrightBuild is the Schema for the shipwrightbuilds API
+      displayName: Shipwright Build
+      kind: ShipwrightBuild
+      name: shipwrightbuilds.operator.shipwright.io
+      version: v1beta1
     required:
     - kind: TektonConfig
       name: tektonconfigs.operator.tekton.dev
