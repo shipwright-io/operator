@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/shipwright-io/operator/api/v1alpha1"
+	"github.com/shipwright-io/operator/api/v1beta1"
 	"github.com/shipwright-io/operator/pkg/tekton"
 )
 
@@ -54,7 +54,7 @@ type ShipwrightBuildReconciler struct {
 }
 
 // setFinalizer append finalizer on the resource, and uses local client to update it immediately.
-func (r *ShipwrightBuildReconciler) setFinalizer(ctx context.Context, b *v1alpha1.ShipwrightBuild) error {
+func (r *ShipwrightBuildReconciler) setFinalizer(ctx context.Context, b *v1beta1.ShipwrightBuild) error {
 	if contains(b.GetFinalizers(), FinalizerAnnotation) {
 		return nil
 	}
@@ -63,7 +63,7 @@ func (r *ShipwrightBuildReconciler) setFinalizer(ctx context.Context, b *v1alpha
 }
 
 // unsetFinalizer remove all instances of local finalizer string, updating the resource immediately.
-func (r *ShipwrightBuildReconciler) unsetFinalizer(ctx context.Context, b *v1alpha1.ShipwrightBuild) error {
+func (r *ShipwrightBuildReconciler) unsetFinalizer(ctx context.Context, b *v1beta1.ShipwrightBuild) error {
 	finalizers := []string{}
 	for _, f := range b.GetFinalizers() {
 		if f == FinalizerAnnotation {
@@ -90,7 +90,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return Requeue()
 	}
 	// retrieving the ShipwrightBuild instance requested for reconcile
-	b := &v1alpha1.ShipwrightBuild{}
+	b := &v1beta1.ShipwrightBuild{}
 	if err := r.Get(ctx, req.NamespacedName, b); err != nil {
 		if errors.IsNotFound(err) {
 			logger.Info("Resource is not found!")
@@ -236,7 +236,7 @@ func (r *ShipwrightBuildReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.ShipwrightBuild{}, builder.WithPredicates(predicate.Funcs{
+		For(&v1beta1.ShipwrightBuild{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(ce event.CreateEvent) bool {
 				// all new objects must be subject to reconciliation
 				return true

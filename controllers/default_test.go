@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/shipwright-io/operator/api/v1alpha1"
+	"github.com/shipwright-io/operator/api/v1beta1"
 	"github.com/shipwright-io/operator/test"
 )
 
@@ -34,7 +34,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 	// targetNamespace namespace where shipwright Controller and dependencies will be located
 	const targetNamespace = "target-namespace"
 	// build Build instance employed during testing
-	var build *v1alpha1.ShipwrightBuild
+	var build *v1beta1.ShipwrightBuild
 
 	baseClusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -126,12 +126,12 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("creating a ShipwrightBuild instance")
-		build = &v1alpha1.ShipwrightBuild{
+		build = &v1beta1.ShipwrightBuild{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: namespace,
 				Name:      "cluster",
 			},
-			Spec: v1alpha1.ShipwrightBuildSpec{
+			Spec: v1beta1.ShipwrightBuildSpec{
 				TargetNamespace: targetNamespace,
 			},
 		}

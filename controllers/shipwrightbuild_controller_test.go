@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/shipwright-io/operator/api/v1alpha1"
+	"github.com/shipwright-io/operator/api/v1beta1"
 	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
 	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -31,7 +31,7 @@ import (
 // ready to interact with Manifestival, returning the Manifestival instance and the client.
 func bootstrapShipwrightBuildReconciler(
 	t *testing.T,
-	b *v1alpha1.ShipwrightBuild,
+	b *v1beta1.ShipwrightBuild,
 	tcfg *tektonoperatorv1alpha1.TektonConfig,
 	tcrds []*crdv1.CustomResourceDefinition,
 ) (client.Client, *crdclientv1.Clientset, *tektonoperatorv1alpha1client.Clientset, *ShipwrightBuildReconciler) {
@@ -40,7 +40,7 @@ func bootstrapShipwrightBuildReconciler(
 	s := runtime.NewScheme()
 	s.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Namespace{})
 	s.AddKnownTypes(appsv1.SchemeGroupVersion, &appsv1.Deployment{})
-	s.AddKnownTypes(v1alpha1.GroupVersion, &v1alpha1.ShipwrightBuild{})
+	s.AddKnownTypes(v1beta1.GroupVersion, &v1beta1.ShipwrightBuild{})
 
 	logger := zap.New()
 
@@ -91,7 +91,7 @@ func bootstrapShipwrightBuildReconciler(
 func TestShipwrightBuildReconciler_Finalizers(t *testing.T) {
 	g := o.NewGomegaWithT(t)
 
-	b := &v1alpha1.ShipwrightBuild{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "default"}}
+	b := &v1beta1.ShipwrightBuild{ObjectMeta: metav1.ObjectMeta{Name: "name", Namespace: "default"}}
 	_, _, _, r := bootstrapShipwrightBuildReconciler(t, b, &tektonoperatorv1alpha1.TektonConfig{}, []*crdv1.CustomResourceDefinition{})
 
 	// adding one entry on finalizers slice, making sure it's registered
@@ -123,12 +123,12 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 	}
 	req := reconcile.Request{NamespacedName: namespacedName}
 
-	b := &v1alpha1.ShipwrightBuild{
+	b := &v1beta1.ShipwrightBuild{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namespacedName.Name,
 			Namespace: namespacedName.Namespace,
 		},
-		Spec: v1alpha1.ShipwrightBuildSpec{
+		Spec: v1beta1.ShipwrightBuildSpec{
 			TargetNamespace: targetNamespace,
 		},
 	}
