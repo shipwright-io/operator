@@ -35,12 +35,12 @@ When `.spec.targetNamespace` is not set, the namespace will default to `shipwrig
 Refer to the [ShipwrightBuild documentation](docs/shipwrightbuild.md) for more information about this custom resource.
 
 The operator handles differents environment variables to customize Shiprwright controller installation:
-KO_DATA_PATH : defines the shipwright controller manifest to install
-IMAGE_SHIPWRIGHT_SHIPWRIGHT_BUILD : defines the Shipwright Build Controller Image to use
-IMAGE_SHIPWRIGHT_GIT_CONTAINER_IMAGE: defines the Shipwright Git Container Image to use
-IMAGE_SHIPWRIGHT_MUTATE_IMAGE_CONTAINER_IMAGE:  defines the Shipwright Mutate Image to use
-IMAGE_SHIPWRIGHT_BUNDLE_CONTAINER_IMAGE: defines the Shipwright Bundle Image to use
-IMAGE_SHIPWRIGHT_WAITER_CONTAINER_IMAGE: defines the Shipwright Waiter Image to use
+- KO_DATA_PATH : defines the shipwright controller manifest to install
+- IMAGE_SHIPWRIGHT_SHIPWRIGHT_BUILD : defines the Shipwright Build Controller Image to use
+- IMAGE_SHIPWRIGHT_GIT_CONTAINER_IMAGE: defines the Shipwright Git Container Image to use
+- IMAGE_SHIPWRIGHT_MUTATE_IMAGE_CONTAINER_IMAGE:  defines the Shipwright Mutate Image to use
+- IMAGE_SHIPWRIGHT_BUNDLE_CONTAINER_IMAGE: defines the Shipwright Bundle Image to use
+- IMAGE_SHIPWRIGHT_WAITER_CONTAINER_IMAGE: defines the Shipwright Waiter Image to use
 
 ## Contributing
 
