@@ -1,0 +1,85 @@
+{
+    "schema": "olm.bundle",
+    "name": "cert-manager.v1.12.2",
+    "package": "cert-manager",
+    "image": "quay.io/operatorhubio/cert-manager:v1.12.2",
+    "properties": [
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "acme.cert-manager.io",
+                "kind": "Challenge",
+                "version": "v1"
+            }
+        },
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "acme.cert-manager.io",
+                "kind": "Order",
+                "version": "v1"
+            }
+        },
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "cert-manager.io",
+                "kind": "Certificate",
+                "version": "v1"
+            }
+        },
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "cert-manager.io",
+                "kind": "CertificateRequest",
+                "version": "v1"
+            }
+        },
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "cert-manager.io",
+                "kind": "ClusterIssuer",
+                "version": "v1"
+            }
+        },
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "cert-manager.io",
+                "kind": "Issuer",
+                "version": "v1"
+            }
+        },
+        {
+            "type": "olm.package",
+            "value": {
+                "packageName": "cert-manager",
+                "version": "1.12.2"
+            }
+        }
+    ],
+    "relatedImages": [
+        {
+            "name": "",
+            "image": "quay.io/operatorhubio/cert-manager:v1.12.2"
+        },
+        {
+            "name": "",
+            "image": "quay.io/jetstack/cert-manager-controller:v1.12.2"
+        },
+        {
+            "name": "",
+            "image": "quay.io/jetstack/cert-manager-webhook:v1.12.2"
+        },
+        {
+            "name": "",
+            "image": "quay.io/jetstack/cert-manager-cainjector:v1.12.2"
+        },
+        {
+            "name": "",
+            "image": "quay.io/jetstack/cert-manager-acmesolver:v1.12.2"
+        }
+    ]
+}

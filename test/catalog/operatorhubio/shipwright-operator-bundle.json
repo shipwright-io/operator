@@ -21,6 +21,14 @@
             }
         },
         {
+            "type": "olm.gvk.required",
+            "value": {
+                "group": "cert-manager.io",
+                "kind": "Certificate",
+                "version": "v1"
+            }
+        },
+        {
             "type": "olm.package",
             "value": {
                 "packageName": "shipwright-operator",

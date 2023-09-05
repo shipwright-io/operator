@@ -8,7 +8,6 @@ import (
 	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonoperatorclientv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/version"
 )
@@ -59,23 +58,12 @@ func ReconcileTekton(ctx context.Context,
 
 // IsTektonPipelinesInstalled checks if Tekton has been installed on the cluster.
 func IsTektonPipelinesInstalled(ctx context.Context, client crdclientv1.ApiextensionsV1Interface) (bool, error) {
-	return doesCRDExist(ctx, client, "taskruns.tekton.dev")
+	return common.CRDExist(ctx, client, "taskruns.tekton.dev")
 }
 
 // IsTektonOperatorInstalled checks if the Tekton Operator has been installed on the cluster.
 func IsTektonOperatorInstalled(ctx context.Context, client crdclientv1.ApiextensionsV1Interface) (bool, error) {
-	return doesCRDExist(ctx, client, "tektonconfigs.operator.tekton.dev")
-}
-
-func doesCRDExist(ctx context.Context, client crdclientv1.ApiextensionsV1Interface, crdName string) (bool, error) {
-	_, err := client.CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("failed to get customresourcedefinition %s: %v", crdName, err)
-	}
-	return true, nil
+	return common.CRDExist(ctx, client, "tektonconfigs.operator.tekton.dev")
 }
 
 // GetTektonOperatorVersion gets the semantic version of the installed Tekton operator.

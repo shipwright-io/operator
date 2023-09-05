@@ -40,6 +40,9 @@ spec:
     - kind: TektonConfig
       name: tektonconfigs.operator.tekton.dev
       version: v1alpha1
+    - kind: Certificate
+      name: certificates.cert-manager.io
+      version: v1
   description: |
     Shipwright is a framework for building container images on Kubernetes.
 
@@ -381,6 +384,30 @@ spec:
           verbs:
           - create
         - apiGroups:
+          - admissionregistration.k8s.io
+          resources:
+          - validatingwebhookconfigurations
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - admissionregistration.k8s.io/v1beta1
+          resources:
+          - validatingwebhookconfigurations
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - apiextensions.k8s.io
           resources:
           - customresourcedefinitions
@@ -424,10 +451,66 @@ spec:
         - apiGroups:
           - apps
           resourceNames:
+          - shipwright-build-webhook
+          resources:
+          - deployments
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - apps
+          resourceNames:
           - shipwright-build-controller
           resources:
           - deployments/finalizers
           verbs:
+          - update
+        - apiGroups:
+          - apps
+          resourceNames:
+          - shipwright-build-webhook
+          resources:
+          - deployments/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - cert-manager.io
+          resources:
+          - certificates
+          verbs:
+          - create
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - cert-manager.io
+          resourceNames:
+          - shipwright-build-webhook-cert
+          resources:
+          - certificates
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - cert-manager.io
+          resources:
+          - issuers
+          verbs:
+          - create
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - cert-manager.io
+          resourceNames:
+          - selfsigned-issuer
+          resources:
+          - issuers
+          verbs:
+          - delete
+          - patch
           - update
         - apiGroups:
           - ""
@@ -444,6 +527,25 @@ spec:
         - apiGroups:
           - ""
           resources:
+          - secrets
+          verbs:
+          - create
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resourceNames:
+          - shipwright-build-webhook-cert
+          resources:
+          - secrets
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          resources:
           - serviceaccounts
           verbs:
           - create
@@ -456,6 +558,35 @@ spec:
           - shipwright-build-controller
           resources:
           - serviceaccounts
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          resourceNames:
+          - shipwright-build-webhook
+          resources:
+          - serviceaccounts
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - services
+          verbs:
+          - create
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resourceNames:
+          - shipwright-build-controller
+          resources:
+          - services
           verbs:
           - delete
           - patch
@@ -513,6 +644,16 @@ spec:
           - update
         - apiGroups:
           - rbac.authorization.k8s.io
+          resourceNames:
+          - shipwright-build-webhook
+          resources:
+          - clusterrolebindings
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - rbac.authorization.k8s.io
           resources:
           - clusterroles
           verbs:
@@ -552,6 +693,16 @@ spec:
           - update
         - apiGroups:
           - rbac.authorization.k8s.io
+          resourceNames:
+          - shipwright-build-webhook
+          resources:
+          - clusterroles
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - rbac.authorization.k8s.io
           resources:
           - rolebindings
           verbs:
@@ -571,6 +722,16 @@ spec:
           - update
         - apiGroups:
           - rbac.authorization.k8s.io
+          resourceNames:
+          - shipwright-build-webhook
+          resources:
+          - rolebindings
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - rbac.authorization.k8s.io
           resources:
           - roles
           verbs:
@@ -582,6 +743,16 @@ spec:
           - rbac.authorization.k8s.io
           resourceNames:
           - shipwright-build-controller
+          resources:
+          - roles
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resourceNames:
+          - shipwright-build-webhook
           resources:
           - roles
           verbs:
@@ -639,6 +810,9 @@ spec:
                 - --health-probe-bind-address=:8081
                 - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
+                env:
+                - name: USE_MANAGED_WEBHOOK_CERTS
+                  value: "true"
                 image: ko://github.com/shipwright-io/operator
                 livenessProbe:
                   httpGet:

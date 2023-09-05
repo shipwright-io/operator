@@ -80,7 +80,7 @@ func bootstrapShipwrightBuildReconciler(
 	// manifestival instance is setup as part of controller-=runtime's SetupWithManager, thus calling
 	// the setup before all other methods
 	t.Run("setupManifestival", func(t *testing.T) {
-		err := r.setupManifestival(logger)
+		err := r.setupManifestival()
 		g.Expect(err).To(o.BeNil())
 	})
 

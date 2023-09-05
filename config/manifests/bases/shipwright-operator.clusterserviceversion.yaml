@@ -26,6 +26,9 @@ spec:
     - kind: TektonConfig
       name: tektonconfigs.operator.tekton.dev
       version: v1alpha1
+    - kind: Certificate
+      name: certificates.cert-manager.io
+      version: v1
   description: |
     Shipwright is a framework for building container images on Kubernetes.
 

@@ -29,6 +29,9 @@ spec:
       containers:
       - args:
         - --leader-elect
+        env:
+        - name: USE_MANAGED_WEBHOOK_CERTS
+          value: "true"
         image: ko://github.com/shipwright-io/operator
         name: operator
         securityContext:
