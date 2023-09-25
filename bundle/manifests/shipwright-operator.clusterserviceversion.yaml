@@ -584,7 +584,7 @@ spec:
         - apiGroups:
           - ""
           resourceNames:
-          - shipwright-build-controller
+          - shipwright-build-webhook
           resources:
           - services
           verbs:

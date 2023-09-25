@@ -14,10 +14,10 @@ $ kubectl apply -f https://operatorhub.io/install/shipwright-operator.yaml
 ```
 
 ## OLM Dependencies
-When installed via OLM using the provided SHipwright Operator Bundle, the Shipwright operator has two dependencies to:
-- The Tekton operator needed by the Shipright Build Controller
-- The Cert-Manager operator needed in case you delegate to the Shipwright operator the ssl certificates management of the Shipwright Conversion webhook
-The two operators are then installed automatically by OLM.
+When installed via OLM using the provided Shipwright Operator Bundle, the Shipwright operator will ask OLM to deploy the following operators:
+- The [Tekton operator](https://tekton.dev/docs/operator/) to deploy and manage Tekton Pipelines.
+- The [Cert-Manager operator](https://cert-manager.io/docs/installation/operator-lifecycle-manager/) to provision certificates for admission/conversion webhooks.
+For this to work, the Shipwright operator must be included in a catalog that includes these other operators.
 
 ## Usage
 
