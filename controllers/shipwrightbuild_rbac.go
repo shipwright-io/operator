@@ -40,6 +40,6 @@ package controllers
 // +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=get;list;watch;create
 // +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,resourceNames=shipwright-build-webhook-cert,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create
-// +kubebuilder:rbac:groups=core,resources=services,resourceNames=shipwright-build-controller,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=services,resourceNames=shipwright-build-webhook,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create
 // +kubebuilder:rbac:groups=core,resources=secrets,resourceNames=shipwright-build-webhook-cert,verbs=update;patch;delete
