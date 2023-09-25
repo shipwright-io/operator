@@ -1,22 +1,38 @@
-package controllers
+package common
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
+	mfc "github.com/manifestival/controller-runtime-client"
+	"github.com/manifestival/manifestival"
 	mf "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"path/filepath"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// koDataPathEnv ko data-path environment variable.
-const (
-	koDataPathEnv         = "KO_DATA_PATH"
-	ShipwrightImagePrefix = "IMAGE_SHIPWRIGHT_"
-)
+// setupManifestival instantiate manifestival
+func SetupManifestival(client client.Client, manifestFile string, logger logr.Logger) (manifestival.Manifest, error) {
+	mfclient := mfc.NewClient(client)
+
+	dataPath, err := koDataPath()
+	if err != nil {
+		return manifestival.Manifest{}, err
+	}
+	manifest := filepath.Join(dataPath, manifestFile)
+	return manifestival.NewManifest(manifest, manifestival.UseClient(mfclient), manifestival.UseLogger(logger))
+}
 
 // koDataPath retrieve the data path environment variable, returning error when not found.
 func koDataPath() (string, error) {
@@ -28,7 +44,7 @@ func koDataPath() (string, error) {
 }
 
 // contains returns true if the string if found in the slice.
-func contains(slice []string, str string) bool {
+func Contains(slice []string, str string) bool {
 	for _, s := range slice {
 		if s == str {
 			return true
@@ -38,13 +54,12 @@ func contains(slice []string, str string) bool {
 }
 
 // imagesFromEnv will provide map of key value.
-func imagesFromEnv(prefix string) map[string]string {
+func ImagesFromEnv(prefix string) map[string]string {
 	images := map[string]string{}
 	for _, env := range os.Environ() {
 		if !strings.HasPrefix(env, prefix) {
 			continue
 		}
-
 		keyValue := strings.Split(env, "=")
 		name := strings.TrimPrefix(keyValue[0], prefix)
 		url := keyValue[1]
@@ -55,7 +70,7 @@ func imagesFromEnv(prefix string) map[string]string {
 }
 
 // toLowerCaseKeys converts key value to lower cases.
-func toLowerCaseKeys(keyValues map[string]string) map[string]string {
+func ToLowerCaseKeys(keyValues map[string]string) map[string]string {
 	newMap := map[string]string{}
 
 	for k, v := range keyValues {
@@ -67,7 +82,7 @@ func toLowerCaseKeys(keyValues map[string]string) map[string]string {
 }
 
 // deploymentImages replaces container and env vars images.
-func deploymentImages(images map[string]string) mf.Transformer {
+func DeploymentImages(images map[string]string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "Deployment" {
 			return nil
@@ -116,4 +131,24 @@ func replaceContainersEnvImage(container corev1.Container, images map[string]str
 			container.Env[index].Value = url
 		}
 	}
+}
+
+func CRDExist(ctx context.Context, client crdclientv1.ApiextensionsV1Interface, crdName string) (bool, error) {
+	_, err := client.CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to get customresourcedefinition %s: %v", crdName, err)
+	}
+	return true, nil
+}
+
+func BoolFromEnvVar(envVar string) bool {
+	if v, ok := os.LookupEnv(envVar); ok {
+		if vv, err := strconv.ParseBool(v); err == nil {
+			return vv
+		}
+	}
+	return false
 }

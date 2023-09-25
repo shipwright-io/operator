@@ -1,0 +1,10 @@
+{
+    "schema": "olm.channel",
+    "name": "candidate",
+    "package": "cert-manager",
+    "entries": [
+        {
+            "name": "cert-manager.v1.12.2"
+        }
+    ]
+}

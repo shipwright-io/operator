@@ -7,13 +7,10 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/go-logr/logr"
-	mfc "github.com/manifestival/controller-runtime-client"
 	"github.com/manifestival/manifestival"
 	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-
 	corev1 "k8s.io/api/core/v1"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/shipwright-io/operator/api/v1alpha1"
+	"github.com/shipwright-io/operator/pkg/certmanager"
+	"github.com/shipwright-io/operator/pkg/common"
 	"github.com/shipwright-io/operator/pkg/tekton"
 )
 
@@ -39,6 +38,9 @@ const (
 
 	// Ready object is providing service.
 	ConditionReady = "Ready"
+
+	// UseManagedWebhookCerts is an env Var that controls wether we install the webhook certs
+	UseManagedWebhookCerts = "USE_MANAGED_WEBHOOK_CERTS"
 )
 
 // ShipwrightBuildReconciler reconciles a ShipwrightBuild object
@@ -55,7 +57,7 @@ type ShipwrightBuildReconciler struct {
 
 // setFinalizer append finalizer on the resource, and uses local client to update it immediately.
 func (r *ShipwrightBuildReconciler) setFinalizer(ctx context.Context, b *v1alpha1.ShipwrightBuild) error {
-	if contains(b.GetFinalizers(), FinalizerAnnotation) {
+	if common.Contains(b.GetFinalizers(), FinalizerAnnotation) {
 		return nil
 	}
 	b.SetFinalizers(append(b.GetFinalizers(), FinalizerAnnotation))
@@ -82,6 +84,7 @@ func (r *ShipwrightBuildReconciler) unsetFinalizer(ctx context.Context, b *v1alp
 func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Logger.WithValues("namespace", req.Namespace, "name", req.Name)
 	logger.Info("Starting resource reconciliation...")
+	// ReconcileTekton
 	_, requeue, err := tekton.ReconcileTekton(ctx, r.CRDClient, r.TektonOperatorClient)
 	if err != nil {
 		return ctrl.Result{Requeue: requeue}, err
@@ -89,6 +92,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if requeue {
 		return Requeue()
 	}
+
 	// retrieving the ShipwrightBuild instance requested for reconcile
 	b := &v1alpha1.ShipwrightBuild{}
 	if err := r.Get(ctx, req.NamespacedName, b); err != nil {
@@ -142,12 +146,23 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		logger.Info("created target namespace")
 	}
 
-	images := toLowerCaseKeys(imagesFromEnv(ShipwrightImagePrefix))
+	// ReconcileCertManager
+	if common.BoolFromEnvVar(UseManagedWebhookCerts) {
+		requeue, err = certmanager.ReconcileCertManager(ctx, r.CRDClient, r.Client, r.Logger, targetNamespace)
+		if err != nil {
+			return ctrl.Result{Requeue: requeue}, err
+		}
+		if requeue {
+			return Requeue()
+		}
+	}
+
 	// filtering out namespace resource, so it does not create new namespaces accidentally, and
 	// transforming object to target the namespace informed on the CRD (.spec.namespace)
+	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ShipwrightImagePrefix))
 	manifest, err := r.Manifest.
 		Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
-		Transform(manifestival.InjectNamespace(targetNamespace), deploymentImages(images))
+		Transform(manifestival.InjectNamespace(targetNamespace), common.DeploymentImages(images))
 	if err != nil {
 		logger.Error(err, "transforming manifests, injecting namespace")
 		return RequeueWithError(err)
@@ -158,7 +173,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// finalizers, and thus the ShipwrightBuild is removed from cache
 	if !b.GetDeletionTimestamp().IsZero() {
 		logger.Info("DeletionTimestamp is set...")
-		if !contains(b.GetFinalizers(), FinalizerAnnotation) {
+		if !common.Contains(b.GetFinalizers(), FinalizerAnnotation) {
 			logger.Info("Finalizers removed, deletion of manifests completed!")
 			return NoRequeue()
 		}
@@ -211,28 +226,16 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 }
 
 // setupManifestival instantiate manifestival with local controller attributes, as well as tekton prereqs.
-func (r *ShipwrightBuildReconciler) setupManifestival(managerLogger logr.Logger) error {
-	client := mfc.NewClient(r.Client)
-	logger := managerLogger.WithName("manifestival")
-
-	dataPath, err := koDataPath()
-	if err != nil {
-		return err
-	}
-	buildManifest := filepath.Join(dataPath, "release.yaml")
-
-	r.Manifest, err = manifestival.NewManifest(
-		buildManifest,
-		manifestival.UseClient(client),
-		manifestival.UseLogger(logger),
-	)
+func (r *ShipwrightBuildReconciler) setupManifestival() error {
+	var err error
+	r.Manifest, err = common.SetupManifestival(r.Client, "release.yaml", r.Logger)
 	return err
 }
 
 // SetupWithManager sets up the controller with the Manager, by instantiating Manifestival and
 // setting up watch and predicate rules for ShipwrightBuild objects.
 func (r *ShipwrightBuildReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := r.setupManifestival(mgr.GetLogger()); err != nil {
+	if err := r.setupManifestival(); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).

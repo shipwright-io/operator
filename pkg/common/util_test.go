@@ -1,4 +1,4 @@
-package controllers
+package common
 
 import (
 	"path"
@@ -13,8 +13,9 @@ import (
 )
 
 func TestImagesFromEnv(t *testing.T) {
+	RegisterFailHandler(Fail)
 	t.Setenv("IMAGE_SHIPWRIGHT_CONTROLLER", "docker.io/shipwright-controller")
-	data := imagesFromEnv(ShipwrightImagePrefix)
+	data := ImagesFromEnv(ShipwrightImagePrefix)
 	Expect(data).To(Equal(map[string]string{"CONTROLLER": "docker.io/shipwright-controller"}))
 }
 
@@ -27,7 +28,7 @@ func TestDeploymentImages(t *testing.T) {
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 		Expect(err).NotTo(HaveOccurred())
 
-		newManifest, err := manifest.Transform(deploymentImages(map[string]string{}))
+		newManifest, err := manifest.Transform(DeploymentImages(map[string]string{}))
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(expected.Resources()).To(Equal(newManifest.Resources()))
@@ -41,7 +42,7 @@ func TestDeploymentImages(t *testing.T) {
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 		Expect(err).NotTo(HaveOccurred())
-		newManifest, err := manifest.Transform(deploymentImages(images))
+		newManifest, err := manifest.Transform(DeploymentImages(images))
 		Expect(err).NotTo(HaveOccurred())
 		assertDeployContainersHasImage(t, newManifest.Resources(), "SHIPWRIGHT_BUILD", image)
 	})
@@ -54,7 +55,7 @@ func TestDeploymentImages(t *testing.T) {
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 		Expect(err).NotTo(HaveOccurred())
-		newManifest, err := manifest.Transform(deploymentImages(images))
+		newManifest, err := manifest.Transform(DeploymentImages(images))
 		Expect(err).NotTo(HaveOccurred())
 		assertDeployContainerEnvsHasImage(t, newManifest.Resources(), "IMAGE_SHIPWRIGHT_GIT_CONTAINER_IMAGE", image)
 	})
@@ -104,5 +105,31 @@ func assertDeployContainerEnvsHasImage(t *testing.T, resources []unstructured.Un
 				}
 			}
 		}
+	}
+}
+
+func TestBoolFromEnvVar(t *testing.T) {
+	RegisterFailHandler(Fail)
+	cases := []struct {
+		name           string
+		envVar         string
+		expectedResult bool
+	}{
+		{
+			name:           "env var not set",
+			envVar:         "",
+			expectedResult: false,
+		},
+		{
+			name:           "env var set",
+			envVar:         "USE_MANAGED_CERTS",
+			expectedResult: true,
+		},
+	}
+	for _, tc := range cases {
+		if tc.envVar != "" {
+			t.Setenv(tc.envVar, "true")
+		}
+		Expect(BoolFromEnvVar("USE_MANAGED_CERTS")).To(Equal(tc.expectedResult))
 	}
 }

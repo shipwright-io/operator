@@ -13,6 +13,12 @@ Once OLM has been deployed, use the following command to install the latest oper
 $ kubectl apply -f https://operatorhub.io/install/shipwright-operator.yaml
 ```
 
+## OLM Dependencies
+When installed via OLM using the provided SHipwright Operator Bundle, the Shipwright operator has two dependencies to:
+- The Tekton operator needed by the Shipright Build Controller
+- The Cert-Manager operator needed in case you delegate to the Shipwright operator the ssl certificates management of the Shipwright Conversion webhook
+The two operators are then installed automatically by OLM.
+
 ## Usage
 
 To deploy and manage [Shipwright Builds](https://github.com/shipwright-io/build) in your cluster,
@@ -36,11 +42,15 @@ Refer to the [ShipwrightBuild documentation](docs/shipwrightbuild.md) for more i
 
 The operator handles differents environment variables to customize Shiprwright controller installation:
 - KO_DATA_PATH : defines the shipwright controller manifest to install
+- USE_MANAGED_WEBHOOK_CERTS: defines wether the webook ssl certificate is installed by the operator. It requires cert-manager to be installed in the cluster.
 - IMAGE_SHIPWRIGHT_SHIPWRIGHT_BUILD : defines the Shipwright Build Controller Image to use
 - IMAGE_SHIPWRIGHT_GIT_CONTAINER_IMAGE: defines the Shipwright Git Container Image to use
-- IMAGE_SHIPWRIGHT_MUTATE_IMAGE_CONTAINER_IMAGE:  defines the Shipwright Mutate Image to use
+- IMAGE_SHIPWRIGHT_IMAGE_PROCESSING_CONTAINER_IMAGE:  defines the Shipwright Processing Image to use
 - IMAGE_SHIPWRIGHT_BUNDLE_CONTAINER_IMAGE: defines the Shipwright Bundle Image to use
 - IMAGE_SHIPWRIGHT_WAITER_CONTAINER_IMAGE: defines the Shipwright Waiter Image to use
+- IMAGE_SHIPWRIGHT_SHIPWRIGHT_BUILD_WEBHOOK: defines the Shipwright Build Webhook Image to use
+
+For more information about the function of these images, please consider the Shipwright Build doc https://github.com/shipwright-io/build/blob/main/docs/configuration.md
 
 ## Contributing
 
