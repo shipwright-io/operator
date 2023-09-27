@@ -55,10 +55,27 @@ This will run a script that does the following:
 
 Once the script completes, the Shipwright and Tekton operators will be installed on the cluster.
 
-_Note:_
+## Troubleshooting
 
-Scripts in `hack` folder may require `sed` (GNU), therefore in platforms other than Linux you may have it with a different name. For instance, on macOS it's usually named `gsed`, in this case provide the `SED_BIN` make variable with the alternative name.
+### `sed` Command Not Found
+
+Scripts in `hack` folder may require `sed` (GNU) and assume they are running on Linux.
+On platforms other than Linux, use the `SED_BIN` make variable to use a different command for `sed`.
+For instance, on MacOS sed functions are provided by `gsed`:
 
 ```bash
 $ make catalog-run SED_BIN=gsed ...
+```
+
+### Catalog Source Fails - Cannot Access Registry Over grpc
+
+OLM uses `grpc` by default to pull catalog sources from OCI artifacts.
+This protocol requires HTTP/2, which is not supported in some circumstances (example: hosting
+the catalog and bundle on a registry deployed on KinD).
+To fall back to HTTP-based pull, set the `USE-HTTP` make variable to `true` when building/pushing
+the test catalog:
+
+```bash
+$ make catalog-push USE-HTTP="true" ...
+$ make catalog-run ...
 ```
