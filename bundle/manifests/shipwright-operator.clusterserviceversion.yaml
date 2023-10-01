@@ -898,6 +898,7 @@ spec:
   - email: shipwright-dev@lists.shipwright.io
     name: The Shipwright Contributors
   maturity: alpha
+  minKubeVersion: 1.23.13
   provider:
     name: The Shipwright Contributors
     url: https://shipwright.io
