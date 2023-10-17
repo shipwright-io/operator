@@ -10,4 +10,8 @@ const (
 
 	Retain int = iota
 	Overwrite
+
+	CertificateDataDir   = "certificates"
+	BuildDataDir         = "build"
+	BuildStrategyDataDir = "buildstrategy"
 )

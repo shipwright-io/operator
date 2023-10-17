@@ -18,24 +18,26 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // setupManifestival instantiate manifestival
-func SetupManifestival(client client.Client, manifestFile string, logger logr.Logger) (manifestival.Manifest, error) {
+func SetupManifestival(client client.Client, pathnames []string, logger logr.Logger) (manifestival.Manifest, error) {
 	mfclient := mfc.NewClient(client)
-
-	dataPath, err := koDataPath()
+	dataPath, err := KoDataPath()
 	if err != nil {
 		return manifestival.Manifest{}, err
 	}
-	manifest := filepath.Join(dataPath, manifestFile)
-	return manifestival.NewManifest(manifest, manifestival.UseClient(mfclient), manifestival.UseLogger(logger))
+	for i, v := range pathnames {
+		pathnames[i] = filepath.Join(dataPath, strings.TrimSpace(v))
+	}
+	return manifestival.NewManifest(strings.Join(pathnames, ","), manifestival.UseClient(mfclient), manifestival.UseLogger(logger))
 }
 
-// koDataPath retrieve the data path environment variable, returning error when not found.
-func koDataPath() (string, error) {
+// KoDataPath retrieve the data path environment variable, returning error when not found.
+func KoDataPath() (string, error) {
 	dataPath, exists := os.LookupEnv(koDataPathEnv)
 	if !exists {
 		return "", fmt.Errorf("'%s' is not set", koDataPathEnv)
@@ -195,4 +197,30 @@ func itemInSlice(item string, items []string) bool {
 
 func IsOpenShiftPlatform() bool {
 	return os.Getenv("PLATFORM") == "openshift"
+}
+
+func IsDeploymentAvailable(d *appsv1.Deployment) bool {
+	for _, c := range d.Status.Conditions {
+		if c.Type == appsv1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func GetDeployment(ctx context.Context, client client.Client, namespacedName types.NamespacedName) (*appsv1.Deployment, error) {
+	deployment := &appsv1.Deployment{}
+
+	err := client.Get(ctx, namespacedName, deployment)
+	if err != nil {
+		return nil, err
+	}
+	return deployment, nil
+}
+
+func GetWebhookDeploymentName() string {
+	if IsOpenShiftPlatform() {
+		return "openshift-builds-webhook"
+	}
+	return "shp-build-webhook"
 }

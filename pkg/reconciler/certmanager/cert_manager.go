@@ -7,7 +7,7 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/go-logr/logr"
 	mf "github.com/manifestival/manifestival"
-	"github.com/shipwright-io/operator/pkg/common"
+	"github.com/shipwright-io/operator/pkg/reconciler/common"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,7 +34,7 @@ func ReconcileCertManager(ctx context.Context, crdClient crdclientv1.Apiextensio
 		}
 	}
 
-	manifest, err := common.SetupManifestival(client, "certificates.yaml", logger)
+	manifest, err := common.SetupManifestival(client, []string{common.CertificateDataDir}, logger)
 	if err != nil {
 		return true, fmt.Errorf("Error creating inital certificates manifest")
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shipwright-io/operator/pkg/common"
+	"github.com/shipwright-io/operator/pkg/reconciler/common"
 	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonoperatorclientv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"

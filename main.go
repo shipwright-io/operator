@@ -12,19 +12,17 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	operatorv1alpha1 "github.com/shipwright-io/operator/api/v1alpha1"
+	"github.com/shipwright-io/operator/controllers"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-
-	operatorv1alpha1 "github.com/shipwright-io/operator/api/v1alpha1"
-	"github.com/shipwright-io/operator/controllers"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -71,38 +69,26 @@ func main() {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   webhookPort,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "01a9b2d1.shipwright.io",
+		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port: webhookPort,
+		}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	crdClient, err := crdclientv1.NewForConfig(mgr.GetConfig())
+	err = controllers.AddToManager(mgr)
 	if err != nil {
-		setupLog.Error(err, "unable to get crd client")
+		setupLog.Error(err, "unable to create controllers")
 		os.Exit(1)
-	}
-	tektonOperatorClient, err := tektonoperatorv1alpha1client.NewForConfig(mgr.GetConfig())
-	if err != nil {
-		setupLog.Error(err, "unable to get tekton operator client")
-		os.Exit(1)
+
 	}
 
-	if err = (&controllers.ShipwrightBuildReconciler{
-		CRDClient:            crdClient,
-		TektonOperatorClient: tektonOperatorClient,
-		Client:               mgr.GetClient(),
-		Scheme:               mgr.GetScheme(),
-		Logger:               ctrl.Log.WithName("controllers").WithName("ShipwrightBuild"),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ShipwrightBuild")
-		os.Exit(1)
-	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {

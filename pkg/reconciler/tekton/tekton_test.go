@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/shipwright-io/operator/pkg/common"
+	"github.com/shipwright-io/operator/pkg/reconciler/common"
 
 	o "github.com/onsi/gomega"
 
