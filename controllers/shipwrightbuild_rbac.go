@@ -22,7 +22,7 @@ package controllers
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,resourceNames=shipwright-build-controller,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,resourceNames=shipwright-build-controller,verbs=update;patch;delete
-// +kubebuilder:rbac:groups=operator.shipwright.io,resources=shipwrightbuilds,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=operator.shipwright.io,resources=shipwrightbuilds,verbs=get;list;watch;update;patch;delete
 // +kubebuilder:rbac:groups=operator.shipwright.io,resources=shipwrightbuilds/finalizers,verbs=update
 // +kubebuilder:rbac:groups=operator.shipwright.io,resources=shipwrightbuilds/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.tekton.dev,resources=tektonconfigs,verbs=get;list;create
