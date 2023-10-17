@@ -20,6 +20,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/operator/pkg/common"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
+
 	"knative.dev/pkg/apis"
 )
 
@@ -34,9 +39,8 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrInvalidValue(tc.GetName(), errMsg))
 	}
 
-	if tc.Spec.TargetNamespace == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
-	}
+	// execute common spec validations
+	errs = errs.Also(tc.Spec.CommonSpec.validate("spec"))
 
 	if tc.Spec.Profile != "" {
 		if isValid := isValueInArray(Profiles, tc.Spec.Profile); !isValid {
@@ -44,9 +48,34 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
-	if !tc.Spec.Pruner.IsEmpty() {
-		errs = errs.Also(tc.Spec.Pruner.validate())
+	// validate SCC config
+	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift.SCC != nil {
+		defaultSCC := PipelinesSCC
+		if tc.Spec.Platforms.OpenShift.SCC.Default != "" {
+			defaultSCC = tc.Spec.Platforms.OpenShift.SCC.Default
+		}
+
+		maxAllowedSCC := tc.Spec.Platforms.OpenShift.SCC.MaxAllowed
+		if maxAllowedSCC != "" {
+			// Check that maxAllowed SCC and default SCC are compatible wrt priority
+			hasPriority, err := compareSCCAPriorityOverB(ctx, maxAllowedSCC, defaultSCC)
+			if err != nil {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error comparing priority between maxAllowed and default SCC in TektonConfig: %v", err), "spec.platforms.openshift.scc.maxAllowed"))
+			} else if !hasPriority {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("maxAllowed SCC (%s) must have a higher priority than the default SCC (%s)", maxAllowedSCC, defaultSCC), "spec.platforms.openshift.scc.maxAllowed"))
+			}
+
+			// Now validate maxAllowed SCC config with namespaces
+			sccErrors, err := compareSCCsWithAllNamespaces(ctx, maxAllowedSCC)
+			if err != nil {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error comparing priority between maxAllowed and SCCs requested in all namespaces: %v", err), "spec.platforms.openshift.scc.maxAllowed"))
+			}
+			errs = errs.Also(sccErrors)
+		}
 	}
+
+	// validate pruner specifications
+	errs = errs.Also(tc.Spec.Pruner.validate())
 
 	if !tc.Spec.Addon.IsEmpty() {
 		errs = errs.Also(validateAddonParams(tc.Spec.Addon.Params, "spec.addon.params"))
@@ -64,6 +93,11 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 func (p Prune) validate() *apis.FieldError {
 	var errs *apis.FieldError
 
+	// if pruner job disable no validation required
+	if p.Disabled {
+		return errs
+	}
+
 	if len(p.Resources) != 0 {
 		for i, r := range p.Resources {
 			if !isValueInArray(PruningResource, r) {
@@ -74,19 +108,22 @@ func (p Prune) validate() *apis.FieldError {
 		errs = errs.Also(apis.ErrMissingField("spec.pruner.resources"))
 	}
 
+	// tkn cli supports both "keep" and "keep-since", even though there is an issue with the logic
+	// when we supply both "keep" and "keep-since", the outcome always equivalent to "keep", "keep-since" ignored
+	// hence we strict with a single flag support until the issue is fixed in tkn cli
+	// cli issue: https://github.com/tektoncd/cli/issues/1990
 	if p.Keep != nil && p.KeepSince != nil {
 		errs = errs.Also(apis.ErrMultipleOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
 	}
+
 	if p.Keep == nil && p.KeepSince == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
-	} else if p.Keep != nil && *p.Keep == 0 {
-		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep"))
-	} else if p.KeepSince != nil && *p.KeepSince == 0 {
-		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep-since"))
 	}
-
-	if p.Schedule == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.pruner.schedule"))
+	if p.Keep != nil && *p.Keep == 0 {
+		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep"))
+	}
+	if p.KeepSince != nil && *p.KeepSince == 0 {
+		errs = errs.Also(apis.ErrInvalidValue(*p.KeepSince, "spec.pruner.keep-since"))
 	}
 
 	return errs
@@ -99,4 +136,40 @@ func isValueInArray(arr []string, key string) bool {
 		}
 	}
 	return false
+}
+
+func compareSCCAPriorityOverB(ctx context.Context, sccA, sccB string) (bool, error) {
+	securityClient := common.GetSecurityClient(ctx)
+	prioritizedSCCList, err := common.GetPrioritizedSCCList(ctx, securityClient)
+	if err != nil {
+		return false, err
+	}
+	return common.SCCAEqualORPriorityOverB(prioritizedSCCList, sccA, sccB)
+}
+
+func compareSCCsWithAllNamespaces(ctx context.Context, maxAllowedSCC string) (*apis.FieldError, error) {
+	kc := kubeclient.Get(ctx)
+	allNamespaces, err := kc.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var sccErrors *apis.FieldError
+	for _, ns := range allNamespaces.Items {
+		nsSCC := ns.Annotations[openshift.NamespaceSCCAnnotation]
+		if nsSCC == "" {
+			continue
+		}
+
+		// Compare namespace SCC with maxAllowed
+		hasPriority, err := compareSCCAPriorityOverB(ctx, maxAllowedSCC, nsSCC)
+		if err != nil {
+			return nil, err
+		}
+
+		if !hasPriority {
+			sccErrors = sccErrors.Also(apis.ErrGeneric(fmt.Sprintf("SCC requested in namespace %s: %s violates the maxAllowed SCC: %s set in TektonConfig", ns.Name, nsSCC, maxAllowedSCC)))
+		}
+	}
+	return sccErrors, nil
 }

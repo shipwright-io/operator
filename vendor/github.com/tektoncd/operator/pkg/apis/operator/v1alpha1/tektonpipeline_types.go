@@ -81,38 +81,53 @@ type Pipeline struct {
 	// The params to customize different components of Pipelines
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
 }
 
 // PipelineProperties defines customizable flags for Pipeline Component.
 type PipelineProperties struct {
-	DisableAffinityAssistant *bool `json:"disable-affinity-assistant,omitempty"`
-
-	// DEPRECATED:  (Removed in Pipelines v0.33.0): to be removed in next release
-	DisableHomeEnvOverwrite *bool `json:"disable-home-env-overwrite,omitempty"`
-	// DEPRECATED: (Removed in Pipelines v0.33.0): to be removed in next release
-	DisableWorkingDirectoryOverwrite *bool `json:"disable-working-directory-overwrite,omitempty"`
-
+	DisableAffinityAssistant                 *bool  `json:"disable-affinity-assistant,omitempty"`
 	DisableCredsInit                         *bool  `json:"disable-creds-init,omitempty"`
+	AwaitSidecarReadiness                    *bool  `json:"await-sidecar-readiness,omitempty"`
 	RunningInEnvironmentWithInjectedSidecars *bool  `json:"running-in-environment-with-injected-sidecars,omitempty"`
 	RequireGitSshSecretKnownHosts            *bool  `json:"require-git-ssh-secret-known-hosts,omitempty"`
 	EnableTektonOciBundles                   *bool  `json:"enable-tekton-oci-bundles,omitempty"`
 	EnableCustomTasks                        *bool  `json:"enable-custom-tasks,omitempty"`
 	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
-	ScopeWhenExpressionsToTask               *bool  `json:"scope-when-expressions-to-task,omitempty"`
-	PipelineMetricsProperties                `json:",inline"`
+	EmbeddedStatus                           string `json:"embedded-status,omitempty"`
+	SendCloudEventsForRuns                   *bool  `json:"send-cloudevents-for-runs,omitempty"`
+	// "verification-mode" is deprecated and never used.
+	// This field will be removed, see https://github.com/tektoncd/operator/issues/1497
+	// originally this field was removed in https://github.com/tektoncd/operator/pull/1481
+	// there is no use with this field, just adding back to unblock the upgrade
+	VerificationMode          string `json:"verification-mode,omitempty"`
+	VerificationNoMatchPolicy string `json:"trusted-resources-verification-no-match-policy,omitempty"`
+	EnableProvenanceInStatus  *bool  `json:"enable-provenance-in-status,omitempty"`
+
+	// ScopeWhenExpressionsToTask Deprecated: remove in next release
+	ScopeWhenExpressionsToTask *bool `json:"scope-when-expressions-to-task,omitempty"`
+	PipelineMetricsProperties  `json:",inline"`
 	// +optional
 	OptionalPipelineProperties `json:",inline"`
+	// +optional
+	Resolvers `json:",inline"`
+	// +optional
+	Performance PipelinePerformanceProperties `json:"performance,omitempty"`
 }
 
 // OptionalPipelineProperties defines the fields which are to be
 // defined for pipelines only if user pass them
 type OptionalPipelineProperties struct {
-	DefaultTimeoutMinutes          *uint  `json:"default-timeout-minutes,omitempty"`
-	DefaultServiceAccount          string `json:"default-service-account,omitempty"`
-	DefaultManagedByLabelValue     string `json:"default-managed-by-label-value,omitempty"`
-	DefaultPodTemplate             string `json:"default-pod-template,omitempty"`
-	DefaultCloudEventsSink         string `json:"default-cloud-events-sink,omitempty"`
-	DefaultTaskRunWorkspaceBinding string `json:"default-task-run-workspace-binding,omitempty"`
+	DefaultTimeoutMinutes               *uint  `json:"default-timeout-minutes,omitempty"`
+	DefaultServiceAccount               string `json:"default-service-account,omitempty"`
+	DefaultManagedByLabelValue          string `json:"default-managed-by-label-value,omitempty"`
+	DefaultPodTemplate                  string `json:"default-pod-template,omitempty"`
+	DefaultCloudEventsSink              string `json:"default-cloud-events-sink,omitempty"`
+	DefaultAffinityAssistantPodTemplate string `json:"default-affinity-assistant-pod-template,omitempty"`
+	DefaultTaskRunWorkspaceBinding      string `json:"default-task-run-workspace-binding,omitempty"`
+	DefaultMaxMatrixCombinationsCount   string `json:"default-max-matrix-combinations-count,omitempty"`
+	DefaultForbiddenEnv                 string `json:"default-forbidden-env,omitempty"`
 }
 
 // PipelineMetricsProperties defines the fields which are configurable for
@@ -122,4 +137,57 @@ type PipelineMetricsProperties struct {
 	MetricsTaskrunDurationType     string `json:"metrics.taskrun.duration-type,omitempty"`
 	MetricsPipelinerunLevel        string `json:"metrics.pipelinerun.level,omitempty"`
 	MetricsPipelinerunDurationType string `json:"metrics.pipelinerun.duration-type,omitempty"`
+}
+
+// Resolvers defines the fields to configure resolvers
+type Resolvers struct {
+	EnableBundlesResolver *bool `json:"enable-bundles-resolver,omitempty"`
+	EnableHubResolver     *bool `json:"enable-hub-resolver,omitempty"`
+	EnableGitResolver     *bool `json:"enable-git-resolver,omitempty"`
+	EnableClusterResolver *bool `json:"enable-cluster-resolver,omitempty"`
+	ResolversConfig       `json:",inline"`
+}
+
+// ResolversConfig defines the fields to configure each of the resolver
+type ResolversConfig struct {
+	BundlesResolverConfig map[string]string `json:"bundles-resolver-config,omitempty"`
+	HubResolverConfig     map[string]string `json:"hub-resolver-config,omitempty"`
+	GitResolverConfig     map[string]string `json:"git-resolver-config,omitempty"`
+	ClusterResolverConfig map[string]string `json:"cluster-resolver-config,omitempty"`
+}
+
+// PipelinePerformanceProperties defines the fields which are configurable
+// to tune the performance of pipelines controller
+type PipelinePerformanceProperties struct {
+	// +optional
+	PipelinePerformanceLeaderElectionConfig `json:",inline"`
+	// +optional
+	PipelineDeploymentPerformanceArgs `json:",inline"`
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// performance configurations to tune the performance of the pipeline controller
+// these properties will be added/updated in the ConfigMap(config-leader-election)
+// https://tekton.dev/docs/pipelines/enabling-ha/
+type PipelinePerformanceLeaderElectionConfig struct {
+	Buckets *uint `json:"buckets,omitempty"`
+}
+
+// performance configurations to tune the performance of the pipeline controller
+// these properties will be added/updated as arguments in pipeline controller deployment
+// https://tekton.dev/docs/pipelines/tekton-controller-performance-configuration/
+type PipelineDeploymentPerformanceArgs struct {
+	// if it is true, disables the HA feature
+	DisableHA bool `json:"disable-ha"`
+
+	// The number of workers to use when processing the pipelines controller's work queue
+	ThreadsPerController *int `json:"threads-per-controller,omitempty"`
+
+	// queries per second (QPS) and burst to the master from rest API client
+	// actually the number multiplied by 2
+	// https://github.com/pierretasci/pipeline/blob/05d67e427c722a2a57e58328d7097e21429b7524/cmd/controller/main.go#L85-L87
+	// defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
+	KubeApiQPS   *float32 `json:"kube-api-qps,omitempty"`
+	KubeApiBurst *int     `json:"kube-api-burst,omitempty"`
 }

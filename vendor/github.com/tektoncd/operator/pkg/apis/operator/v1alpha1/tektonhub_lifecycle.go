@@ -26,12 +26,12 @@ const (
 	DbDependenciesInstalled apis.ConditionType = "DbDependenciesInstalled"
 	DbInstallerSetAvailable apis.ConditionType = "DbInstallSetAvailable"
 	// DB-migration
-	DatabasebMigrationDone apis.ConditionType = "DatabasebMigrationDone"
+	// TODO: fix the typo on the value: "DatabasebMigrationDone"
+	DatabaseMigrationDone apis.ConditionType = "DatabasebMigrationDone"
 	// API
 	ApiDependenciesInstalled apis.ConditionType = "ApiDependenciesInstalled"
 	ApiInstallerSetAvailable apis.ConditionType = "ApiInstallSetAvailable"
 	// UI
-	UiDependenciesInstalled apis.ConditionType = "UiDependenciesInstalled"
 	UiInstallerSetAvailable apis.ConditionType = "UiInstallSetAvailable"
 )
 
@@ -44,11 +44,10 @@ var (
 	hubCondSet = apis.NewLivingConditionSet(
 		DbDependenciesInstalled,
 		DbInstallerSetAvailable,
-		DatabasebMigrationDone,
+		DatabaseMigrationDone,
 		PreReconciler,
 		ApiDependenciesInstalled,
 		ApiInstallerSetAvailable,
-		UiDependenciesInstalled,
 		UiInstallerSetAvailable,
 		PostReconciler,
 	)
@@ -121,16 +120,16 @@ func (ths *TektonHubStatus) MarkDbInstallerSetAvailable() {
 }
 
 // Lifecycle for the DB migration component of Tekton Hub
-func (ths *TektonHubStatus) MarkDatabasebMigrationFailed(msg string) {
+func (ths *TektonHubStatus) MarkDatabaseMigrationFailed(msg string) {
 	ths.MarkNotReady("Database migration job not ready")
 	hubCondSet.Manage(ths).MarkFalse(
-		DatabasebMigrationDone,
+		DatabaseMigrationDone,
 		"Error",
 		"Database migration job not ready: %s", msg)
 }
 
-func (ths *TektonHubStatus) MarkDatabasebMigrationDone() {
-	hubCondSet.Manage(ths).MarkTrue(DatabasebMigrationDone)
+func (ths *TektonHubStatus) MarkDatabaseMigrationDone() {
+	hubCondSet.Manage(ths).MarkTrue(DatabaseMigrationDone)
 }
 
 // Lifecycle for the API component of Tekton Hub
@@ -164,27 +163,6 @@ func (ths *TektonHubStatus) MarkApiInstallerSetNotAvailable(msg string) {
 
 func (ths *TektonHubStatus) MarkApiInstallerSetAvailable() {
 	hubCondSet.Manage(ths).MarkTrue(ApiInstallerSetAvailable)
-}
-
-// UI
-func (ths *TektonHubStatus) MarkUiDependencyInstalling(msg string) {
-	ths.MarkNotReady("Dependencies installing for UI")
-	hubCondSet.Manage(ths).MarkFalse(
-		UiDependenciesInstalled,
-		"Error",
-		"Dependencies are installing for UI: %s", msg)
-}
-
-func (ths *TektonHubStatus) MarkUiDependencyMissing(msg string) {
-	ths.MarkNotReady("Missing Dependencies for UI")
-	hubCondSet.Manage(ths).MarkFalse(
-		UiDependenciesInstalled,
-		"Error",
-		"Dependencies are missing for UI: %s", msg)
-}
-
-func (ths *TektonHubStatus) MarkUiDependenciesInstalled() {
-	hubCondSet.Manage(ths).MarkTrue(UiDependenciesInstalled)
 }
 
 func (ths *TektonHubStatus) MarkUiInstallerSetNotAvailable(msg string) {
@@ -271,36 +249,4 @@ func (ths *TektonHubStatus) GetManifests() []string {
 // SetManifests sets the url links of the manifests.
 func (ths *TektonHubStatus) SetManifests(manifests []string) {
 	ths.Manifests = manifests
-}
-
-// TODO: below methods are not required for TektonHub
-// but as extension implements TektonComponent we need to define them
-// this will be removed
-
-func (tas *TektonHubStatus) MarkInstallSucceeded() {
-	panic("MarkInstallSucceeded implement me")
-}
-
-func (ths *TektonHubStatus) MarkInstallFailed(msg string) {
-	panic("MarkInstallFailed implement me")
-}
-
-func (ths *TektonHubStatus) MarkDeploymentsAvailable() {
-	panic("MarkDeploymentsAvailable implement me")
-}
-
-func (ths *TektonHubStatus) MarkDeploymentsNotReady() {
-	panic("MarkDeploymentsNotReady implement me")
-}
-
-func (ths *TektonHubStatus) MarkDependenciesInstalled() {
-	panic("MarkDependenciesInstalled implement me")
-}
-
-func (ths *TektonHubStatus) MarkDependencyInstalling(msg string) {
-	panic("MarkDependencyInstalling implement me")
-}
-
-func (ths *TektonHubStatus) MarkDependencyMissing(msg string) {
-	panic("MarkDependencyMissing implement me")
 }

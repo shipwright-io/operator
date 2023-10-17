@@ -40,21 +40,32 @@ const (
 	// Hub Params
 	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
 
-	ApiFieldAlpha  = "alpha"
-	ApiFieldStable = "stable"
-
-	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
-	CreatedByKey           = "operator.tekton.dev/created-by"
-	ReleaseVersionKey      = "operator.tekton.dev/release-version"
-	Component              = "operator.tekton.dev/component" // Used in case a component has sub-components eg TektonHub
-	ReleaseMinorVersionKey = "operator.tekton.dev/release-minor-version"
-	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
-	InstallerSetType       = "operator.tekton.dev/type"
-	LabelOperandName       = "operator.tekton.dev/operand-name"
+	LastAppliedHashKey              = "operator.tekton.dev/last-applied-hash"
+	CreatedByKey                    = "operator.tekton.dev/created-by"
+	ReleaseVersionKey               = "operator.tekton.dev/release-version"
+	Component                       = "operator.tekton.dev/component" // Used in case a component has sub-components eg TektonHub
+	ReleaseMinorVersionKey          = "operator.tekton.dev/release-minor-version"
+	TargetNamespaceKey              = "operator.tekton.dev/target-namespace"
+	InstallerSetType                = "operator.tekton.dev/type"
+	LabelOperandName                = "operator.tekton.dev/operand-name"
+	DbSecretHash                    = "operator.tekton.dev/db-secret-hash"
+	DeploymentSpecHashValueLabelKey = "operator.tekton.dev/deployment-spec-applied-hash" // used to recreate pods, if there is a change detected in deployments spec
+	AppliedUpgradeVersionKey        = "operator.tekton.dev/applied-upgrade-version"      // used to monitor applied upgrade version, via upgrade package
 
 	UpgradePending = "upgrade pending"
+	Reinstalling   = "reinstalling"
 
 	RequeueDelay = 10 * time.Second
+
+	// pruner default schedule, used in auto generate tektonConfig
+	PrunerDefaultSchedule = "0 8 * * *"
+	PrunerDefaultKeep     = uint(100)
+
+	// SCC params, OpenShift specific
+
+	// PipelinesSCC will be changed to `restricted` or `restricted-v2` once
+	// `pipelines-scc` is deprecated
+	PipelinesSCC = "pipelines-scc"
 )
 
 var (
@@ -91,6 +102,11 @@ var (
 		"pipelinerun",
 	}
 
+	// pruner default resource, used in auto generate tektonConfig
+	PruningDefaultResources = []string{
+		"pipelinerun",
+	}
+
 	AddonParams = map[string]ParamValue{
 		ClusterTasksParam:      defaultParamValue,
 		PipelineTemplatesParam: defaultParamValue,
@@ -103,18 +119,20 @@ var (
 )
 
 var (
-	ConfigResourceName       = "config"
-	PipelineResourceName     = "pipeline"
-	OperandTektoncdPipeline  = "tektoncd-pipelines"
-	TriggerResourceName      = "trigger"
-	OperandTektoncdTriggers  = "tektoncd-triggers"
-	DashboardResourceName    = "dashboard"
-	OperandTektoncdDashboard = "tektoncd-dashboard"
-	AddonResourceName        = "addon"
-	ResultResourceName       = "result"
-	OperandTektoncdResults   = "tektoncd-results"
-	HubResourceName          = "hub"
-	OperandTektoncdHub       = "tektoncd-hub"
-	ChainResourceName        = "chain"
-	OperandTektoncdChains    = "tektoncd-chains"
+	ConfigResourceName           = "config"
+	PipelineResourceName         = "pipeline"
+	OperandTektoncdPipeline      = "tektoncd-pipelines"
+	TriggerResourceName          = "trigger"
+	OperandTektoncdTriggers      = "tektoncd-triggers"
+	DashboardResourceName        = "dashboard"
+	OperandTektoncdDashboard     = "tektoncd-dashboard"
+	AddonResourceName            = "addon"
+	ResultResourceName           = "result"
+	OperandTektoncdResults       = "tektoncd-results"
+	HubResourceName              = "hub"
+	OperandTektoncdHub           = "tektoncd-hub"
+	ChainResourceName            = "chain"
+	OperandTektoncdChains        = "tektoncd-chains"
+	OpenShiftPipelinesAsCodeName = "pipelines-as-code"
+	PrunerResourceName           = "tektoncd-pruner"
 )
