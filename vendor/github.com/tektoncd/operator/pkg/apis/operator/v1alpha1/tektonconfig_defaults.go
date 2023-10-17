@@ -18,6 +18,9 @@ package v1alpha1
 
 import (
 	"context"
+	"strings"
+
+	"knative.dev/pkg/ptr"
 )
 
 func (tc *TektonConfig) SetDefaults(ctx context.Context) {
@@ -25,24 +28,68 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 		tc.Spec.Profile = ProfileBasic
 	}
 
-	tc.Spec.Pipeline.PipelineProperties.setDefaults()
-	tc.Spec.Trigger.TriggersProperties.setDefaults()
+	tc.Spec.Pipeline.setDefaults()
+	tc.Spec.Trigger.setDefaults()
 
-	setAddonDefaults(&tc.Spec.Addon)
+	if IsOpenShiftPlatform() {
+		if tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil {
+			tc.Spec.Platforms.OpenShift.PipelinesAsCode = &PipelinesAsCode{
+				Enable: ptr.Bool(true),
+				PACSettings: PACSettings{
+					Settings: map[string]string{},
+				},
+			}
+		} else {
+			tc.Spec.Addon.EnablePAC = nil
+		}
 
-	// before adding webhook we had default value for pruner's keep as 1
-	// but we expect user to define all values now otherwise webhook reject
-	// request so if a user has installed prev version and has not enabled
-	// pruner then `keep` will have a value 1 and after upgrading
-	// to newer version webhook will fail if keep has a value and
-	// other fields are not defined
-	// this handles that case by removing the default for keep if
-	// other pruner fields are not defined
-	if len(tc.Spec.Pruner.Resources) == 0 {
-		tc.Spec.Pruner.Keep = nil
-		tc.Spec.Pruner.Schedule = ""
-	} else if tc.Spec.Pruner.Schedule == "" {
-		tc.Spec.Pruner.Keep = nil
-		tc.Spec.Pruner.Resources = []string{}
+		// check if PAC is disabled through addon before enabling through OpenShiftPipelinesAsCode
+		if tc.Spec.Addon.EnablePAC != nil && !*tc.Spec.Addon.EnablePAC {
+			tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable = ptr.Bool(false)
+			tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings = nil
+		}
+
+		// pac defaulting
+		if *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
+			setPACDefaults(tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings)
+		}
+
+		// SCC defaulting
+		if tc.Spec.Platforms.OpenShift.SCC == nil {
+			tc.Spec.Platforms.OpenShift.SCC = &SCC{}
+		}
+		if tc.Spec.Platforms.OpenShift.SCC.Default == "" {
+			tc.Spec.Platforms.OpenShift.SCC.Default = PipelinesSCC
+		}
+
+		setAddonDefaults(&tc.Spec.Addon)
+	} else {
+		tc.Spec.Addon = Addon{}
+		tc.Spec.Platforms.OpenShift = OpenShift{}
+	}
+
+	// earlier pruner was disabled with empty schedule or empty resources
+	// now empty schedule, disables only the global cron job,
+	// if a namespace has prune schedule annotation, a cron job will be created for that
+	// to disable the pruner feature, "disabled" should be set as "true"
+	if !tc.Spec.Pruner.Disabled {
+		// if keep and keep-since is nil, update default keep value
+		if tc.Spec.Pruner.Keep == nil && tc.Spec.Pruner.KeepSince == nil {
+			keep := PrunerDefaultKeep
+			tc.Spec.Pruner.Keep = &keep
+		}
+
+		// if empty resources, update default resources
+		if len(tc.Spec.Pruner.Resources) == 0 {
+			tc.Spec.Pruner.Resources = PruningDefaultResources
+		}
+
+		// trim space and to lower case resource names
+		for index := range tc.Spec.Pruner.Resources {
+			value := tc.Spec.Pruner.Resources[index]
+			value = strings.TrimSpace(value)
+			value = strings.ToLower(value)
+			tc.Spec.Pruner.Resources[index] = value
+		}
 	}
 }

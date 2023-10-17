@@ -108,43 +108,18 @@ func (tcs *TektonConfigStatus) SetVersion(version string) {
 	tcs.Version = version
 }
 
-// TODO: below methods are not required for TektonConfig
-// but as extension implements TektonComponent we need to defined them
-// this will be removed
-
-// GetManifests gets the url links of the manifests.
-func (tcs *TektonConfigStatus) GetManifests() []string {
-	return []string{}
+// returns applied upgrade version
+func (tcs *TektonConfigStatus) GetAppliedUpgradeVersion() string {
+	if tcs.Annotations == nil {
+		return ""
+	}
+	return tcs.Annotations[AppliedUpgradeVersionKey]
 }
 
-// SetVersion sets the url links of the manifests.
-func (tcs *TektonConfigStatus) SetManifests(manifests []string) {
-}
-
-func (tcs *TektonConfigStatus) MarkInstallSucceeded() {
-	panic("implement me")
-}
-
-func (tcs *TektonConfigStatus) MarkInstallFailed(msg string) {
-	panic("implement me")
-}
-
-func (tcs *TektonConfigStatus) MarkDeploymentsAvailable() {
-	panic("implement me")
-}
-
-func (tcs *TektonConfigStatus) MarkDeploymentsNotReady() {
-	panic("implement me")
-}
-
-func (tcs *TektonConfigStatus) MarkDependenciesInstalled() {
-	panic("implement me")
-}
-
-func (tcs *TektonConfigStatus) MarkDependencyInstalling(msg string) {
-	panic("implement me")
-}
-
-func (tcs *TektonConfigStatus) MarkDependencyMissing(msg string) {
-	panic("implement me")
+// updates applied upgrade version
+func (tcs *TektonConfigStatus) SetAppliedUpgradeVersion(appliedUpgradeVersion string) {
+	if tcs.Annotations == nil {
+		tcs.Annotations = map[string]string{}
+	}
+	tcs.Annotations[AppliedUpgradeVersionKey] = appliedUpgradeVersion
 }

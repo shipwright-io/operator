@@ -66,11 +66,17 @@ type TektonAddonStatus struct {
 	AddonsInstallerSet map[string]string `json:"installerSets,omitempty"`
 }
 
+func (in *TektonAddonStatus) MarkInstallerSetAvailable() {
+	//TODO implement me
+	panic("implement me")
+}
+
 // Addon defines the field to customize Addon component
 type Addon struct {
 	// Params is the list of params passed for Addon customization
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// Deprecated, will be removed in further release
 	// EnablePAC field defines whether to install PAC
 	// +optional
 	EnablePAC *bool `json:"enablePipelinesAsCode,omitempty"`
