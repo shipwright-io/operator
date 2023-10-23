@@ -41,6 +41,10 @@ const (
 
 	// UseManagedWebhookCerts is an env Var that controls wether we install the webhook certs
 	UseManagedWebhookCerts = "USE_MANAGED_WEBHOOK_CERTS"
+
+	CertManagerInjectAnnotationKey = "cert-manager.io/inject-ca-from"
+
+	CertManagerInjectAnnotationValueTemplate = "%s/shipwright-build-webhook-cert"
 )
 
 // ShipwrightBuildReconciler reconciles a ShipwrightBuild object
@@ -157,12 +161,26 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 	}
 
-	// filtering out namespace resource, so it does not create new namespaces accidentally, and
-	// transforming object to target the namespace informed on the CRD (.spec.namespace)
+	// Applying transformers
+	// image transformers: Alow to inject custom component images
+	// namespace transformer: Allow installing in a specific namespace
+	// InjetAnnotation transformer for webhook certs management via cert manager
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ShipwrightImagePrefix))
+
+	transformerfncs := []manifestival.Transformer{}
+	if common.IsOpenShiftPlatform() {
+		transformerfncs = append(transformerfncs, manifestival.InjectNamespace(targetNamespace))
+		transformerfncs = append(transformerfncs, common.DeploymentImages(images))
+	} else {
+		transformerfncs = append(transformerfncs, manifestival.InjectNamespace(targetNamespace))
+		transformerfncs = append(transformerfncs, common.DeploymentImages(images))
+		transformerfncs = append(transformerfncs, common.InjectAnnotations(CertManagerInjectAnnotationKey, fmt.Sprintf(CertManagerInjectAnnotationValueTemplate, targetNamespace), common.Overwrite, "CustomResourceDefinition"))
+	}
+
 	manifest, err := r.Manifest.
 		Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
-		Transform(manifestival.InjectNamespace(targetNamespace), common.DeploymentImages(images))
+		Transform(transformerfncs...)
+
 	if err != nil {
 		logger.Error(err, "transforming manifests, injecting namespace")
 		return RequeueWithError(err)

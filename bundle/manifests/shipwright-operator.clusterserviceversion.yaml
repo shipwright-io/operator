@@ -24,7 +24,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/shipwright-io/operator
     support: The Shipwright Contributors
-  name: shipwright-operator.v0.11.0
+  name: shipwright-operator.v0.12.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -515,6 +515,24 @@ spec:
         - apiGroups:
           - ""
           resources:
+          - configmaps
+          - events
+          - limitranges
+          - namespaces
+          - pods
+          - secrets
+          - services
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
           - namespaces
           verbs:
           - create
@@ -524,25 +542,6 @@ spec:
           - patch
           - update
           - watch
-        - apiGroups:
-          - ""
-          resources:
-          - secrets
-          verbs:
-          - create
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ""
-          resourceNames:
-          - shipwright-build-webhook-cert
-          resources:
-          - secrets
-          verbs:
-          - delete
-          - patch
-          - update
         - apiGroups:
           - ""
           resources:
@@ -568,25 +567,6 @@ spec:
           - shipwright-build-webhook
           resources:
           - serviceaccounts
-          verbs:
-          - delete
-          - patch
-          - update
-        - apiGroups:
-          - ""
-          resources:
-          - services
-          verbs:
-          - create
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ""
-          resourceNames:
-          - shipwright-build-webhook
-          resources:
-          - services
           verbs:
           - delete
           - patch
@@ -901,4 +881,4 @@ spec:
   provider:
     name: The Shipwright Contributors
     url: https://shipwright.io
-  version: 0.11.0
+  version: 0.12.0

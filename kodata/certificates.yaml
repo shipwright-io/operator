@@ -14,8 +14,7 @@ metadata:
   namespace: shipwright-build
 spec:
   dnsNames:
-  - shipwright-build-webhook.shipwright-build.svc
-  - shipwright-build-webhook.shipwright-build.svc.cluster.local
+  - shp-build-webhook.shipwright-build.svc
   issuerRef:
     kind: Issuer
     name: selfsigned-issuer
