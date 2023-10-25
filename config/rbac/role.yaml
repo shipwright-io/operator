@@ -218,6 +218,7 @@ rules:
   resources:
   - shipwrightbuilds
   verbs:
+  - delete
   - get
   - list
   - patch

@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"sort"
+	errors2 "github.com/pkg/errors"
 	"github.com/go-logr/logr"
 	"github.com/manifestival/manifestival"
 	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
@@ -93,6 +95,12 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return Requeue()
 	}
 
+	bList := &v1alpha1.ShipwrightBuildList{}
+	err = r.Client.List(context.TODO(), bList, &client.ListOptions{})
+	if err != nil {
+		return ctrl.Result{}, errors2.Wrap(err, "failed listing all Shipwright instances")
+	}
+
 	// retrieving the ShipwrightBuild instance requested for reconcile
 	b := &v1alpha1.ShipwrightBuild{}
 	if err := r.Get(ctx, req.NamespacedName, b); err != nil {
@@ -102,6 +110,21 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 		logger.Error(err, "retrieving ShipwrightBuild object from cache")
 		return RequeueOnError(err)
+	}
+	if len(bList.Items) > 0 {
+		if len(bList.Items) > 1 {
+			sort.Slice(bList.Items, func(i, j int) bool {
+				return bList.Items[j].CreationTimestamp.After(bList.Items[i].CreationTimestamp.Time)
+			})
+		}
+		if bList.Items[0].Name != req.Name {
+			logger.Info("Ignoring ShipwrightBuild.operator.shipwright.io because one already exists and does not match existing name")
+			err = r.Client.Delete(context.TODO(), b, &client.DeleteOptions{})
+			if err != nil {
+				logger.Error(err, "failed to remove ShipwrightBuild.operator.shipwright.io instance")
+			}
+			return ctrl.Result{}, nil
+		}
 	}
 	init := b.Status.Conditions == nil
 	if init {
@@ -161,8 +184,8 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// transforming object to target the namespace informed on the CRD (.spec.namespace)
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ShipwrightImagePrefix))
 	manifest, err := r.Manifest.
-		Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
-		Transform(manifestival.InjectNamespace(targetNamespace), common.DeploymentImages(images))
+	Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
+	Transform(manifestival.InjectNamespace(targetNamespace), common.DeploymentImages(images))
 	if err != nil {
 		logger.Error(err, "transforming manifests, injecting namespace")
 		return RequeueWithError(err)
@@ -239,19 +262,19 @@ func (r *ShipwrightBuildReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.ShipwrightBuild{}, builder.WithPredicates(predicate.Funcs{
-			CreateFunc: func(ce event.CreateEvent) bool {
-				// all new objects must be subject to reconciliation
-				return true
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				// objects that haven't been confirmed deleted must be subject to reconciliation
-				return !e.DeleteStateUnknown
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				// objects that have updated generation must be subject to reconciliation
-				return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
-			},
-		})).
-		Complete(r)
+	For(&v1alpha1.ShipwrightBuild{}, builder.WithPredicates(predicate.Funcs{
+		CreateFunc: func(ce event.CreateEvent) bool {
+			// all new objects must be subject to reconciliation
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// objects that haven't been confirmed deleted must be subject to reconciliation
+			return !e.DeleteStateUnknown
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// objects that have updated generation must be subject to reconciliation
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+		},
+	})).
+	Complete(r)
 }
