@@ -2,6 +2,8 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: shipwright-build
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -74,6 +76,19 @@ rules:
     verbs: ['get', 'list', 'watch', 'create', 'update', 'delete']
 
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: shipwright-build-webhook
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "configmaps", "services", "events", "namespaces", "limitranges", "secrets"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["admissionregistration.k8s.io", "admissionregistration.k8s.io/v1beta1"]
+    resources: ["validatingwebhookconfigurations"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+
+---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -102,11 +117,47 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: shipwright-build-webhook
+  namespace: shipwright-build
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: shipwright-build-webhook
+subjects:
+  - kind: ServiceAccount
+    name: shipwright-build-webhook
+    namespace: shipwright-build
+
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: shipwright-build-controller
   namespace: shipwright-build
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shipwright-build-webhook
+  namespace: shipwright-build
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shp-build-webhook
+  namespace: shipwright-build
+spec:
+  ports:
+    - name: https-webhook
+      port: 443
+      targetPort: 8443
+  selector:
+    name: shp-build-webhook
 
 ---
 apiVersion: apps/v1
@@ -124,10 +175,12 @@ spec:
       labels:
         name: shipwright-build
     spec:
+      securityContext:
+        runAsNonRoot: true
       serviceAccountName: shipwright-build-controller
       containers:
         - name: shipwright-build
-          image: ghcr.io/shipwright-io/build/shipwright-build-controller:nightly-2023-09-15-1694754551@sha256:c98826726280b674cc701eae0d44069a21ab79c6e5b7c09be68dfb61d21486cd
+          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.12.0@sha256:ac0382011b8da676cdf77fbd607cd6287348f666a245b174ee213e87364f8c45
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -144,15 +197,15 @@ spec:
             - name: CONTROLLER_NAME
               value: "shipwright-build"
             - name: GIT_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/git:nightly-2023-09-15-1694754551@sha256:586392a3b79f728e4173dbc182d7413b1af0ca41c9c7315a3c9df0b7c28a1029
+              value: ghcr.io/shipwright-io/build/git:v0.12.0@sha256:06b90698211ace92f86304e0f5d440d85c15af637c2ef3dfb84b5a5800c373e7
             - name: GIT_ENABLE_REWRITE_RULE
               value: "false"
             - name: IMAGE_PROCESSING_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/image-processing:nightly-2023-09-15-1694754551@sha256:ed7ccde5baf42e9a46d6942bc67719937fbc154715b3ee77f41ba1e998732c50
+              value: ghcr.io/shipwright-io/build/image-processing:v0.12.0@sha256:9543eaa193b0e720a658f4c10801681af0486294838dab0de4afa15dda4cf9e0
             - name: BUNDLE_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/bundle:nightly-2023-09-15-1694754551@sha256:fae08c2404083ffce4abd67b2a66a9f8c536bf0ed3cee36b91ac970ac44b5488
+              value: ghcr.io/shipwright-io/build/bundle:v0.12.0@sha256:cc89d1b4631e335062856ceb537d2c4003424a79ac6d344905b9e1ac5ec58626
             - name: WAITER_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/waiter:nightly-2023-09-15-1694754551@sha256:f82169d7c0e0c320ffc4e018afd01f0e7d10863e09d2979cdcba1e8bac7097ab
+              value: ghcr.io/shipwright-io/build/waiter:v0.12.0@sha256:442feead12d55ebf6ab4d0a77abbc7e075d9d885daee95cedb14981262b30a09
           ports:
             - containerPort: 8383
               name: metrics-port
@@ -168,6 +221,68 @@ spec:
               port: metrics-port
             initialDelaySeconds: 5
             periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipwright-build-webhook
+  namespace: shipwright-build
+  labels:
+    app: shp-build-webhook
+spec:
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      name: shp-build-webhook
+  template:
+    metadata:
+      name: shp-build-webhook
+      labels:
+        name: shp-build-webhook
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: shipwright-build-webhook
+      containers:
+        - name: shp-build-webhook
+          image: ghcr.io/shipwright-io/build/shipwright-build-webhook:v0.12.0@sha256:3a8995ab201890369ce88241a50ff0442c3044a4263791b107b36c96488e7b3e
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+          ports:
+            - containerPort: 8443
+              name: https-port
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+      volumes:
+        - name: webhook-certs
+          secret:
+            secretName: shipwright-build-webhook-cert
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -213,93 +328,12 @@ rules:
     verbs: ['get', 'list', 'watch']
 
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: shipwright-build-webhook
-rules:
-- apiGroups: ['admissionregistration.k8s.io', 'admissionregistration.k8s.io/v1beta1']
-  resources: ['validatingwebhookconfigurations']
-  verbs: ['create', 'delete', 'get', 'list', 'patch', 'update', 'watch']
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: shipwright-build-webhook
-  namespace: shipwright-build
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: shipwright-build-webhook
-subjects:
-- kind: ServiceAccount
-  name: shipwright-build-webhook
-  namespace: shipwright-build
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: shipwright-build-webhook
-  namespace: shipwright-build
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: shipwright-build-webhook
-  namespace: shipwright-build
-  labels:
-    app: shipwright-build-webhook
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      name: shipwright-build-webhook
-  template:
-    metadata:
-      name: shipwright-build-webhook
-      labels:
-        name: shipwright-build-webhook
-    spec:
-      serviceAccountName: shipwright-build-webhook
-      containers:
-      - name:  shipwright-build-webhook
-        image: ghcr.io/shipwright-io/build/shipwright-build-webhook:v0.11.0@sha256:2e233aa016a42c63d29ff38ea2ac822d0070d4e5a744d50d187697accdbac27f
-        volumeMounts:
-        - name: webhook-certs
-          mountPath: /etc/webhook/certs
-          readOnly: true
-        ports:
-        - containerPort: 8443
-          name: https-port
-      volumes:
-        - name: webhook-certs
-          secret:
-            secretName: shipwright-build-webhook-cert
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: shipwright-build-webhook
-  namespace: shipwright-build
-spec:
-  ports:
-  - name: https-webhook
-    port: 443
-    targetPort: 8443
-  selector:
-    name: shipwright-build-webhook
-
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: shipwright-build/shipwright-build-webhook-cert
-    controller-gen.kubebuilder.io/version: v0.10.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.11.4
   name: buildruns.shipwright.io
 spec:
   conversion:
@@ -307,7 +341,7 @@ spec:
     webhook:
       clientConfig:
         service:
-          name: shipwright-build-webhook
+          name: shp-build-webhook
           namespace: shipwright-build
           path: /convert
       conversionReviewVersions:
@@ -886,13 +920,26 @@ spec:
                                           type: string
                                         name:
                                           type: string
+                                        namespace:
+                                          type: string
                                       required:
                                       - kind
                                       - name
                                       type: object
-                                      x-kubernetes-map-type: atomic
                                     resources:
                                       properties:
+                                        claims:
+                                          items:
+                                            properties:
+                                              name:
+                                                type: string
+                                            required:
+                                            - name
+                                            type: object
+                                          type: array
+                                          x-kubernetes-list-map-keys:
+                                          - name
+                                          x-kubernetes-list-type: map
                                         limits:
                                           additionalProperties:
                                             anyOf:
@@ -1780,13 +1827,26 @@ spec:
                                       type: string
                                     name:
                                       type: string
+                                    namespace:
+                                      type: string
                                   required:
                                   - kind
                                   - name
                                   type: object
-                                  x-kubernetes-map-type: atomic
                                 resources:
                                   properties:
+                                    claims:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                        required:
+                                        - name
+                                        type: object
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
                                     limits:
                                       additionalProperties:
                                         anyOf:
@@ -2784,13 +2844,26 @@ spec:
                                           type: string
                                         name:
                                           type: string
+                                        namespace:
+                                          type: string
                                       required:
                                       - kind
                                       - name
                                       type: object
-                                      x-kubernetes-map-type: atomic
                                     resources:
                                       properties:
+                                        claims:
+                                          items:
+                                            properties:
+                                              name:
+                                                type: string
+                                            required:
+                                            - name
+                                            type: object
+                                          type: array
+                                          x-kubernetes-list-map-keys:
+                                          - name
+                                          x-kubernetes-list-type: map
                                         limits:
                                           additionalProperties:
                                             anyOf:
@@ -3462,6 +3535,8 @@ spec:
                             type: object
                           image:
                             type: string
+                          insecure:
+                            type: boolean
                           labels:
                             additionalProperties:
                               type: string
@@ -3567,6 +3642,13 @@ spec:
                               url:
                                 type: string
                             type: object
+                          local:
+                            properties:
+                              name:
+                                type: string
+                              timeout:
+                                type: string
+                            type: object
                           ociArtifact:
                             properties:
                               image:
@@ -3583,8 +3665,6 @@ spec:
                         type: object
                       strategy:
                         properties:
-                          apiVersion:
-                            type: string
                           kind:
                             type: string
                           name:
@@ -3866,13 +3946,26 @@ spec:
                                               type: string
                                             name:
                                               type: string
+                                            namespace:
+                                              type: string
                                           required:
                                           - kind
                                           - name
                                           type: object
-                                          x-kubernetes-map-type: atomic
                                         resources:
                                           properties:
+                                            claims:
+                                              items:
+                                                properties:
+                                                  name:
+                                                    type: string
+                                                required:
+                                                - name
+                                                type: object
+                                              type: array
+                                              x-kubernetes-list-map-keys:
+                                              - name
+                                              x-kubernetes-list-type: map
                                             limits:
                                               additionalProperties:
                                                 anyOf:
@@ -4420,6 +4513,8 @@ spec:
                     type: object
                   image:
                     type: string
+                  insecure:
+                    type: boolean
                   labels:
                     additionalProperties:
                       type: string
@@ -4506,6 +4601,18 @@ spec:
                 type: object
               serviceAccount:
                 type: string
+              source:
+                properties:
+                  local:
+                    properties:
+                      name:
+                        type: string
+                      timeout:
+                        type: string
+                    type: object
+                  type:
+                    type: string
+                type: object
               state:
                 type: string
               timeout:
@@ -4733,13 +4840,26 @@ spec:
                                       type: string
                                     name:
                                       type: string
+                                    namespace:
+                                      type: string
                                   required:
                                   - kind
                                   - name
                                   type: object
-                                  x-kubernetes-map-type: atomic
                                 resources:
                                   properties:
+                                    claims:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                        required:
+                                        - name
+                                        type: object
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
                                     limits:
                                       additionalProperties:
                                         anyOf:
@@ -5209,6 +5329,8 @@ spec:
                   - name
                   type: object
                 type: array
+            required:
+            - build
             type: object
           status:
             properties:
@@ -5286,6 +5408,8 @@ spec:
                         type: object
                       image:
                         type: string
+                      insecure:
+                        type: boolean
                       labels:
                         additionalProperties:
                           type: string
@@ -5391,6 +5515,13 @@ spec:
                           url:
                             type: string
                         type: object
+                      local:
+                        properties:
+                          name:
+                            type: string
+                          timeout:
+                            type: string
+                        type: object
                       ociArtifact:
                         properties:
                           image:
@@ -5407,8 +5538,6 @@ spec:
                     type: object
                   strategy:
                     properties:
-                      apiVersion:
-                        type: string
                       kind:
                         type: string
                       name:
@@ -5690,13 +5819,26 @@ spec:
                                           type: string
                                         name:
                                           type: string
+                                        namespace:
+                                          type: string
                                       required:
                                       - kind
                                       - name
                                       type: object
-                                      x-kubernetes-map-type: atomic
                                     resources:
                                       properties:
+                                        claims:
+                                          items:
+                                            properties:
+                                              name:
+                                                type: string
+                                            required:
+                                            - name
+                                            type: object
+                                          type: array
+                                          x-kubernetes-list-map-keys:
+                                          - name
+                                          x-kubernetes-list-type: map
                                         limits:
                                           additionalProperties:
                                             anyOf:
@@ -6218,29 +6360,23 @@ spec:
                     format: int64
                     type: integer
                 type: object
-              sources:
-                items:
-                  properties:
-                    git:
-                      properties:
-                        branchName:
-                          type: string
-                        commitAuthor:
-                          type: string
-                        commitSha:
-                          type: string
-                      type: object
-                    name:
-                      type: string
-                    ociArtifact:
-                      properties:
-                        digest:
-                          type: string
-                      type: object
-                  required:
-                  - name
-                  type: object
-                type: array
+              source:
+                properties:
+                  git:
+                    properties:
+                      branchName:
+                        type: string
+                      commitAuthor:
+                        type: string
+                      commitSha:
+                        type: string
+                    type: object
+                  ociArtifact:
+                    properties:
+                      digest:
+                        type: string
+                    type: object
+                type: object
               startTime:
                 format: date-time
                 type: string
@@ -6261,8 +6397,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: shipwright-build/shipwright-build-webhook-cert
-    controller-gen.kubebuilder.io/version: v0.10.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.11.4
   name: builds.shipwright.io
 spec:
   conversion:
@@ -6270,7 +6405,7 @@ spec:
     webhook:
       clientConfig:
         service:
-          name: shipwright-build-webhook
+          name: shp-build-webhook
           namespace: shipwright-build
           path: /convert
       conversionReviewVersions:
@@ -6840,13 +6975,26 @@ spec:
                                       type: string
                                     name:
                                       type: string
+                                    namespace:
+                                      type: string
                                   required:
                                   - kind
                                   - name
                                   type: object
-                                  x-kubernetes-map-type: atomic
                                 resources:
                                   properties:
+                                    claims:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                        required:
+                                        - name
+                                        type: object
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
                                     limits:
                                       additionalProperties:
                                         anyOf:
@@ -7443,6 +7591,8 @@ spec:
                     type: object
                   image:
                     type: string
+                  insecure:
+                    type: boolean
                   labels:
                     additionalProperties:
                       type: string
@@ -7548,6 +7698,13 @@ spec:
                       url:
                         type: string
                     type: object
+                  local:
+                    properties:
+                      name:
+                        type: string
+                      timeout:
+                        type: string
+                    type: object
                   ociArtifact:
                     properties:
                       image:
@@ -7564,8 +7721,6 @@ spec:
                 type: object
               strategy:
                 properties:
-                  apiVersion:
-                    type: string
                   kind:
                     type: string
                   name:
@@ -7847,13 +8002,26 @@ spec:
                                       type: string
                                     name:
                                       type: string
+                                    namespace:
+                                      type: string
                                   required:
                                   - kind
                                   - name
                                   type: object
-                                  x-kubernetes-map-type: atomic
                                 resources:
                                   properties:
+                                    claims:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                        required:
+                                        - name
+                                        type: object
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
                                     limits:
                                       additionalProperties:
                                         anyOf:
@@ -8351,8 +8519,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: shipwright-build/shipwright-build-webhook-cert
-    controller-gen.kubebuilder.io/version: v0.10.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.11.4
   name: buildstrategies.shipwright.io
 spec:
   conversion:
@@ -8360,7 +8527,7 @@ spec:
     webhook:
       clientConfig:
         service:
-          name: shipwright-build-webhook
+          name: shp-build-webhook
           namespace: shipwright-build
           path: /convert
       conversionReviewVersions:
@@ -8777,6 +8944,18 @@ spec:
                       type: object
                     resources:
                       properties:
+                        claims:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          type: array
+                          x-kubernetes-list-map-keys:
+                          - name
+                          x-kubernetes-list-type: map
                         limits:
                           additionalProperties:
                             anyOf:
@@ -9237,13 +9416,26 @@ spec:
                                       type: string
                                     name:
                                       type: string
+                                    namespace:
+                                      type: string
                                   required:
                                   - kind
                                   - name
                                   type: object
-                                  x-kubernetes-map-type: atomic
                                 resources:
                                   properties:
+                                    claims:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                        required:
+                                        - name
+                                        type: object
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
                                     limits:
                                       additionalProperties:
                                         anyOf:
@@ -9850,6 +10042,18 @@ spec:
                       type: string
                     resources:
                       properties:
+                        claims:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          type: array
+                          x-kubernetes-list-map-keys:
+                          - name
+                          x-kubernetes-list-type: map
                         limits:
                           additionalProperties:
                             anyOf:
@@ -10178,13 +10382,26 @@ spec:
                                       type: string
                                     name:
                                       type: string
+                                    namespace:
+                                      type: string
                                   required:
                                   - kind
                                   - name
                                   type: object
-                                  x-kubernetes-map-type: atomic
                                 resources:
                                   properties:
+                                    claims:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                        required:
+                                        - name
+                                        type: object
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
                                     limits:
                                       additionalProperties:
                                         anyOf:
@@ -10671,8 +10888,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: shipwright-build/shipwright-build-webhook-cert
-    controller-gen.kubebuilder.io/version: v0.10.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.11.4
   name: clusterbuildstrategies.shipwright.io
 spec:
   conversion:
@@ -10680,7 +10896,7 @@ spec:
     webhook:
       clientConfig:
         service:
-          name: shipwright-build-webhook
+          name: shp-build-webhook
           namespace: shipwright-build
           path: /convert
       conversionReviewVersions:
@@ -11097,6 +11313,18 @@ spec:
                       type: object
                     resources:
                       properties:
+                        claims:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          type: array
+                          x-kubernetes-list-map-keys:
+                          - name
+                          x-kubernetes-list-type: map
                         limits:
                           additionalProperties:
                             anyOf:
@@ -11557,13 +11785,26 @@ spec:
                                       type: string
                                     name:
                                       type: string
+                                    namespace:
+                                      type: string
                                   required:
                                   - kind
                                   - name
                                   type: object
-                                  x-kubernetes-map-type: atomic
                                 resources:
                                   properties:
+                                    claims:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                        required:
+                                        - name
+                                        type: object
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
                                     limits:
                                       additionalProperties:
                                         anyOf:
@@ -12170,6 +12411,18 @@ spec:
                       type: string
                     resources:
                       properties:
+                        claims:
+                          items:
+                            properties:
+                              name:
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          type: array
+                          x-kubernetes-list-map-keys:
+                          - name
+                          x-kubernetes-list-type: map
                         limits:
                           additionalProperties:
                             anyOf:
@@ -12498,13 +12751,26 @@ spec:
                                       type: string
                                     name:
                                       type: string
+                                    namespace:
+                                      type: string
                                   required:
                                   - kind
                                   - name
                                   type: object
-                                  x-kubernetes-map-type: atomic
                                 resources:
                                   properties:
+                                    claims:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                        required:
+                                        - name
+                                        type: object
+                                      type: array
+                                      x-kubernetes-list-map-keys:
+                                      - name
+                                      x-kubernetes-list-type: map
                                     limits:
                                       additionalProperties:
                                         anyOf:
@@ -12985,3 +13251,6 @@ spec:
     subresources:
       status: {}
 
+
+
+---

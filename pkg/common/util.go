@@ -152,3 +152,47 @@ func BoolFromEnvVar(envVar string) bool {
 	}
 	return false
 }
+
+// injectAnnotations adds annotation key:value to a resource annotations
+// overwritePolicy (Retain/Overwrite) decides whehther to overwrite an already existing annotation
+// []kinds specify the Kinds on which the label should be applied
+// if len(kinds) = 0, label will be apllied to all/any resources irrespective of its Kind
+func InjectAnnotations(key, value string, overwritePolicy int, kinds ...string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := u.GetKind()
+		if len(kinds) != 0 && !itemInSlice(kind, kinds) {
+			return nil
+		}
+		annotations, found, err := unstructured.NestedStringMap(u.Object, "metadata", "annotations")
+		if err != nil {
+			return fmt.Errorf("could not find annotation set, %q", err)
+		}
+		if overwritePolicy == Retain && found {
+			if _, ok := annotations[key]; ok {
+				return nil
+			}
+		}
+		if !found {
+			annotations = map[string]string{}
+		}
+		annotations[key] = value
+		err = unstructured.SetNestedStringMap(u.Object, annotations, "metadata", "annotations")
+		if err != nil {
+			return fmt.Errorf("error updating annotations for %s:%s, %s", kind, u.GetName(), err)
+		}
+		return nil
+	}
+}
+
+func itemInSlice(item string, items []string) bool {
+	for _, v := range items {
+		if v == item {
+			return true
+		}
+	}
+	return false
+}
+
+func IsOpenShiftPlatform() bool {
+	return os.Getenv("PLATFORM") == "openshift"
+}

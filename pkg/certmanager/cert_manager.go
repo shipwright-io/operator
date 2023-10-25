@@ -4,12 +4,19 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/go-logr/logr"
-	"github.com/manifestival/manifestival"
-	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
+	mf "github.com/manifestival/manifestival"
 	"github.com/shipwright-io/operator/pkg/common"
+	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	certDomainsTemplate = []string{
+		"shp-build-webhook.%s.svc",
+	}
 )
 
 func ReconcileCertManager(ctx context.Context, crdClient crdclientv1.ApiextensionsV1Interface, client client.Client, logger logr.Logger, namespace string) (bool, error) {
@@ -32,8 +39,9 @@ func ReconcileCertManager(ctx context.Context, crdClient crdclientv1.Apiextensio
 		return true, fmt.Errorf("Error creating inital certificates manifest")
 	}
 	manifest, err = manifest.
-		Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
-		Transform(manifestival.InjectNamespace(namespace))
+		Filter(mf.Not(mf.ByKind("Namespace"))).
+		Transform(mf.InjectNamespace(namespace), injectDnsNames(buildCertDomains(namespace)))
+
 	if err != nil {
 		return true, fmt.Errorf("Error transorming manifest using target namespace")
 	}
@@ -51,4 +59,35 @@ func isCertificatesInstalled(ctx context.Context, client crdclientv1.Apiextensio
 
 func isCertManagerOperatorInstalled(ctx context.Context, client crdclientv1.ApiextensionsV1Interface) (bool, error) {
 	return common.CRDExist(ctx, client, "certmanagers.operator.openshift.io")
+}
+
+// injectDnsNames adds DnsNames to Certificate.spec manifest
+func injectDnsNames(domains []string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := u.GetKind()
+		if u.GetKind() != "Certificate" {
+			return nil
+		}
+
+		for _, domain := range domains {
+			if !govalidator.IsDNSName(domain) {
+				return fmt.Errorf("'%s' is not a valid dns name", domain)
+			}
+		}
+
+		err := unstructured.SetNestedStringSlice(u.Object, domains, "spec", "dnsNames")
+		if err != nil {
+			return fmt.Errorf("error updating dnsNames for %s:%s, %s", kind, u.GetName(), err)
+		}
+		return nil
+	}
+}
+
+// buildCertDomains injects namespace and returns a slice of svc dnsdomains
+func buildCertDomains(targetNamespace string) []string {
+	domains := []string{}
+	for _, t := range certDomainsTemplate {
+		domains = append(domains, fmt.Sprintf(t, targetNamespace))
+	}
+	return domains
 }

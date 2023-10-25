@@ -137,6 +137,24 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
+  - events
+  - limitranges
+  - namespaces
+  - pods
+  - secrets
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - namespaces
   verbs:
   - create
@@ -146,25 +164,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resourceNames:
-  - shipwright-build-webhook-cert
-  resources:
-  - secrets
-  verbs:
-  - delete
-  - patch
-  - update
 - apiGroups:
   - ""
   resources:
@@ -190,25 +189,6 @@ rules:
   - shipwright-build-webhook
   resources:
   - serviceaccounts
-  verbs:
-  - delete
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resourceNames:
-  - shipwright-build-webhook
-  resources:
-  - services
   verbs:
   - delete
   - patch
