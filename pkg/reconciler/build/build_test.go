@@ -72,7 +72,7 @@ func TestReconcileBuildStrategy(t *testing.T) {
 				},
 			},
 			webhookdeployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "shipwright-build", Name: "shp-build-webhook"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: "shipwright-build", Name: "shipwright-build-webhook"},
 				Status: appsv1.DeploymentStatus{
 					Conditions: []appsv1.DeploymentCondition{{
 						Type:   appsv1.DeploymentAvailable,

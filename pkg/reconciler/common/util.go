@@ -222,5 +222,5 @@ func GetWebhookDeploymentName() string {
 	if IsOpenShiftPlatform() {
 		return "openshift-builds-webhook"
 	}
-	return "shp-build-webhook"
+	return "shipwright-build-webhook"
 }

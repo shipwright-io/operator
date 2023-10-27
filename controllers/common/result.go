@@ -28,5 +28,5 @@ func NoRequeue() (ctrl.Result, error) {
 // RequeueAfterWithError allows a Reconciler to override the
 // exponential backoff behavior of the Controller, rescheduling the Request at a given time in the future.
 func RequeueAfterWithError(err error) (ctrl.Result, error) {
-	return ctrl.Result{RequeueAfter: 5 * time.Second}, err
+	return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 }

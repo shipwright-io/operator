@@ -11,7 +11,7 @@ package controllers
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,resourceNames=shipwright-build-controller,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch;create
-// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,resourceNames=builds.shipwright.io;buildruns.shipwright.io;buildstrategies.shipwright.io;clusterbuildstrategies.shipwright.io,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,resourceNames=builds.shipwright.io;buildruns.shipwright.io;buildstrategies.shipwright.io;clusterbuildstrategies.shipwright.io,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles,verbs=get;list;watch;create
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles,resourceNames=shipwright-build-aggregate-edit,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles,resourceNames=shipwright-build-aggregate-view,verbs=update;patch;delete
@@ -40,3 +40,4 @@ package controllers
 // +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=get;list;watch;create
 // +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,resourceNames=shipwright-build-webhook-cert,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods;events;configmaps;secrets;limitranges;namespaces;services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=shipwright.io,resources=clusterbuildstrategies;buildstrategies,verbs=get;list;watch;create;update;patch;delete

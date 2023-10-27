@@ -426,9 +426,13 @@ spec:
           resources:
           - customresourcedefinitions
           verbs:
+          - create
           - delete
+          - get
+          - list
           - patch
           - update
+          - watch
         - apiGroups:
           - apps
           resources:
@@ -739,6 +743,19 @@ spec:
           - delete
           - patch
           - update
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - buildstrategies
+          - clusterbuildstrategies
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - authentication.k8s.io
           resources:
