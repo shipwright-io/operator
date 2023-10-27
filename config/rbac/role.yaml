@@ -361,3 +361,16 @@ rules:
   - delete
   - patch
   - update
+- apiGroups:
+  - shipwright.io
+  resources:
+  - buildstrategies
+  - clusterbuildstrategies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
