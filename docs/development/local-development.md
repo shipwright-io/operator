@@ -3,7 +3,7 @@
 ## Prerequisites
 
 * Ensure you have access to a Kubernetes cluster via `kubectl` with cluster admin permissions.
-* Install Go version 1.18 or higher.
+* Install [Go](https://go.dev/doc/install) version 1.20 or higher.
 
 ## Building locally
 
@@ -28,7 +28,7 @@ The following make options can be set:
 * `VERSION` - defaults to the current version of Shipwright.
   This must be a valid [semantic version](https://semver.org/), and will be used as the tag for the resulting image.
 
-Refer to the [ko documentation](https://github.com/google/ko#local-publishing-options) for more information.
+Refer to the [ko documentation](https://ko.build/) for more information.
 
 ## Deploy to Kubernetes
 
