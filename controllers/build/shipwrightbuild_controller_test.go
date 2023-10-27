@@ -1,13 +1,13 @@
-package controllers
+package build
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/shipwright-io/operator/pkg/common"
-
 	o "github.com/onsi/gomega"
+	commonctrl "github.com/shipwright-io/operator/controllers/common"
+	"github.com/shipwright-io/operator/pkg/common"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +44,8 @@ func bootstrapShipwrightBuildReconciler(
 
 	logger := zap.New()
 
-	c := fake.NewFakeClientWithScheme(s, b) //nolint:golint,staticcheck
+	c := fake.NewClientBuilder().WithScheme(s).WithObjects(b).Build()
+
 	var crdClient *crdclientv1.Clientset
 	var toClient *tektonoperatorv1alpha1client.Clientset
 	if len(tcrds) > 0 {
@@ -99,7 +100,7 @@ func TestShipwrightBuildReconciler_Finalizers(t *testing.T) {
 		err := r.setFinalizer(context.TODO(), b)
 
 		g.Expect(err).To(o.BeNil())
-		g.Expect(b.GetFinalizers()).To(o.Equal([]string{FinalizerAnnotation}))
+		g.Expect(b.GetFinalizers()).To(o.Equal([]string{commonctrl.FinalizerAnnotation}))
 	})
 
 	// removing previously added finalizer entry, making sure slice it's empty afterwards
@@ -216,7 +217,7 @@ func TestShipwrightBuildReconciler_Reconcile(t *testing.T) {
 		targetNamespace: "namespace",
 	}, {
 		testName:        "target namespace is not informed",
-		targetNamespace: defaultTargetNamespace,
+		targetNamespace: commonctrl.DefaultTargetNamespace,
 	}}
 
 	for _, tt := range tests {

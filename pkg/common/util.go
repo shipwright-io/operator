@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
@@ -23,19 +24,20 @@ import (
 )
 
 // setupManifestival instantiate manifestival
-func SetupManifestival(client client.Client, manifestFile string, logger logr.Logger) (manifestival.Manifest, error) {
+func SetupManifestival(client client.Client, pathnames []string, logger logr.Logger) (manifestival.Manifest, error) {
 	mfclient := mfc.NewClient(client)
-
-	dataPath, err := koDataPath()
+	dataPath, err := KoDataPath()
 	if err != nil {
 		return manifestival.Manifest{}, err
 	}
-	manifest := filepath.Join(dataPath, manifestFile)
-	return manifestival.NewManifest(manifest, manifestival.UseClient(mfclient), manifestival.UseLogger(logger))
+	for i, v := range pathnames {
+		pathnames[i] = filepath.Join(dataPath, strings.TrimSpace(v))
+	}
+	return manifestival.NewManifest(strings.Join(pathnames, ","), manifestival.UseClient(mfclient), manifestival.UseLogger(logger))
 }
 
 // koDataPath retrieve the data path environment variable, returning error when not found.
-func koDataPath() (string, error) {
+func KoDataPath() (string, error) {
 	dataPath, exists := os.LookupEnv(koDataPathEnv)
 	if !exists {
 		return "", fmt.Errorf("'%s' is not set", koDataPathEnv)
@@ -193,6 +195,59 @@ func itemInSlice(item string, items []string) bool {
 	return false
 }
 
-func IsOpenShiftPlatform() bool {
-	return os.Getenv("PLATFORM") == "openshift"
+func isPodRunning(pod corev1.Pod) bool {
+	if pod.Status.Phase != corev1.PodRunning || pod.DeletionTimestamp != nil {
+		return false
+	}
+
+	for _, condtion := range pod.Status.Conditions {
+		if condtion.Type == corev1.PodReady && condtion.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func GetTimeout() time.Duration {
+	if timeout := os.Getenv("TIMEOUT"); timeout != "" && timeout != "0" {
+		tm, _ := time.ParseDuration(timeout)
+		return tm
+	}
+	return Timeout
+}
+
+func WaitForPodRunning(ctx context.Context, c client.Client, labels client.MatchingLabels, logger logr.Logger, targetNamespace string) error {
+	webhookTimeout := time.NewTimer(GetTimeout())
+	defer webhookTimeout.Stop()
+
+	webhookTicker := time.NewTicker(10 * time.Second)
+	defer webhookTicker.Stop()
+
+	for {
+		select {
+		case <-webhookTimeout.C:
+			return fmt.Errorf("Timed out waiting for the webhook pods to be ready and running")
+		case <-webhookTicker.C:
+			listOps := []client.ListOption{
+				client.InNamespace(targetNamespace),
+				labels,
+			}
+
+			pods := corev1.PodList{}
+			if err := c.List(ctx, &pods, listOps...); err != nil {
+				// We continue check periodically
+				logger.Error(err, "Error getting webhook pod: %v, retrying in 10s")
+			}
+
+			if len(pods.Items) == 0 {
+				logger.Info("Waiting for webhook pod to be ready and running")
+			}
+
+			for _, pod := range pods.Items {
+				if isPodRunning(pod) {
+					return nil
+				}
+			}
+		}
+	}
 }

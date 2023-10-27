@@ -1,5 +1,9 @@
 package common
 
+import (
+	"time"
+)
+
 const (
 	koDataPathEnv         = "KO_DATA_PATH"
 	ShipwrightImagePrefix = "IMAGE_SHIPWRIGHT_"
@@ -10,4 +14,11 @@ const (
 
 	Retain int = iota
 	Overwrite
+
+	CertificateDataDir   = "certificates"
+	BuildDataDir         = "build"
+	BuildStrategyDataDir = "buildstrategy"
+
+	APICallRetryInterval = 500 * time.Millisecond
+	Timeout              = 300 * time.Second
 )

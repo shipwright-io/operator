@@ -34,7 +34,7 @@ func ReconcileCertManager(ctx context.Context, crdClient crdclientv1.Apiextensio
 		}
 	}
 
-	manifest, err := common.SetupManifestival(client, "certificates.yaml", logger)
+	manifest, err := common.SetupManifestival(client, []string{common.CertificateDataDir}, logger)
 	if err != nil {
 		return true, fmt.Errorf("Error creating inital certificates manifest")
 	}

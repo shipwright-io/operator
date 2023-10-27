@@ -10,8 +10,7 @@ import (
 	"testing"
 	"time"
 
-	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
+	"github.com/shipwright-io/operator/controllers/build"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -21,7 +20,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -45,9 +43,7 @@ func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 	SetDefaultEventuallyTimeout(restTimeout)
 	SetDefaultEventuallyPollingInterval(restRetry)
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+	RunSpecs(t, "Controller Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -77,17 +73,7 @@ var _ = BeforeSuite(func() {
 		Scheme: scheme.Scheme,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	crdClient, err := crdclientv1.NewForConfig(mgr.GetConfig())
-	Expect(err).NotTo(HaveOccurred())
-	toClient, err := tektonoperatorv1alpha1client.NewForConfig(mgr.GetConfig())
-	Expect(err).NotTo(HaveOccurred())
-	err = (&ShipwrightBuildReconciler{
-		CRDClient:            crdClient,
-		TektonOperatorClient: toClient,
-		Client:               mgr.GetClient(),
-		Scheme:               scheme.Scheme,
-		Logger:               ctrl.Log.WithName("controllers").WithName("shipwrightbuild"),
-	}).SetupWithManager(mgr)
+	err = build.Add(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
 	go func() {

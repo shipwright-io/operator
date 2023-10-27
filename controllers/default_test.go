@@ -3,6 +3,7 @@ package controllers
 import (
 	g "github.com/onsi/ginkgo"
 	o "github.com/onsi/gomega"
+	commonctrl "github.com/shipwright-io/operator/controllers/common"
 	"github.com/shipwright-io/operator/pkg/common"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -141,7 +142,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		// when the finalizer is in place, the deployment of manifest elements is done, and therefore
 		// functional testing can proceed
 		g.By("waiting for the finalizer to be set")
-		test.EventuallyContainFinalizer(ctx, k8sClient, build, FinalizerAnnotation)
+		test.EventuallyContainFinalizer(ctx, k8sClient, build, commonctrl.FinalizerAnnotation)
 	})
 
 	g.AfterEach(func() {
