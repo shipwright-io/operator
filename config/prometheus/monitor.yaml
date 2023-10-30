@@ -5,6 +5,7 @@ kind: ServiceMonitor
 metadata:
   labels:
     app: shipwright-operator
+    control-plane: controller-manager
   name: operator-metrics-monitor
   namespace: system
 spec:
@@ -18,3 +19,4 @@ spec:
   selector:
     matchLabels:
       app: shipwright-operator
+      control-plane: controller-manager

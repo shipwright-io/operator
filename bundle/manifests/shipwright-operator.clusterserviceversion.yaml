@@ -20,7 +20,7 @@ metadata:
     certified: "false"
     containerImage: ko://github.com/shipwright-io/operator
     description: Shipwright is a framework for building container images on Kubernetes.
-    operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.17.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/shipwright-io/operator
     support: The Shipwright Contributors
@@ -759,13 +759,15 @@ spec:
           selector:
             matchLabels:
               app: shipwright-operator
+              control-plane: controller-manager
           strategy: {}
           template:
             metadata:
               annotations:
-                kubectl.kubernetes.io/default-container: operator
+                kubectl.kubernetes.io/default-container: manager
               labels:
                 app: shipwright-operator
+                control-plane: controller-manager
             spec:
               containers:
               - args:
@@ -800,7 +802,7 @@ spec:
                     port: 8081
                   initialDelaySeconds: 15
                   periodSeconds: 20
-                name: operator
+                name: manager
                 readinessProbe:
                   httpGet:
                     path: /readyz
