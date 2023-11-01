@@ -7,6 +7,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/go-logr/logr"
 	"github.com/manifestival/manifestival"
@@ -25,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/shipwright-io/operator/api/v1alpha1"
+	"github.com/shipwright-io/operator/pkg/buildstrategy"
 	"github.com/shipwright-io/operator/pkg/certmanager"
 	"github.com/shipwright-io/operator/pkg/common"
 	"github.com/shipwright-io/operator/pkg/tekton"
@@ -53,10 +55,11 @@ type ShipwrightBuildReconciler struct {
 	CRDClient            crdclientv1.ApiextensionsV1Interface
 	TektonOperatorClient tektonoperatorv1alpha1client.OperatorV1alpha1Interface
 
-	Logger         logr.Logger           // decorated logger
-	Scheme         *runtime.Scheme       // runtime scheme
-	Manifest       manifestival.Manifest // release manifests render
-	TektonManifest manifestival.Manifest // Tekton release manifest render
+	Logger                logr.Logger           // decorated logger
+	Scheme                *runtime.Scheme       // runtime scheme
+	Manifest              manifestival.Manifest // release manifests render
+	TektonManifest        manifestival.Manifest // Tekton release manifest render
+	BuildStrategyManifest manifestival.Manifest // Build strategies manifest to render
 }
 
 // setFinalizer append finalizer on the resource, and uses local client to update it immediately.
@@ -195,6 +198,11 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			logger.Info("Finalizers removed, deletion of manifests completed!")
 			return NoRequeue()
 		}
+		logger.Info("Deleting cluster build strategies")
+		if err := r.BuildStrategyManifest.Delete(); err != nil {
+			logger.Error(err, "deleting cluster build strategies")
+			return RequeueWithError(err)
+		}
 
 		logger.Info("Deleting manifests...")
 		if err := manifest.Delete(); err != nil {
@@ -229,6 +237,29 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		logger.Error(err, "setting the finalizer")
 		return RequeueWithError(err)
 	}
+
+	requeue, err = buildstrategy.ReconcileBuildStrategies(ctx,
+		r.CRDClient,
+		logger,
+		r.BuildStrategyManifest)
+	if err != nil {
+		logger.Error(err, "reconcile cluster build strategies")
+		return RequeueWithError(err)
+	}
+	if requeue {
+		logger.Info("requeue waiting for cluster build strategy preconditions")
+		apimeta.SetStatusCondition(&b.Status.Conditions, metav1.Condition{
+			Type:    ConditionReady,
+			Status:  metav1.ConditionUnknown,
+			Reason:  "ClusterBuildStrategiesWaiting",
+			Message: "Waiting for cluster build strategies to be deployed",
+		})
+		if updateErr := r.Client.Status().Update(ctx, b); updateErr != nil {
+			return RequeueWithError(err)
+		}
+		return Requeue()
+	}
+
 	apimeta.SetStatusCondition(&b.Status.Conditions, metav1.Condition{
 		Type:    ConditionReady,
 		Status:  metav1.ConditionTrue,
@@ -246,8 +277,15 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 // setupManifestival instantiate manifestival with local controller attributes, as well as tekton prereqs.
 func (r *ShipwrightBuildReconciler) setupManifestival() error {
 	var err error
-	r.Manifest, err = common.SetupManifestival(r.Client, "release.yaml", r.Logger)
-	return err
+	r.Manifest, err = common.SetupManifestival(r.Client, "release.yaml", false, r.Logger)
+	if err != nil {
+		return err
+	}
+	r.BuildStrategyManifest, err = common.SetupManifestival(r.Client, filepath.Join("samples", "buildstrategy"), true, r.Logger)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager, by instantiating Manifestival and
