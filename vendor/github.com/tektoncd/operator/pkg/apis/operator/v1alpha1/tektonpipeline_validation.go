@@ -20,7 +20,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+)
+
+var (
+	validatePipelineAllowedApiFields          = sets.NewString("", config.AlphaAPIFields, config.BetaAPIFields, config.StableAPIFields)
+	validatePipelineVerificationNoMatchPolicy = sets.NewString("", config.FailNoMatchPolicy, config.WarnNoMatchPolicy, config.IgnoreNoMatchPolicy)
 )
 
 func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -43,16 +50,37 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 
 func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 
-	if p.EnableApiFields != "" {
-		if p.EnableApiFields == ApiFieldStable || p.EnableApiFields == ApiFieldAlpha {
-			return errs
-		}
-		errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, path+".enable-api-fields"))
+	if !validatePipelineAllowedApiFields.Has(p.EnableApiFields) {
+		errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, fmt.Sprintf("%s.enable-api-fields", path)))
 	}
+
 	if p.DefaultTimeoutMinutes != nil {
 		if *p.DefaultTimeoutMinutes == 0 {
 			errs = errs.Also(apis.ErrInvalidValue(p.DefaultTimeoutMinutes, path+".default-timeout-minutes"))
 		}
 	}
+
+	// validate trusted-resources-verification-no-match-policy
+	if !validatePipelineVerificationNoMatchPolicy.Has(p.VerificationNoMatchPolicy) {
+		errs = errs.Also(apis.ErrInvalidValue(p.VerificationNoMatchPolicy, fmt.Sprintf("%s.trusted-resources-verification-no-match-policy", path)))
+	}
+
+	// validate performance properties
+	errs = errs.Also(p.Performance.validate(fmt.Sprintf("%s.performance", path)))
+
+	return errs
+}
+
+func (prof *PipelinePerformanceProperties) validate(path string) *apis.FieldError {
+	var errs *apis.FieldError
+
+	bucketsPath := fmt.Sprintf("%s.buckets", path)
+	// minimum and maximum allowed buckets value
+	if prof.Buckets != nil {
+		if *prof.Buckets < 1 || *prof.Buckets > 10 {
+			errs = errs.Also(apis.ErrOutOfBoundsValue(*prof.Buckets, 1, 10, bucketsPath))
+		}
+	}
+
 	return errs
 }
