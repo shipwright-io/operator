@@ -6,7 +6,9 @@ package controllers
 
 import (
 	"context"
+	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -42,6 +44,11 @@ var (
 )
 
 func TestAPIs(t *testing.T) {
+	skip := os.Getenv("SKIP_ENVTEST")
+	shouldSkip, _ := strconv.ParseBool(skip)
+	if shouldSkip {
+		t.Skip("bypassing Ginkgo-driven tests")
+	}
 	RegisterFailHandler(Fail)
 	SetDefaultEventuallyTimeout(restTimeout)
 	SetDefaultEventuallyPollingInterval(restRetry)
