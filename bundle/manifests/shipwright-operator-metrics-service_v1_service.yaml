@@ -13,5 +13,6 @@ spec:
     targetPort: https
   selector:
     app: shipwright-operator
+    control-plane: controller-manager
 status:
   loadBalancer: {}

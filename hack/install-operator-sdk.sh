@@ -9,7 +9,7 @@
 set -e
 
 DEST="${1:-bin/operator-sdk}"
-SDK_VERSION="${SDK_VERSION:-1.17.0}"
+SDK_VERSION="${SDK_VERSION:-1.18.0}"
 
 OS="${OS:-linux}"
 ARCH="${ARCH:-amd64}"

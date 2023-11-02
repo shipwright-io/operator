@@ -12,17 +12,20 @@ metadata:
   namespace: system
   labels:
     app: shipwright-operator
+    control-plane: controller-manager
 spec:
   selector:
     matchLabels:
       app: shipwright-operator
+      control-plane: controller-manager
   replicas: 1
   template:
     metadata:
       annotations:
-        kubectl.kubernetes.io/default-container: operator
+        kubectl.kubernetes.io/default-container: manager
       labels:
         app: shipwright-operator
+        control-plane: controller-manager
     spec:
       securityContext:
         runAsNonRoot: true
@@ -33,7 +36,7 @@ spec:
         - name: USE_MANAGED_WEBHOOK_CERTS
           value: "true"
         image: ko://github.com/shipwright-io/operator
-        name: operator
+        name: manager
         securityContext:
           allowPrivilegeEscalation: false
         livenessProbe:
