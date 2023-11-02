@@ -17,17 +17,21 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"os"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 )
 
 const (
+	// DependenciesInstalled is a Condition indicating that potential dependencies have
+	// been installed correctly.
+	DependenciesInstalled apis.ConditionType = "DependenciesInstalled"
 	// InstallSucceeded is a Condition indiciating that the installation of the component
 	// itself has been successful.
 	InstallSucceeded apis.ConditionType = "InstallSucceeded"
+	// DeploymentsAvailable is a Condition indicating whether or not the Deployments of
+	// the respective component have come up successfully.
+	DeploymentsAvailable apis.ConditionType = "DeploymentsAvailable"
 )
 
 // TektonComponent is a common interface for accessing meta, spec and status of all known types.
@@ -49,23 +53,37 @@ type TektonComponentSpec interface {
 
 // TektonComponentStatus is a common interface for status mutations of all known types.
 type TektonComponentStatus interface {
-	MarkNotReady(string)
-	MarkInstallerSetReady()
+	// MarkInstallSucceeded marks the InstallationSucceeded status as true.
+	MarkInstallSucceeded()
+	// MarkInstallFailed marks the InstallationSucceeded status as false with the given
+	// message.
+	MarkInstallFailed(msg string)
 
-	MarkInstallerSetNotReady(string)
-	MarkInstallerSetAvailable()
+	// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
+	MarkDeploymentsAvailable()
+	// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
+	// it's waiting for deployments.
+	MarkDeploymentsNotReady()
 
-	MarkPreReconcilerFailed(string)
-	MarkPostReconcilerFailed(string)
+	// MarkDependenciesInstalled marks the DependenciesInstalled status as true.
+	MarkDependenciesInstalled()
+	// MarkDependencyInstalling marks the DependenciesInstalled status as false with the
+	// given message.
+	MarkDependencyInstalling(msg string)
+	// MarkDependencyMissing marks the DependenciesInstalled status as false with the
+	// given message.
+	MarkDependencyMissing(msg string)
 
 	// GetVersion gets the currently installed version of the component.
 	GetVersion() string
 	// SetVersion sets the currently installed version of the component.
 	SetVersion(version string)
+
+	// GetManifests gets the url links of the manifests
+	GetManifests() []string
+
 	// IsReady return true if all conditions are satisfied
 	IsReady() bool
-	// ConditionAccessor Implement to interact with a condition
-	apis.ConditionAccessor
 }
 
 // CommonSpec unifies common fields and functions on the Spec.
@@ -82,8 +100,8 @@ func (c *CommonSpec) GetTargetNamespace() string {
 
 // Param declares an string value to use for the parameter called name.
 type Param struct {
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 // ParamValue defines a default value and possible values for a param
@@ -99,8 +117,4 @@ func ParseParams(params []Param) map[string]string {
 		paramsMap[p.Name] = p.Value
 	}
 	return paramsMap
-}
-
-func IsOpenShiftPlatform() bool {
-	return os.Getenv("PLATFORM") == "openshift"
 }

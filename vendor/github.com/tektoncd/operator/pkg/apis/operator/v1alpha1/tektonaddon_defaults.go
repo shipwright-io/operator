@@ -21,30 +21,30 @@ import (
 )
 
 func (ta *TektonAddon) SetDefaults(ctx context.Context) {
-	setAddonDefaults(&ta.Spec.Addon)
+	setAddonDefaults(&ta.Spec.Params)
 }
 
-func setAddonDefaults(addon *Addon) {
+func setAddonDefaults(params *[]Param) {
 
-	paramsMap := ParseParams(addon.Params)
+	paramsMap := ParseParams(*params)
 	_, ptOk := paramsMap[PipelineTemplatesParam]
 	ct, ctOk := paramsMap[ClusterTasksParam]
 
 	// If clusterTasks is false and pipelineTemplate is not set, then set it as false
 	// as pipelines templates are created using clusterTasks
 	if ctOk && (ct == "false" && !ptOk) {
-		addon.Params = append(addon.Params, Param{
+		*params = append(*params, Param{
 			Name:  PipelineTemplatesParam,
 			Value: "false",
 		})
-		paramsMap = ParseParams(addon.Params)
+		paramsMap = ParseParams(*params)
 	}
 
 	// set the params with default values if not set in cr
 	for d := range AddonParams {
 		_, ok := paramsMap[d]
 		if !ok {
-			addon.Params = append(addon.Params,
+			*params = append(*params,
 				Param{
 					Name:  d,
 					Value: AddonParams[d].Default,
@@ -52,7 +52,4 @@ func setAddonDefaults(addon *Addon) {
 		}
 	}
 
-	// Deprecated, will be removed in further releases
-	// moved to OpenShift platform section
-	addon.EnablePAC = nil
 }

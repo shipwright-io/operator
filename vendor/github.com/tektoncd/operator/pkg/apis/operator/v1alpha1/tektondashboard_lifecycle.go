@@ -26,131 +26,102 @@ var (
 
 	dashboardCondSet = apis.NewLivingConditionSet(
 		DependenciesInstalled,
-		PreReconciler,
-		InstallerSetAvailable,
-		InstallerSetReady,
-		PostReconciler,
+		DeploymentsAvailable,
+		InstallSucceeded,
 	)
 )
 
 // GroupVersionKind returns SchemeGroupVersion of a TektonDashboard
-func (td *TektonDashboard) GroupVersionKind() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind(KindTektonDashboard)
-}
-
-func (td *TektonDashboard) GetGroupVersionKind() schema.GroupVersionKind {
+func (tp *TektonDashboard) GroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(KindTektonDashboard)
 }
 
 // GetCondition returns the current condition of a given condition type
-func (tds *TektonDashboardStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return dashboardCondSet.Manage(tds).GetCondition(t)
+func (tps *TektonDashboardStatus) GetCondition(t apis.ConditionType) *apis.Condition {
+	return dashboardCondSet.Manage(tps).GetCondition(t)
 }
 
 // InitializeConditions initializes conditions of an TektonDashboardStatus
-func (tds *TektonDashboardStatus) InitializeConditions() {
-	dashboardCondSet.Manage(tds).InitializeConditions()
+func (tps *TektonDashboardStatus) InitializeConditions() {
+	dashboardCondSet.Manage(tps).InitializeConditions()
 }
 
 // IsReady looks at the conditions returns true if they are all true.
-func (tds *TektonDashboardStatus) IsReady() bool {
-	return dashboardCondSet.Manage(tds).IsHappy()
+func (tps *TektonDashboardStatus) IsReady() bool {
+	return dashboardCondSet.Manage(tps).IsHappy()
 }
 
-func (tds *TektonDashboardStatus) MarkPreReconcilerComplete() {
-	dashboardCondSet.Manage(tds).MarkTrue(PreReconciler)
+// MarkInstallSucceeded marks the InstallationSucceeded status as true.
+func (tps *TektonDashboardStatus) MarkInstallSucceeded() {
+	dashboardCondSet.Manage(tps).MarkTrue(InstallSucceeded)
+	if tps.GetCondition(DependenciesInstalled).IsUnknown() {
+		// Assume deps are installed if we're not sure
+		tps.MarkDependenciesInstalled()
+	}
 }
 
-func (tds *TektonDashboardStatus) MarkInstallerSetAvailable() {
-	dashboardCondSet.Manage(tds).MarkTrue(InstallerSetAvailable)
+// MarkInstallFailed marks the InstallationSucceeded status as false with the given
+// message.
+func (tps *TektonDashboardStatus) MarkInstallFailed(msg string) {
+	dashboardCondSet.Manage(tps).MarkFalse(
+		InstallSucceeded,
+		"Error",
+		"Install failed with message: %s", msg)
 }
 
-func (tds *TektonDashboardStatus) MarkInstallerSetReady() {
-	dashboardCondSet.Manage(tds).MarkTrue(InstallerSetReady)
+// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
+func (tps *TektonDashboardStatus) MarkDeploymentsAvailable() {
+	dashboardCondSet.Manage(tps).MarkTrue(DeploymentsAvailable)
 }
 
-func (tds *TektonDashboardStatus) MarkPostReconcilerComplete() {
-	dashboardCondSet.Manage(tds).MarkTrue(PostReconciler)
+// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
+// it's waiting for deployments.
+func (tps *TektonDashboardStatus) MarkDeploymentsNotReady() {
+	dashboardCondSet.Manage(tps).MarkFalse(
+		DeploymentsAvailable,
+		"NotReady",
+		"Waiting on deployments")
 }
 
 // MarkDependenciesInstalled marks the DependenciesInstalled status as true.
-func (tds *TektonDashboardStatus) MarkDependenciesInstalled() {
-	dashboardCondSet.Manage(tds).MarkTrue(DependenciesInstalled)
-}
-
-func (tds *TektonDashboardStatus) MarkNotReady(msg string) {
-	dashboardCondSet.Manage(tds).MarkFalse(
-		apis.ConditionReady,
-		"Error",
-		"Ready: %s", msg)
-}
-
-func (tds *TektonDashboardStatus) MarkPreReconcilerFailed(msg string) {
-	tds.MarkNotReady("PreReconciliation failed")
-	dashboardCondSet.Manage(tds).MarkFalse(
-		PreReconciler,
-		"Error",
-		"PreReconciliation failed with message: %s", msg)
-}
-
-func (tds *TektonDashboardStatus) MarkInstallerSetNotAvailable(msg string) {
-	tds.MarkNotReady("TektonInstallerSet not ready")
-	dashboardCondSet.Manage(tds).MarkFalse(
-		InstallerSetAvailable,
-		"Error",
-		"Installer set not ready: %s", msg)
-}
-
-func (tds *TektonDashboardStatus) MarkInstallerSetNotReady(msg string) {
-	tds.MarkNotReady("TektonInstallerSet not ready")
-	dashboardCondSet.Manage(tds).MarkFalse(
-		InstallerSetReady,
-		"Error",
-		"Installer set not ready: %s", msg)
-}
-
-func (tds *TektonDashboardStatus) MarkPostReconcilerFailed(msg string) {
-	tds.MarkNotReady("PostReconciliation failed")
-	dashboardCondSet.Manage(tds).MarkFalse(
-		PostReconciler,
-		"Error",
-		"PostReconciliation failed with message: %s", msg)
+func (tps *TektonDashboardStatus) MarkDependenciesInstalled() {
+	dashboardCondSet.Manage(tps).MarkTrue(DependenciesInstalled)
 }
 
 // MarkDependencyInstalling marks the DependenciesInstalled status as false with the
 // given message.
-func (tds *TektonDashboardStatus) MarkDependencyInstalling(msg string) {
-	tds.MarkNotReady("Dependencies installing")
-	dashboardCondSet.Manage(tds).MarkFalse(
+func (tps *TektonDashboardStatus) MarkDependencyInstalling(msg string) {
+	dashboardCondSet.Manage(tps).MarkFalse(
 		DependenciesInstalled,
-		"Error",
+		"Installing",
 		"Dependency installing: %s", msg)
 }
 
 // MarkDependencyMissing marks the DependenciesInstalled status as false with the
 // given message.
-func (tds *TektonDashboardStatus) MarkDependencyMissing(msg string) {
-	tds.MarkNotReady("Missing Dependencies for TektonDashboard")
-	dashboardCondSet.Manage(tds).MarkFalse(
+func (tps *TektonDashboardStatus) MarkDependencyMissing(msg string) {
+	dashboardCondSet.Manage(tps).MarkFalse(
 		DependenciesInstalled,
 		"Error",
 		"Dependency missing: %s", msg)
 }
 
-func (tds *TektonDashboardStatus) GetTektonInstallerSet() string {
-	return tds.TektonInstallerSet
-}
-
-func (tds *TektonDashboardStatus) SetTektonInstallerSet(installerSet string) {
-	tds.TektonInstallerSet = installerSet
-}
-
 // GetVersion gets the currently installed version of the component.
-func (tds *TektonDashboardStatus) GetVersion() string {
-	return tds.Version
+func (tps *TektonDashboardStatus) GetVersion() string {
+	return tps.Version
 }
 
 // SetVersion sets the currently installed version of the component.
-func (tds *TektonDashboardStatus) SetVersion(version string) {
-	tds.Version = version
+func (tps *TektonDashboardStatus) SetVersion(version string) {
+	tps.Version = version
+}
+
+// GetManifests gets the url links of the manifests.
+func (tps *TektonDashboardStatus) GetManifests() []string {
+	return tps.Manifests
+}
+
+// SetVersion sets the url links of the manifests.
+func (tps *TektonDashboardStatus) SetManifests(manifests []string) {
+	tps.Manifests = manifests
 }

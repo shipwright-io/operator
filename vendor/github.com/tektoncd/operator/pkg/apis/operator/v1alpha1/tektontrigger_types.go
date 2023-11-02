@@ -21,6 +21,11 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
+var (
+	_ TektonComponent     = (*TektonTrigger)(nil)
+	_ TektonComponentSpec = (*TektonTriggerSpec)(nil)
+)
+
 // TektonTrigger is the Schema for the tektontriggers API
 // +genclient
 // +genreconciler:krshapedlogic=false
@@ -47,7 +52,6 @@ func (tp *TektonTrigger) GetStatus() TektonComponentStatus {
 // TektonTriggerSpec defines the desired state of TektonTrigger
 type TektonTriggerSpec struct {
 	CommonSpec `json:",inline"`
-	Trigger    `json:",inline"`
 	// Config holds the configuration for resources created by TektonTrigger
 	// +optional
 	Config Config `json:"config,omitempty"`
@@ -61,9 +65,9 @@ type TektonTriggerStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The current installer set name
+	// The url links of the manifests, separated by comma
 	// +optional
-	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
+	Manifests []string `json:"manifests,omitempty"`
 }
 
 // TektonTriggersList contains a list of TektonTrigger
@@ -72,23 +76,4 @@ type TektonTriggerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonTrigger `json:"items"`
-}
-
-// Trigger defines the field to customize Trigger component
-type Trigger struct {
-	TriggersProperties `json:",inline"`
-}
-
-// TriggersProperties defines the fields which are to be
-// defined for triggers only if user pass them
-type TriggersProperties struct {
-	EnableApiFields string `json:"enable-api-fields,omitempty"`
-	// +optional
-	OptionalTriggersProperties `json:",inline"`
-}
-
-// OptionalTriggersProperties defines the fields which are to be
-// defined for triggers only if user pass them
-type OptionalTriggersProperties struct {
-	DefaultServiceAccount string `json:"default-service-account,omitempty"`
 }

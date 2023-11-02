@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	"fmt"
 
 	"knative.dev/pkg/apis"
 )
@@ -27,11 +26,6 @@ func (td *TektonDashboard) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	if apis.IsInDelete(ctx) {
 		return nil
-	}
-
-	if td.GetName() != DashboardResourceName {
-		errMsg := fmt.Sprintf("metadata.name,  Only one instance of TektonDashboard is allowed by name, %s", DashboardResourceName)
-		errs = errs.Also(apis.ErrInvalidValue(td.GetName(), errMsg))
 	}
 
 	if td.Spec.TargetNamespace == "" {
