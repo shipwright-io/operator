@@ -44,9 +44,8 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
-	if !tc.Spec.Pruner.IsEmpty() {
-		errs = errs.Also(tc.Spec.Pruner.validate())
-	}
+	// validate pruner specifications
+	errs = errs.Also(tc.Spec.Pruner.validate())
 
 	if !tc.Spec.Addon.IsEmpty() {
 		errs = errs.Also(validateAddonParams(tc.Spec.Addon.Params, "spec.addon.params"))
@@ -64,6 +63,11 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 func (p Prune) validate() *apis.FieldError {
 	var errs *apis.FieldError
 
+	// if pruner job disable no validation required
+	if p.Disabled {
+		return errs
+	}
+
 	if len(p.Resources) != 0 {
 		for i, r := range p.Resources {
 			if !isValueInArray(PruningResource, r) {
@@ -74,19 +78,22 @@ func (p Prune) validate() *apis.FieldError {
 		errs = errs.Also(apis.ErrMissingField("spec.pruner.resources"))
 	}
 
+	// tkn cli supports both "keep" and "keep-since", even though there is an issue with the logic
+	// when we supply both "keep" and "keep-since", the outcome always equivalent to "keep", "keep-since" ignored
+	// hence we strict with a single flag support until the issue is fixed in tkn cli
+	// cli issue: https://github.com/tektoncd/cli/issues/1990
 	if p.Keep != nil && p.KeepSince != nil {
 		errs = errs.Also(apis.ErrMultipleOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
 	}
+
 	if p.Keep == nil && p.KeepSince == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
-	} else if p.Keep != nil && *p.Keep == 0 {
-		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep"))
-	} else if p.KeepSince != nil && *p.KeepSince == 0 {
-		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep-since"))
 	}
-
-	if p.Schedule == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.pruner.schedule"))
+	if p.Keep != nil && *p.Keep == 0 {
+		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep"))
+	}
+	if p.KeepSince != nil && *p.KeepSince == 0 {
+		errs = errs.Also(apis.ErrInvalidValue(*p.KeepSince, "spec.pruner.keep-since"))
 	}
 
 	return errs

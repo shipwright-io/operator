@@ -40,9 +40,6 @@ const (
 	// Hub Params
 	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
 
-	ApiFieldAlpha  = "alpha"
-	ApiFieldStable = "stable"
-
 	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
 	CreatedByKey           = "operator.tekton.dev/created-by"
 	ReleaseVersionKey      = "operator.tekton.dev/release-version"
@@ -51,10 +48,16 @@ const (
 	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
 	InstallerSetType       = "operator.tekton.dev/type"
 	LabelOperandName       = "operator.tekton.dev/operand-name"
+	DbSecretHash           = "operator.tekton.dev/db-secret-hash"
 
 	UpgradePending = "upgrade pending"
+	Reinstalling   = "reinstalling"
 
 	RequeueDelay = 10 * time.Second
+
+	// pruner default schedule, used in auto generate tektonConfig
+	PrunerDefaultSchedule = "0 8 * * *"
+	PrunerDefaultKeep     = uint(100)
 )
 
 var (
@@ -91,6 +94,11 @@ var (
 		"pipelinerun",
 	}
 
+	// pruner default resource, used in auto generate tektonConfig
+	PruningDefaultResources = []string{
+		"pipelinerun",
+	}
+
 	AddonParams = map[string]ParamValue{
 		ClusterTasksParam:      defaultParamValue,
 		PipelineTemplatesParam: defaultParamValue,
@@ -103,18 +111,20 @@ var (
 )
 
 var (
-	ConfigResourceName       = "config"
-	PipelineResourceName     = "pipeline"
-	OperandTektoncdPipeline  = "tektoncd-pipelines"
-	TriggerResourceName      = "trigger"
-	OperandTektoncdTriggers  = "tektoncd-triggers"
-	DashboardResourceName    = "dashboard"
-	OperandTektoncdDashboard = "tektoncd-dashboard"
-	AddonResourceName        = "addon"
-	ResultResourceName       = "result"
-	OperandTektoncdResults   = "tektoncd-results"
-	HubResourceName          = "hub"
-	OperandTektoncdHub       = "tektoncd-hub"
-	ChainResourceName        = "chain"
-	OperandTektoncdChains    = "tektoncd-chains"
+	ConfigResourceName           = "config"
+	PipelineResourceName         = "pipeline"
+	OperandTektoncdPipeline      = "tektoncd-pipelines"
+	TriggerResourceName          = "trigger"
+	OperandTektoncdTriggers      = "tektoncd-triggers"
+	DashboardResourceName        = "dashboard"
+	OperandTektoncdDashboard     = "tektoncd-dashboard"
+	AddonResourceName            = "addon"
+	ResultResourceName           = "result"
+	OperandTektoncdResults       = "tektoncd-results"
+	HubResourceName              = "hub"
+	OperandTektoncdHub           = "tektoncd-hub"
+	ChainResourceName            = "chain"
+	OperandTektoncdChains        = "tektoncd-chains"
+	OpenShiftPipelinesAsCodeName = "pipelines-as-code"
+	PrunerResourceName           = "tektoncd-pruner"
 )

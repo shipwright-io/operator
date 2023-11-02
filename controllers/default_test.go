@@ -1,9 +1,11 @@
 package controllers
 
 import (
-	g "github.com/onsi/ginkgo"
+	"context"
+
+	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	"github.com/shipwright-io/operator/pkg/common"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -14,11 +16,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/shipwright-io/operator/api/v1alpha1"
+	"github.com/shipwright-io/operator/pkg/common"
 	"github.com/shipwright-io/operator/test"
 )
 
 // createNamespace creates the namespace informed.
-func createNamespace(name string) {
+func createNamespace(ctx context.Context, name string) {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}
 	err := k8sClient.Get(ctx, types.NamespacedName{Name: ns.Name}, ns)
 	if errors.IsNotFound(err) {
@@ -60,9 +63,9 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 	}
 
 	truePtr := true
-	g.BeforeEach(func() {
+	g.BeforeEach(func(ctx g.SpecContext) {
 		// setting up the namespaces, where Shipwright Controller will be deployed
-		createNamespace(namespace)
+		createNamespace(ctx, namespace)
 
 		g.By("does tekton taskrun crd exist")
 		err := k8sClient.Get(ctx, types.NamespacedName{Name: "taskruns.tekton.dev"}, &crdv1.CustomResourceDefinition{})
@@ -144,7 +147,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		test.EventuallyContainFinalizer(ctx, k8sClient, build, FinalizerAnnotation)
 	})
 
-	g.AfterEach(func() {
+	g.AfterEach(func(ctx g.SpecContext) {
 		g.By("deleting the ShipwrightBuild instance")
 		namespacedName := types.NamespacedName{Namespace: namespace, Name: build.Name}
 		err := k8sClient.Get(ctx, namespacedName, build)
@@ -170,7 +173,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 
 	g.When("a ShipwrightBuild object is created", func() {
 
-		g.It("creates RBAC for the Shipwright build controller", func() {
+		g.It("creates RBAC for the Shipwright build controller", func(ctx g.SpecContext) {
 			expectedClusterRole := baseClusterRole.DeepCopy()
 			test.EventuallyExists(ctx, k8sClient, expectedClusterRole)
 
@@ -181,12 +184,12 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 			test.EventuallyExists(ctx, k8sClient, expectedServiceAccount)
 		})
 
-		g.It("creates a deployment for the Shipwright build controller", func() {
+		g.It("creates a deployment for the Shipwright build controller", func(ctx g.SpecContext) {
 			expectedDeployment := baseDeployment.DeepCopy()
 			test.EventuallyExists(ctx, k8sClient, expectedDeployment)
 		})
 
-		g.It("creates custom resource definitions for the Shipwright build APIs", func() {
+		g.It("creates custom resource definitions for the Shipwright build APIs", func(ctx g.SpecContext) {
 			test.CRDEventuallyExists(ctx, k8sClient, "builds.shipwright.io")
 			test.CRDEventuallyExists(ctx, k8sClient, "buildruns.shipwright.io")
 			test.CRDEventuallyExists(ctx, k8sClient, "buildstrategies.shipwright.io")
@@ -196,7 +199,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 
 	g.When("a ShipwrightBuild object is deleted", func() {
 
-		g.It("deletes the RBAC for the Shipwright build controller", func() {
+		g.It("deletes the RBAC for the Shipwright build controller", func(ctx g.SpecContext) {
 			expectedClusterRole := baseClusterRole.DeepCopy()
 			expectedClusterRoleBinding := baseClusterRoleBinding.DeepCopy()
 			expectedServiceAccount := baseServiceAccount.DeepCopy()
@@ -216,7 +219,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 			test.EventuallyRemoved(ctx, k8sClient, expectedServiceAccount)
 		})
 
-		g.It("deletes the deployment for the Shipwright build controller", func() {
+		g.It("deletes the deployment for the Shipwright build controller", func(ctx g.SpecContext) {
 			expectedDeployment := baseDeployment.DeepCopy()
 			// Setup - ensure the objects we want exist
 			test.EventuallyExists(ctx, k8sClient, expectedDeployment)
@@ -230,7 +233,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		})
 
 		// TODO: Do not delete the CRDs! This is something only a cluster admin should do.
-		g.It("deletes the custom resource definitions for the Shipwright build APIs", func() {
+		g.It("deletes the custom resource definitions for the Shipwright build APIs", func(ctx g.SpecContext) {
 			test.CRDEventuallyExists(ctx, k8sClient, "builds.shipwright.io")
 			test.CRDEventuallyExists(ctx, k8sClient, "buildruns.shipwright.io")
 			test.CRDEventuallyExists(ctx, k8sClient, "buildstrategies.shipwright.io")

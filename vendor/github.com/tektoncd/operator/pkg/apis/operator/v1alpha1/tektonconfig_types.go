@@ -49,6 +49,11 @@ func (tp *TektonConfig) GetStatus() TektonComponentStatus {
 
 // Prune defines the pruner
 type Prune struct {
+	// enable or disable pruner feature
+	Disabled bool `json:"disabled"`
+	// apply the prune job to the individual resources
+	// +optional
+	PrunePerResource bool `json:"prune-per-resource,omitempty"`
 	// The resources which need to be pruned
 	Resources []string `json:"resources,omitempty"`
 	// The number of resource to keep
@@ -89,12 +94,18 @@ type TektonConfigSpec struct {
 	// Trigger holds the customizable option for triggers component
 	// +optional
 	Trigger Trigger `json:"trigger,omitempty"`
+	// Chain holds the customizable option for chains component
+	// +optional
+	Chain Chain `json:"chain,omitempty"`
 	// Dashboard holds the customizable options for dashboards component
 	// +optional
 	Dashboard Dashboard `json:"dashboard,omitempty"`
 	// Params is the list of params passed for all platforms
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// Platforms allows configuring platform specific configurations
+	// +optional
+	Platforms Platforms `json:"platforms,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
@@ -114,6 +125,31 @@ type TektonConfigStatus struct {
 	TektonInstallerSet map[string]string `json:"tektonInstallerSets,omitempty"`
 }
 
+func (in *TektonConfigStatus) MarkInstallerSetReady() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonConfigStatus) MarkInstallerSetNotReady(s string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonConfigStatus) MarkInstallerSetAvailable() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonConfigStatus) MarkPreReconcilerFailed(s string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonConfigStatus) MarkPostReconcilerFailed(s string) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // TektonConfigList contains a list of TektonConfig
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonConfigList struct {
@@ -128,4 +164,10 @@ type Config struct {
 	// PriorityClassName holds the priority class to be set to pod template
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+}
+
+type Platforms struct {
+	// OpenShift allows configuring openshift specific components and configurations
+	// +optional
+	OpenShift OpenShift `json:"openshift,omitempty"`
 }
