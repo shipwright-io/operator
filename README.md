@@ -54,5 +54,9 @@ For more information about the function of these images, please consider the Shi
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more information on how to build, test, and submit
-contributions to the operator.
+Please review the overall project
+[Contributing Guide](https://github.com/shipwright-io/.github/blob/main/CONTRIBUTING.md) before
+submitting bug reports, feature requests, or code.
+
+Want to start hacking on the operator? Refer to the [Development Guilde](DEVELOPMENT.md) to learn
+how to build, test, and deploy the operator.
