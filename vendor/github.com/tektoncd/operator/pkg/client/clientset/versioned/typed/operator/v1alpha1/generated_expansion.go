@@ -18,19 +18,11 @@ limitations under the License.
 
 package v1alpha1
 
-type OpenShiftPipelinesAsCodeExpansion interface{}
-
 type TektonAddonExpansion interface{}
-
-type TektonChainExpansion interface{}
 
 type TektonConfigExpansion interface{}
 
 type TektonDashboardExpansion interface{}
-
-type TektonHubExpansion interface{}
-
-type TektonInstallerSetExpansion interface{}
 
 type TektonPipelineExpansion interface{}
 

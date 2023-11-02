@@ -22,101 +22,105 @@ import (
 )
 
 var (
-	addonsCondSet = apis.NewLivingConditionSet(
+	_             TektonComponentStatus = (*TektonAddonStatus)(nil)
+	addonsCondSet                       = apis.NewLivingConditionSet(
 		DependenciesInstalled,
-		PreReconciler,
-		InstallerSetReady,
-		PostReconciler,
+		DeploymentsAvailable,
+		InstallSucceeded,
 	)
 )
 
+// GroupVersionKind returns SchemeGroupVersion of a TektonAddon
 func (tp *TektonAddon) GroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(KindTektonAddon)
 }
 
-func (tp *TektonAddon) GetGroupVersionKind() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind(KindTektonAddon)
+// GetCondition returns the current condition of a given condition type
+func (tps *TektonAddonStatus) GetCondition(t apis.ConditionType) *apis.Condition {
+	return addonsCondSet.Manage(tps).GetCondition(t)
 }
 
-func (tas *TektonAddonStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return addonsCondSet.Manage(tas).GetCondition(t)
+// InitializeConditions initializes conditions of an TektonAddonStatus
+func (tps *TektonAddonStatus) InitializeConditions() {
+	addonsCondSet.Manage(tps).InitializeConditions()
 }
 
-func (tas *TektonAddonStatus) InitializeConditions() {
-	addonsCondSet.Manage(tas).InitializeConditions()
+// IsReady looks at the conditions returns true if they are all true.
+func (tps *TektonAddonStatus) IsReady() bool {
+	return addonsCondSet.Manage(tps).IsHappy()
 }
 
-func (tas *TektonAddonStatus) IsReady() bool {
-	return addonsCondSet.Manage(tas).IsHappy()
+// MarkInstallSucceeded marks the InstallationSucceeded status as true.
+func (tps *TektonAddonStatus) MarkInstallSucceeded() {
+	addonsCondSet.Manage(tps).MarkTrue(InstallSucceeded)
+	if tps.GetCondition(DependenciesInstalled).IsUnknown() {
+		// Assume deps are installed if we're not sure
+		tps.MarkDependenciesInstalled()
+	}
 }
 
-func (tas *TektonAddonStatus) MarkPreReconcilerComplete() {
-	addonsCondSet.Manage(tas).MarkTrue(PreReconciler)
-}
-
-func (tas *TektonAddonStatus) MarkInstallerSetReady() {
-	addonsCondSet.Manage(tas).MarkTrue(InstallerSetReady)
-}
-
-func (tas *TektonAddonStatus) MarkPostReconcilerComplete() {
-	addonsCondSet.Manage(tas).MarkTrue(PostReconciler)
-}
-
-func (tas *TektonAddonStatus) MarkDependenciesInstalled() {
-	addonsCondSet.Manage(tas).MarkTrue(DependenciesInstalled)
-}
-
-func (tas *TektonAddonStatus) MarkNotReady(msg string) {
-	addonsCondSet.Manage(tas).MarkFalse(
-		apis.ConditionReady,
+// MarkInstallFailed marks the InstallationSucceeded status as false with the given
+// message.
+func (tps *TektonAddonStatus) MarkInstallFailed(msg string) {
+	addonsCondSet.Manage(tps).MarkFalse(
+		InstallSucceeded,
 		"Error",
-		"Ready: %s", msg)
+		"Install failed with message: %s", msg)
 }
 
-func (tas *TektonAddonStatus) MarkPreReconcilerFailed(msg string) {
-	tas.MarkNotReady("PreReconciliation failed")
-	addonsCondSet.Manage(tas).MarkFalse(
-		PreReconciler,
-		"Error",
-		"PreReconciliation failed with message: %s", msg)
+// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
+func (tps *TektonAddonStatus) MarkDeploymentsAvailable() {
+	addonsCondSet.Manage(tps).MarkTrue(DeploymentsAvailable)
 }
 
-func (tas *TektonAddonStatus) MarkInstallerSetNotReady(msg string) {
-	tas.MarkNotReady("TektonInstallerSet not ready")
-	addonsCondSet.Manage(tas).MarkFalse(
-		InstallerSetReady,
-		"Error",
-		"Installer set not ready: %s", msg)
+// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
+// it's waiting for deployments.
+func (tps *TektonAddonStatus) MarkDeploymentsNotReady() {
+	addonsCondSet.Manage(tps).MarkFalse(
+		DeploymentsAvailable,
+		"NotReady",
+		"Waiting on deployments")
 }
 
-func (tas *TektonAddonStatus) MarkPostReconcilerFailed(msg string) {
-	tas.MarkNotReady("PostReconciliation failed")
-	addonsCondSet.Manage(tas).MarkFalse(
-		PostReconciler,
-		"Error",
-		"PostReconciliation failed with message: %s", msg)
+// MarkDependenciesInstalled marks the DependenciesInstalled status as true.
+func (tps *TektonAddonStatus) MarkDependenciesInstalled() {
+	addonsCondSet.Manage(tps).MarkTrue(DependenciesInstalled)
 }
 
-func (tas *TektonAddonStatus) MarkDependencyInstalling(msg string) {
-	tas.MarkNotReady("Dependencies installing")
-	addonsCondSet.Manage(tas).MarkFalse(
+// MarkDependencyInstalling marks the DependenciesInstalled status as false with the
+// given message.
+func (tps *TektonAddonStatus) MarkDependencyInstalling(msg string) {
+	addonsCondSet.Manage(tps).MarkFalse(
+		DependenciesInstalled,
+		"Installing",
+		"Dependency installing: %s", msg)
+}
+
+// MarkDependencyMissing marks the DependenciesInstalled status as false with the
+// given message.
+func (tps *TektonAddonStatus) MarkDependencyMissing(msg string) {
+	addonsCondSet.Manage(tps).MarkFalse(
 		DependenciesInstalled,
 		"Error",
-		"Dependencies are installing: %s", msg)
+		"Dependency missing: %s", msg)
 }
 
-func (tas *TektonAddonStatus) MarkDependencyMissing(msg string) {
-	tas.MarkNotReady("Missing Dependencies for TektonTriggers")
-	addonsCondSet.Manage(tas).MarkFalse(
-		DependenciesInstalled,
-		"Error",
-		"Dependencies are missing: %s", msg)
+// GetVersion gets the currently installed version of the component.
+func (tps *TektonAddonStatus) GetVersion() string {
+	return tps.Version
 }
 
-func (tas *TektonAddonStatus) GetVersion() string {
-	return tas.Version
+// SetVersion sets the currently installed version of the component.
+func (tps *TektonAddonStatus) SetVersion(version string) {
+	tps.Version = version
 }
 
-func (tas *TektonAddonStatus) SetVersion(version string) {
-	tas.Version = version
+// GetManifests gets the url links of the manifests.
+func (tps *TektonAddonStatus) GetManifests() []string {
+	return tps.Manifests
+}
+
+// SetVersion sets the url links of the manifests.
+func (tps *TektonAddonStatus) SetManifests(manifests []string) {
+	tps.Manifests = manifests
 }

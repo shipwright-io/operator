@@ -21,6 +21,11 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
+var (
+	_ TektonComponent     = (*TektonAddon)(nil)
+	_ TektonComponentSpec = (*TektonAddonSpec)(nil)
+)
+
 // TektonAddon is the Schema for the tektonaddons API
 // +genclient
 // +genreconciler:krshapedlogic=false
@@ -47,10 +52,9 @@ func (tp *TektonAddon) GetStatus() TektonComponentStatus {
 // TektonAddonSpec defines the desired state of TektonAddon
 type TektonAddonSpec struct {
 	CommonSpec `json:",inline"`
-	Addon      `json:",inline"`
-	// Config holds the configuration for resources created by Addon
+	// The params to customize different components of Addon
 	// +optional
-	Config Config `json:"config,omitempty"`
+	Params []Param `json:"params,omitempty"`
 }
 
 // TektonAddonStatus defines the observed state of TektonAddon
@@ -61,29 +65,9 @@ type TektonAddonStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// TektonInstallerSet created to install addons
+	// The url links of the manifests, separated by comma
 	// +optional
-	AddonsInstallerSet map[string]string `json:"installerSets,omitempty"`
-}
-
-func (in *TektonAddonStatus) MarkInstallerSetAvailable() {
-	//TODO implement me
-	panic("implement me")
-}
-
-// Addon defines the field to customize Addon component
-type Addon struct {
-	// Params is the list of params passed for Addon customization
-	// +optional
-	Params []Param `json:"params,omitempty"`
-	// Deprecated, will be removed in further release
-	// EnablePAC field defines whether to install PAC
-	// +optional
-	EnablePAC *bool `json:"enablePipelinesAsCode,omitempty"`
-}
-
-func (a Addon) IsEmpty() bool {
-	return len(a.Params) == 0
+	Manifests []string `json:"manifests,omitempty"`
 }
 
 // TektonAddonsList contains a list of TektonAddon
