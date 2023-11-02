@@ -144,10 +144,12 @@ verify-fmt: fmt ## Verify formatting and ensure git status is clean
 vet: ## Run go vet against code.
 	go vet ./...
 
+SKIP_ENVTEST ?= false
+
 BINDATA = $(shell pwd)/kodata
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
-	KO_DATA_PATH=${BINDATA} KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out -p 1 -failfast -test.v -test.failfast
+test: manifests generate fmt vet envtest ## Run tests. To bypass longer-running reconcile tests with EnvTest, set SKIP_ENVTEST=true.
+	KO_DATA_PATH=${BINDATA} KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" SKIP_ENVTEST=${SKIP_ENVTEST} go test ./... -coverprofile cover.out -failfast -test.v -test.failfast
 
 ##@ Build
 
