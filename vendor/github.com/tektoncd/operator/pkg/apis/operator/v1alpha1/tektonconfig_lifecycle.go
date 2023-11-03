@@ -21,89 +21,107 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-const (
-	PreInstall      apis.ConditionType = "PreInstall"
-	ComponentsReady apis.ConditionType = "ComponentsReady"
-	PostInstall     apis.ConditionType = "PostInstall"
-)
-
 var (
+	_ TektonComponentStatus = (*TektonConfigStatus)(nil)
+
 	configCondSet = apis.NewLivingConditionSet(
-		PreInstall,
-		ComponentsReady,
-		PostInstall,
+		DependenciesInstalled,
+		DeploymentsAvailable,
+		InstallSucceeded,
 	)
 )
 
-func (tc *TektonConfig) GroupVersionKind() schema.GroupVersionKind {
+// GroupVersionKind returns SchemeGroupVersion of a TektonConfig
+func (tp *TektonConfig) GroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(KindTektonConfig)
 }
 
-func (tc *TektonConfig) GetGroupVersionKind() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind(KindTektonConfig)
+// GetCondition returns the current condition of a given condition type
+func (tps *TektonConfigStatus) GetCondition(t apis.ConditionType) *apis.Condition {
+	return configCondSet.Manage(tps).GetCondition(t)
 }
 
-func (tcs *TektonConfigStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return configCondSet.Manage(tcs).GetCondition(t)
+// InitializeConditions initializes conditions of an TektonConfigStatus
+func (tps *TektonConfigStatus) InitializeConditions() {
+	configCondSet.Manage(tps).InitializeConditions()
 }
 
-func (tcs *TektonConfigStatus) InitializeConditions() {
-	configCondSet.Manage(tcs).InitializeConditions()
+// IsReady looks at the conditions returns true if they are all true.
+func (tps *TektonConfigStatus) IsReady() bool {
+	return configCondSet.Manage(tps).IsHappy()
 }
 
-func (tcs *TektonConfigStatus) IsReady() bool {
-	return configCondSet.Manage(tcs).IsHappy()
+// MarkInstallSucceeded marks the InstallationSucceeded status as true.
+func (tps *TektonConfigStatus) MarkInstallSucceeded() {
+	configCondSet.Manage(tps).MarkTrue(InstallSucceeded)
+	if tps.GetCondition(DependenciesInstalled).IsUnknown() {
+		// Assume deps are installed if we're not sure
+		tps.MarkDependenciesInstalled()
+	}
 }
 
-func (tcs *TektonConfigStatus) MarkPreInstallComplete() {
-	configCondSet.Manage(tcs).MarkTrue(PreInstall)
-}
-
-func (tcs *TektonConfigStatus) MarkComponentsReady() {
-	configCondSet.Manage(tcs).MarkTrue(ComponentsReady)
-}
-
-func (tcs *TektonConfigStatus) MarkPostInstallComplete() {
-	configCondSet.Manage(tcs).MarkTrue(PostInstall)
-}
-
-func (tcs *TektonConfigStatus) MarkNotReady(msg string) {
-	configCondSet.Manage(tcs).MarkFalse(
-		apis.ConditionReady,
+// MarkInstallFailed marks the InstallationSucceeded status as false with the given
+// message.
+func (tps *TektonConfigStatus) MarkInstallFailed(msg string) {
+	configCondSet.Manage(tps).MarkFalse(
+		InstallSucceeded,
 		"Error",
-		"Ready: %s", msg)
+		"Install failed with message: %s", msg)
 }
 
-func (tcs *TektonConfigStatus) MarkPreInstallFailed(msg string) {
-	tcs.MarkNotReady("PreReconciliation failed")
-	configCondSet.Manage(tcs).MarkFalse(
-		PreInstall,
-		"Error",
-		"PreReconciliation failed with message: %s", msg)
+// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
+func (tps *TektonConfigStatus) MarkDeploymentsAvailable() {
+	configCondSet.Manage(tps).MarkTrue(DeploymentsAvailable)
 }
 
-func (tcs *TektonConfigStatus) MarkComponentNotReady(msg string) {
-	tcs.MarkNotReady("Components not ready")
-	configCondSet.Manage(tcs).MarkFalse(
-		ComponentsReady,
-		"Error",
-		"Components not in ready state: %s", msg)
+// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
+// it's waiting for deployments.
+func (tps *TektonConfigStatus) MarkDeploymentsNotReady() {
+	configCondSet.Manage(tps).MarkFalse(
+		DeploymentsAvailable,
+		"NotReady",
+		"Waiting on deployments")
 }
 
-func (tcs *TektonConfigStatus) MarkPostInstallFailed(msg string) {
-	tcs.MarkNotReady("PostReconciliation failed")
-	configCondSet.Manage(tcs).MarkFalse(
-		PostInstall,
+// MarkDependenciesInstalled marks the DependenciesInstalled status as true.
+func (tps *TektonConfigStatus) MarkDependenciesInstalled() {
+	configCondSet.Manage(tps).MarkTrue(DependenciesInstalled)
+}
+
+// MarkDependencyInstalling marks the DependenciesInstalled status as false with the
+// given message.
+func (tps *TektonConfigStatus) MarkDependencyInstalling(msg string) {
+	configCondSet.Manage(tps).MarkFalse(
+		DependenciesInstalled,
+		"Installing",
+		"Dependency installing: %s", msg)
+}
+
+// MarkDependencyMissing marks the DependenciesInstalled status as false with the
+// given message.
+func (tps *TektonConfigStatus) MarkDependencyMissing(msg string) {
+	configCondSet.Manage(tps).MarkFalse(
+		DependenciesInstalled,
 		"Error",
-		"PostReconciliation failed with message: %s", msg)
+		"Dependency missing: %s", msg)
 }
 
 // GetVersion gets the currently installed version of the component.
-func (tcs *TektonConfigStatus) GetVersion() string {
-	return tcs.Version
+func (tps *TektonConfigStatus) GetVersion() string {
+	return tps.Version
 }
 
 // SetVersion sets the currently installed version of the component.
-func (tcs *TektonConfigStatus) SetVersion(version string) {
-	tcs.Version = version
+func (tps *TektonConfigStatus) SetVersion(version string) {
+	tps.Version = version
+}
+
+// GetManifests gets the url links of the manifests.
+func (tps *TektonConfigStatus) GetManifests() []string {
+	return tps.Manifests
+}
+
+// SetVersion sets the url links of the manifests.
+func (tps *TektonConfigStatus) SetManifests(manifests []string) {
+	tps.Manifests = manifests
 }

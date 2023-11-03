@@ -51,34 +51,7 @@ func (tp *TektonResult) GetStatus() TektonComponentStatus {
 
 // TektonResultSpec defines the desired state of TektonResult
 type TektonResultSpec struct {
-	CommonSpec           `json:",inline"`
-	ResultsAPIProperties `json:",inline"`
-}
-
-// ResultsAPIProperties defines the fields which are configurable for
-// Results API server config
-type ResultsAPIProperties struct {
-	DBUser                string `JSON:"db_user,omitempty"`
-	DBPassword            string `json:"db_password,omitempty"`
-	DBHost                string `json:"db_host,omitempty"`
-	DBPort                int64  `json:"db_port,omitempty"`
-	DBSSLMode             string `json:"db_sslmode,omitempty"`
-	DBEnableAutoMigration bool   `json:"db_enable_auto_migration,omitempty"`
-	LogLevel              string `json:"log_level,omitempty"`
-	LogsAPI               bool   `json:"logs_api,omitempty"`
-	LogsType              string `json:"logs_type,omitempty"`
-	LogsBufferSize        int64  `json:"logs_buffer_size,omitempty"`
-	LogsPath              string `json:"logs_path,omitempty"`
-	TLSHostnameOverride   string `json:"tls_hostname_override,omitempty"`
-	NoAuth                bool   `json:"no_auth,omitempty"`
-	S3BucketName          string `json:"s3_bucket_name,omitempty"`
-	S3Endpoint            string `json:"s3_endpoint,omitempty"`
-	S3HostnameImmutable   bool   `json:"s3_hostname_immutable,omitempty"`
-	S3Region              string `json:"s3_region,omitempty"`
-	S3AccessKeyID         string `json:"s3_access_key_id,omitempty"`
-	S3SecretAccessKey     string `json:"s3_secret_access_key,omitempty"`
-	S3MultiPartSize       int64  `json:"s3_multi_part_size,omitempty"`
-	LoggingPVCName        string `json:"logging_pvc_name"`
+	CommonSpec `json:",inline"`
 }
 
 // TektonResultStatus defines the observed state of TektonResult
@@ -89,19 +62,9 @@ type TektonResultStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The current installer set name for TektonResult
+	// The url links of the manifests, separated by comma
 	// +optional
-	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
-}
-
-func (in *TektonResultStatus) MarkPreReconcilerFailed(s string) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (in *TektonResultStatus) MarkPostReconcilerFailed(s string) {
-	//TODO implement me
-	panic("implement me")
+	Manifests []string `json:"manifests,omitempty"`
 }
 
 // TektonResultsList contains a list of TektonResult

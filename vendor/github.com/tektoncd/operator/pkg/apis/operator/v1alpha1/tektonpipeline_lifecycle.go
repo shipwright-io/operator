@@ -21,118 +21,107 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-const (
-	PreReconciler         apis.ConditionType = "PreReconciler"
-	InstallerSetAvailable apis.ConditionType = "InstallerSetAvailable"
-	InstallerSetReady     apis.ConditionType = "InstallerSetReady"
-	PostReconciler        apis.ConditionType = "PostReconciler"
-)
-
 var (
-	// TODO: Add this back after refactoring all components
-	// and updating TektonComponentStatus to have updated
-	// conditions
-	//_ TektonComponentStatus = (*TektonPipelineStatus)(nil)
+	_ TektonComponentStatus = (*TektonPipelineStatus)(nil)
 
 	pipelineCondSet = apis.NewLivingConditionSet(
-		PreReconciler,
-		InstallerSetAvailable,
-		InstallerSetReady,
-		PostReconciler,
+		DependenciesInstalled,
+		DeploymentsAvailable,
+		InstallSucceeded,
 	)
 )
 
+// GroupVersionKind returns SchemeGroupVersion of a TektonPipeline
 func (tp *TektonPipeline) GroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(KindTektonPipeline)
 }
 
-func (tp *TektonPipeline) GetGroupVersionKind() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind(KindTektonPipeline)
-}
-
+// GetCondition returns the current condition of a given condition type
 func (tps *TektonPipelineStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 	return pipelineCondSet.Manage(tps).GetCondition(t)
 }
 
+// InitializeConditions initializes conditions of an TektonPipelineStatus
 func (tps *TektonPipelineStatus) InitializeConditions() {
 	pipelineCondSet.Manage(tps).InitializeConditions()
 }
 
+// IsReady looks at the conditions returns true if they are all true.
 func (tps *TektonPipelineStatus) IsReady() bool {
 	return pipelineCondSet.Manage(tps).IsHappy()
 }
 
-func (tps *TektonPipelineStatus) MarkPreReconcilerComplete() {
-	pipelineCondSet.Manage(tps).MarkTrue(PreReconciler)
+// MarkInstallSucceeded marks the InstallationSucceeded status as true.
+func (tps *TektonPipelineStatus) MarkInstallSucceeded() {
+	pipelineCondSet.Manage(tps).MarkTrue(InstallSucceeded)
+	if tps.GetCondition(DependenciesInstalled).IsUnknown() {
+		// Assume deps are installed if we're not sure
+		tps.MarkDependenciesInstalled()
+	}
 }
 
-func (tps *TektonPipelineStatus) MarkInstallerSetAvailable() {
-	pipelineCondSet.Manage(tps).MarkTrue(InstallerSetAvailable)
-}
-
-func (tps *TektonPipelineStatus) MarkInstallerSetReady() {
-	pipelineCondSet.Manage(tps).MarkTrue(InstallerSetReady)
-}
-
-func (tps *TektonPipelineStatus) MarkPostReconcilerComplete() {
-	pipelineCondSet.Manage(tps).MarkTrue(PostReconciler)
-}
-
-func (tps *TektonPipelineStatus) MarkNotReady(msg string) {
+// MarkInstallFailed marks the InstallationSucceeded status as false with the given
+// message.
+func (tps *TektonPipelineStatus) MarkInstallFailed(msg string) {
 	pipelineCondSet.Manage(tps).MarkFalse(
-		apis.ConditionReady,
+		InstallSucceeded,
 		"Error",
-		"Ready: %s", msg)
+		"Install failed with message: %s", msg)
 }
 
-func (tps *TektonPipelineStatus) MarkPreReconcilerFailed(msg string) {
-	tps.MarkNotReady("PreReconciliation failed")
+// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
+func (tps *TektonPipelineStatus) MarkDeploymentsAvailable() {
+	pipelineCondSet.Manage(tps).MarkTrue(DeploymentsAvailable)
+}
+
+// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
+// it's waiting for deployments.
+func (tps *TektonPipelineStatus) MarkDeploymentsNotReady() {
 	pipelineCondSet.Manage(tps).MarkFalse(
-		PreReconciler,
-		"Error",
-		"PreReconciliation failed with message: %s", msg)
+		DeploymentsAvailable,
+		"NotReady",
+		"Waiting on deployments")
 }
 
-func (tps *TektonPipelineStatus) MarkInstallerSetNotAvailable(msg string) {
-	tps.MarkNotReady("TektonInstallerSet not ready")
+// MarkDependenciesInstalled marks the DependenciesInstalled status as true.
+func (tps *TektonPipelineStatus) MarkDependenciesInstalled() {
+	pipelineCondSet.Manage(tps).MarkTrue(DependenciesInstalled)
+}
+
+// MarkDependencyInstalling marks the DependenciesInstalled status as false with the
+// given message.
+func (tps *TektonPipelineStatus) MarkDependencyInstalling(msg string) {
 	pipelineCondSet.Manage(tps).MarkFalse(
-		InstallerSetAvailable,
-		"Error",
-		"Installer set not ready: %s", msg)
+		DependenciesInstalled,
+		"Installing",
+		"Dependency installing: %s", msg)
 }
 
-func (tps *TektonPipelineStatus) MarkInstallerSetNotReady(msg string) {
-	tps.MarkNotReady("TektonInstallerSet not ready")
+// MarkDependencyMissing marks the DependenciesInstalled status as false with the
+// given message.
+func (tps *TektonPipelineStatus) MarkDependencyMissing(msg string) {
 	pipelineCondSet.Manage(tps).MarkFalse(
-		InstallerSetReady,
+		DependenciesInstalled,
 		"Error",
-		"Installer set not ready: %s", msg)
+		"Dependency missing: %s", msg)
 }
 
-func (tps *TektonPipelineStatus) MarkPostReconcilerFailed(msg string) {
-	tps.MarkNotReady("PostReconciliation failed")
-	pipelineCondSet.Manage(tps).MarkFalse(
-		PostReconciler,
-		"Error",
-		"PostReconciliation failed with message: %s", msg)
-}
-
-// TODO: below methods are not required for TektonPipeline
-// but as extension implements TektonComponent we need to defined them
-// this will be removed
-
-func (tps *TektonPipelineStatus) GetTektonInstallerSet() string {
-	return tps.TektonInstallerSet
-}
-
-func (tps *TektonPipelineStatus) SetTektonInstallerSet(installerSet string) {
-	tps.TektonInstallerSet = installerSet
-}
-
+// GetVersion gets the currently installed version of the component.
 func (tps *TektonPipelineStatus) GetVersion() string {
 	return tps.Version
 }
 
+// SetVersion sets the currently installed version of the component.
 func (tps *TektonPipelineStatus) SetVersion(version string) {
 	tps.Version = version
+}
+
+// GetManifests gets the url links of the manifests.
+func (tps *TektonPipelineStatus) GetManifests() []string {
+	return tps.Manifests
+}
+
+// SetVersion sets the url links of the manifests.
+func (tps *TektonPipelineStatus) SetManifests(manifests []string) {
+	tps.Manifests = manifests
 }

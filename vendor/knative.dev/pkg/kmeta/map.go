@@ -16,19 +16,41 @@ limitations under the License.
 
 package kmeta
 
-import "knative.dev/pkg/kmap"
-
 // CopyMap makes a copy of the map.
-// Deprecated: use kmap.Copy
-var CopyMap = kmap.Copy
+func CopyMap(a map[string]string) map[string]string {
+	ret := make(map[string]string, len(a))
+	for k, v := range a {
+		ret[k] = v
+	}
+	return ret
+}
 
 // UnionMaps returns a map constructed from the union of input maps.
 // where values from latter maps win.
-// Deprecated: use kmap.Union
-var UnionMaps = kmap.Union
+func UnionMaps(maps ...map[string]string) map[string]string {
+	if len(maps) == 0 {
+		return map[string]string{}
+	}
+	out := make(map[string]string, len(maps[0]))
+
+	for _, m := range maps {
+		for k, v := range m {
+			out[k] = v
+		}
+	}
+	return out
+}
 
 // FilterMap creates a copy of the provided map, filtering out the elements
 // that match `filter`.
 // nil `filter` is accepted.
-// Deprecated: use kmap.Filter
-var FilterMap = kmap.Filter
+func FilterMap(in map[string]string, filter func(string) bool) map[string]string {
+	ret := make(map[string]string, len(in))
+	for k, v := range in {
+		if filter != nil && filter(k) {
+			continue
+		}
+		ret[k] = v
+	}
+	return ret
+}
