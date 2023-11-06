@@ -197,7 +197,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 
 		logger.Info("Deleting manifests...")
-		if err := manifest.Delete(); err != nil {
+		if err := manifest.Filter(manifestival.NoCRDs).Delete(); err != nil {
 			logger.Error(err, "deleting manifest's resources")
 			return RequeueWithError(err)
 		}

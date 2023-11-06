@@ -232,8 +232,8 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 			test.EventuallyRemoved(ctx, k8sClient, expectedDeployment)
 		})
 
-		// TODO: Do not delete the CRDs! This is something only a cluster admin should do.
-		g.It("deletes the custom resource definitions for the Shipwright build APIs", func(ctx g.SpecContext) {
+		// Deteling the build instance should not delete CRDS
+		g.It("should not delete the custom resource definitions for the Shipwright build APIs", func(ctx g.SpecContext) {
 			test.CRDEventuallyExists(ctx, k8sClient, "builds.shipwright.io")
 			test.CRDEventuallyExists(ctx, k8sClient, "buildruns.shipwright.io")
 			test.CRDEventuallyExists(ctx, k8sClient, "buildstrategies.shipwright.io")
@@ -244,10 +244,10 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			// Verify - check the behavior
-			test.CRDEventuallyRemoved(ctx, k8sClient, "builds.shipwright.io")
-			test.CRDEventuallyRemoved(ctx, k8sClient, "buildruns.shipwright.io")
-			test.CRDEventuallyRemoved(ctx, k8sClient, "buildstrategies.shipwright.io")
-			test.CRDEventuallyRemoved(ctx, k8sClient, "clusterbuildstrategies.shipwright.io")
+			test.CRDEventuallyExists(ctx, k8sClient, "builds.shipwright.io")
+			test.CRDEventuallyExists(ctx, k8sClient, "buildruns.shipwright.io")
+			test.CRDEventuallyExists(ctx, k8sClient, "buildstrategies.shipwright.io")
+			test.CRDEventuallyExists(ctx, k8sClient, "clusterbuildstrategies.shipwright.io")
 		})
 	})
 
