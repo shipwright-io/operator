@@ -1,16 +1,25 @@
 package test
 
 import (
+	"bytes"
 	"context"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"time"
+
+	o "github.com/onsi/gomega"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	o "github.com/onsi/gomega"
+	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+	"github.com/shipwright-io/operator/pkg/common"
 )
 
 // timeout amount of time to wait for Eventually methods
@@ -27,9 +36,13 @@ func EventuallyExists(ctx context.Context, k8sClient client.Client, obj client.O
 		if errors.IsNotFound(err) {
 			return false
 		}
+		if meta.IsNoMatchError(err) {
+			// For CRDs created by the operator, we may need to wait.
+			return false
+		}
 		o.Expect(err).NotTo(o.HaveOccurred())
 		return true
-	}, timeout).Should(o.BeTrue())
+	}, timeout).Should(o.BeTrue(), "waiting for object %s/%s to exist", obj.GetNamespace(), obj.GetName())
 }
 
 // EventuallyContainFinalizer retrieves and inspect the object to assert if the informed finalizer
@@ -84,4 +97,40 @@ func CRDEventuallyRemoved(ctx context.Context, k8sClient client.Client, crdName 
 		},
 	}
 	EventuallyRemoved(ctx, k8sClient, crd)
+}
+
+// ParseBuildStrategyNames returns a list of object names from the embedded build strategy
+// manifests.
+func ParseBuildStrategyNames() ([]string, error) {
+	koDataPath, err := common.KoDataPath()
+	if err != nil {
+		return nil, err
+	}
+	strategyPath := filepath.Join(koDataPath, "samples", "buildstrategy")
+	sampleNames := []string{}
+	err = filepath.WalkDir(strategyPath, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+		clusterBuildStrategy := &v1alpha1.ClusterBuildStrategy{}
+		decodeErr := decodeYaml(path, clusterBuildStrategy)
+		if decodeErr != nil {
+			return decodeErr
+		}
+		sampleNames = append(sampleNames, clusterBuildStrategy.Name)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return sampleNames, nil
+}
+
+func decodeYaml(path string, obj *v1alpha1.ClusterBuildStrategy) error {
+	yaml, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	decoder := k8syaml.NewYAMLOrJSONDecoder(bytes.NewBuffer(yaml), 16)
+	return decoder.Decode(obj)
 }
