@@ -19,13 +19,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"knative.dev/pkg/injection"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // SetupManifestival instantiates a Manifestival instance for the provided file or directory
 func SetupManifestival(client client.Client, fileOrDir string, recurse bool, logger logr.Logger) (manifestival.Manifest, error) {
-	mfclient, err := mfc.NewClient(injection.GetConfig(context.TODO()))
+	kubeRestConfig, err := GetConfig()
+	if err != nil {
+		return manifestival.Manifest{}, fmt.Errorf("Error creating kubernetes rest client %v", err)
+	}
+
+	mfclient, err := mfc.NewClient(kubeRestConfig)
 	if err != nil {
 		return manifestival.Manifest{}, fmt.Errorf("Error creating client from injected config %v", err)
 	}
@@ -205,4 +211,27 @@ func itemInSlice(item string, items []string) bool {
 
 func IsOpenShiftPlatform() bool {
 	return os.Getenv("PLATFORM") == "openshift"
+}
+
+// GetConfig creates a *rest.Config for talking to a Kubernetes apiserver.
+// Otherwise will assume running in cluster and use the cluster provided kubeconfig.
+//
+// # Config precedence
+//
+// * KUBECONFIG environment variable pointing at a file
+//
+// * In-cluster config if running in cluster
+//
+// * $HOME/.kube/config if exists
+func GetConfig() (*rest.Config, error) {
+	// If an env variable is specified with the config locaiton, use that
+	if len(os.Getenv("KUBECONFIG")) > 0 {
+		return clientcmd.BuildConfigFromFlags("", os.Getenv("KUBECONFIG"))
+	}
+	// If no explicit location, try the in-cluster config
+	if c, err := rest.InClusterConfig(); err == nil {
+		return c, nil
+	}
+
+	return nil, fmt.Errorf("could not locate a kubeconfig")
 }

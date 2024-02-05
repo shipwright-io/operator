@@ -18,10 +18,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.14.6
 )
 
-require (
-	github.com/manifestival/client-go-client v0.5.0
-	knative.dev/pkg v0.0.0-20230320014357-4c84b1b51ee8
-)
+require github.com/manifestival/client-go-client v0.5.0
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect
@@ -97,6 +94,7 @@ require (
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230308215209-15aac26d736a // indirect
 	k8s.io/utils v0.0.0-20230313181309-38a27ef9d749 // indirect
+	knative.dev/pkg v0.0.0-20230320014357-4c84b1b51ee8 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
