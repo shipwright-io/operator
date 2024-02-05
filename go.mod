@@ -5,7 +5,6 @@ go 1.20
 require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/go-logr/logr v1.4.1
-	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.0
@@ -17,6 +16,11 @@ require (
 	// go mod tidy forces this to v1.5.2
 	k8s.io/client-go v1.5.2
 	sigs.k8s.io/controller-runtime v0.14.6
+)
+
+require (
+	github.com/manifestival/client-go-client v0.5.0
+	knative.dev/pkg v0.0.0-20230320014357-4c84b1b51ee8
 )
 
 require (
@@ -93,7 +97,6 @@ require (
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230308215209-15aac26d736a // indirect
 	k8s.io/utils v0.0.0-20230313181309-38a27ef9d749 // indirect
-	knative.dev/pkg v0.0.0-20230320014357-4c84b1b51ee8 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect

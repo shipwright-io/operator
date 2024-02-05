@@ -132,9 +132,10 @@ github.com/kelseyhightower/envconfig
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
-# github.com/manifestival/controller-runtime-client v0.4.0
+# github.com/manifestival/client-go-client v0.5.0
 ## explicit; go 1.15
-github.com/manifestival/controller-runtime-client
+github.com/manifestival/client-go-client
+github.com/manifestival/client-go-client/pkg/dynamic
 # github.com/manifestival/manifestival v0.7.2
 ## explicit; go 1.15
 github.com/manifestival/manifestival
@@ -757,7 +758,9 @@ knative.dev/pkg/apis/duck/v1
 knative.dev/pkg/changeset
 knative.dev/pkg/configmap
 knative.dev/pkg/controller
+knative.dev/pkg/environment
 knative.dev/pkg/hash
+knative.dev/pkg/injection
 knative.dev/pkg/kmap
 knative.dev/pkg/kmeta
 knative.dev/pkg/kmp
@@ -769,6 +772,7 @@ knative.dev/pkg/metrics/metricskey
 knative.dev/pkg/network
 knative.dev/pkg/ptr
 knative.dev/pkg/reconciler
+knative.dev/pkg/signals
 knative.dev/pkg/system
 knative.dev/pkg/tracker
 # sigs.k8s.io/controller-runtime v0.14.6
