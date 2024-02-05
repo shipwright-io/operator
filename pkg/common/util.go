@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/go-logr/logr"
-	mfc "github.com/manifestival/controller-runtime-client"
+	mfc "github.com/manifestival/client-go-client"
 	"github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -19,12 +19,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/injection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // SetupManifestival instantiates a Manifestival instance for the provided file or directory
 func SetupManifestival(client client.Client, fileOrDir string, recurse bool, logger logr.Logger) (manifestival.Manifest, error) {
-	mfclient := mfc.NewClient(client)
+	mfclient, err := mfc.NewClient(injection.GetConfig(context.TODO()))
+	if err != nil {
+		return manifestival.Manifest{}, fmt.Errorf("Error creating client from injected config %v", err)
+	}
 
 	dataPath, err := KoDataPath()
 	if err != nil {
