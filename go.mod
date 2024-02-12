@@ -5,7 +5,6 @@ go 1.20
 require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/go-logr/logr v1.4.1
-	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
@@ -18,6 +17,8 @@ require (
 	k8s.io/client-go v1.5.2
 	sigs.k8s.io/controller-runtime v0.14.6
 )
+
+require github.com/manifestival/client-go-client v0.5.0
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect
