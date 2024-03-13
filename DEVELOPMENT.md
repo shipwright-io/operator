@@ -8,7 +8,7 @@ to build, test, and deploy the operator.
 Before you begin, ensure you have have a development environment well suited for Go and Kubernetes
 development:
 
-- Install [Go](https://go.dev/doc/install) version 1.20 or higher. We recommend using an
+- Install [Go](https://go.dev/doc/install) version 1.21 or higher. We recommend using an
   interactive development environment (IDE) that supports go, such as
   [GoLand](https://www.jetbrains.com/go/) or [VSCode](https://code.visualstudio.com/).
 - Install a container engine that can build and run container images. We recommend

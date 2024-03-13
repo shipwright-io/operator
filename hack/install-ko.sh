@@ -8,7 +8,7 @@
 set -e
 
 DEST="${1:-bin/ko}"
-KO_VERSION="${KO_VERSION:-0.15.0}"
+KO_VERSION="${KO_VERSION:-0.15.2}"
 
 OS="${OS:-linux}"
 ARCH="${ARCH:-amd64}"
