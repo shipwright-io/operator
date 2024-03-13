@@ -339,7 +339,7 @@ KO ?= $(LOCALBIN)/ko
 
 ## Tool Versions
 
-KO_VERSION ?= v0.15.0
+KO_VERSION ?= v0.15.2
 
 .PHONY: ko
 ko: $(KO) ## Download ko locally if necessary
