@@ -2,9 +2,13 @@ name: ci/github
 
 on: 
   pull_request:
-    branches: [ main ]
+    branches: 
+      - main
+      - "release-v*" # release branches
   push:
-    branches: [ main ]
+    branches: 
+      - main
+      - "release-v*" # release branches
 
 permissions:
   contents: read
