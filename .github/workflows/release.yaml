@@ -9,6 +9,9 @@ on:
       previous-tag:
         description: 'Previous tag'
         required: false
+      git-ref:
+        description: 'Git reference for the release. Use an appropriate release-v* branch, tag, or commit SHA.'
+        required: true
 jobs:
   release:
     # if: ${{ github.repository == 'shipwright-io/build' }}
@@ -20,14 +23,15 @@ jobs:
     env:
       IMAGE_HOST: ghcr.io
       IMAGE_NAMESPACE: ${{ github.repository }}
-      VERSION: ${{ github.event.inputs.release }}
+      VERSION: ${{ inputs.release }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
+        ref: ${{ inputs.git-ref }}
         fetch-depth: 0  # Fetch all history, needed for release note generation.
     # Install tools
     - name: Install Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v4
       with:
         go-version: 1.21.x
         cache: true
@@ -54,7 +58,7 @@ jobs:
     - name: Build Release Changelog
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PREVIOUS_TAG: ${{ github.event.inputs.previous-tag }}
+        PREVIOUS_TAG: ${{ inputs.previous-tag }}
         REPOSITORY: ${{ github.repository }}
       run: |
         "${GITHUB_WORKSPACE}/.github/draft_release_notes.sh"
@@ -62,8 +66,8 @@ jobs:
       id: draft_release
       uses: actions/create-release@v1
       with:
-        release_name: ${{ github.event.inputs.release }}
-        tag_name: ${{ github.event.inputs.release }}
+        release_name: ${{ inputs.release }}
+        tag_name: ${{ inputs.release }}
         draft: true
         prerelease: true
         body_path: Changes.md
