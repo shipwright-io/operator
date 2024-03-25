@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.4.1
 	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.2
-	github.com/onsi/ginkgo/v2 v2.17.0
+	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.32.0
 	github.com/shipwright-io/build v0.12.0
 	github.com/tektoncd/operator v0.67.0
