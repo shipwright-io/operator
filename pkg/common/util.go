@@ -87,6 +87,36 @@ func ToLowerCaseKeys(keyValues map[string]string) map[string]string {
 	return newMap
 }
 
+func removeDescriptionsRecursively(data map[string]interface{}) {
+	for key, value := range data {
+		if key == "description" {
+			delete(data, key)
+			continue
+		}
+		if subObj, ok := value.(map[string]interface{}); ok {
+			removeDescriptionsRecursively(subObj)
+		}
+		if subObjs, ok := value.([]interface{}); ok {
+			for _, subObj := range subObjs {
+				if subObjMap, ok := subObj.(map[string]interface{}); ok {
+					removeDescriptionsRecursively(subObjMap)
+				}
+			}
+		}
+	}
+}
+
+func TruncateDescription() manifestival.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "CustomResourceDefinition" {
+			return nil
+		}
+		data := u.Object
+		removeDescriptionsRecursively(data)
+		return nil
+	}
+}
+
 // deploymentImages replaces container and env vars images.
 func DeploymentImages(images map[string]string) manifestival.Transformer {
 	return func(u *unstructured.Unstructured) error {

@@ -171,6 +171,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ShipwrightImagePrefix))
 
 	transformerfncs := []manifestival.Transformer{}
+	transformerfncs = append(transformerfncs, common.TruncateDescription())
 	if common.IsOpenShiftPlatform() {
 		transformerfncs = append(transformerfncs, manifestival.InjectNamespace(targetNamespace))
 		transformerfncs = append(transformerfncs, common.DeploymentImages(images))
