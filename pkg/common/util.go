@@ -87,6 +87,46 @@ func ToLowerCaseKeys(keyValues map[string]string) map[string]string {
 	return newMap
 }
 
+// truncateNestedFields truncates the named "field" from the given data object and all of its sub-objects to maxLength characters.
+func truncateNestedFields(data map[string]interface{}, maxLength int, field string) {
+	queue := []map[string]interface{}{data}
+
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+
+		for key, value := range curr {
+			if key == field {
+				if str, ok := value.(string); ok && len(str) > maxLength {
+					curr[key] = str[:maxLength]
+				}
+			} else {
+				if subObj, ok := value.(map[string]interface{}); ok {
+					queue = append(queue, subObj)
+				} else if subObjs, ok := value.([]interface{}); ok {
+					for _, subObj := range subObjs {
+						if subObjMap, ok := subObj.(map[string]interface{}); ok {
+							queue = append(queue, subObjMap)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// TruncateCRDFieldTransformer returns a manifestival.Transformer that truncates the value of the given field within a CRD spec to the provided max length.
+func TruncateCRDFieldTransformer(field string, maxLength int) manifestival.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "CustomResourceDefinition" {
+			return nil
+		}
+		data := u.Object
+		truncateNestedFields(data, maxLength, field)
+		return nil
+	}
+}
+
 // deploymentImages replaces container and env vars images.
 func DeploymentImages(images map[string]string) manifestival.Transformer {
 	return func(u *unstructured.Unstructured) error {

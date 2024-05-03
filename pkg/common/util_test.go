@@ -1,13 +1,14 @@
 package common
 
 import (
+	"os"
 	"path"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -59,6 +60,76 @@ func TestDeploymentImages(t *testing.T) {
 		newManifest, err := manifest.Transform(DeploymentImages(images))
 		Expect(err).NotTo(HaveOccurred())
 		assertDeployContainerEnvsHasImage(t, newManifest.Resources(), "IMAGE_SHIPWRIGHT_GIT_CONTAINER_IMAGE", image)
+	})
+}
+
+func TestTruncateNestedFields(t *testing.T) {
+	RegisterFailHandler(Fail)
+	t.Run("test truncation of manifests", func(t *testing.T) {
+		testData := map[string]interface{}{
+			"field1": "This is a long string that should be truncated",
+			"field2": map[string]interface{}{
+				"field1": "This is another long string that should be truncated",
+			},
+		}
+
+		expected := map[string]interface{}{
+			"field1": "This is a ",
+			"field2": map[string]interface{}{
+				"field1": "This is an",
+			},
+		}
+
+		truncateNestedFields(testData, 10, "field1")
+		Expect(testData).To(Equal(expected))
+	})
+}
+
+func CheckNestedFieldLengthWithinLimit(data map[string]interface{}, maxLength int, field string) bool {
+	isFieldSizeInLimit := true
+	queue := []map[string]interface{}{data}
+
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+
+		for key, value := range curr {
+			if key == field {
+				if str, ok := value.(string); ok {
+					isFieldSizeInLimit = isFieldSizeInLimit && (len(str) <= maxLength)
+				}
+			} else {
+				if subObj, ok := value.(map[string]interface{}); ok {
+					queue = append(queue, subObj)
+				} else if subObjs, ok := value.([]interface{}); ok {
+					for _, subObj := range subObjs {
+						if subObjMap, ok := subObj.(map[string]interface{}); ok {
+							queue = append(queue, subObjMap)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return isFieldSizeInLimit
+}
+
+func TestTruncateCRDFieldTransformer(t *testing.T) {
+	RegisterFailHandler(Fail)
+	t.Run("test truncate CRD field Transformer", func(t *testing.T) {
+		testData, err := os.ReadFile(path.Join("testdata", "test-truncate-crd-field.yaml"))
+		Expect(err).NotTo(HaveOccurred())
+
+		u := &unstructured.Unstructured{}
+		err = yaml.Unmarshal(testData, u)
+		Expect(err).NotTo(HaveOccurred())
+
+		transformFunc := TruncateCRDFieldTransformer("description", 10)
+		err = transformFunc(u)
+		Expect(err).NotTo(HaveOccurred(), "failed to transform CRD field")
+		isDescriptionTruncated := CheckNestedFieldLengthWithinLimit(u.Object, 10, "description")
+		Expect(isDescriptionTruncated).To(Equal(true))
 	})
 }
 
