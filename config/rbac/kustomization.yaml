@@ -18,3 +18,5 @@ resources:
 - shipwright_build_controller_role_binding.yaml
 - shipwright_build_aggregate_role.yaml
 - shipwright_build_aggregate_role_binding.yaml
+- shipwright_build_webhook_role.yaml
+- shipwright_build_webhook_role_binding.yaml
