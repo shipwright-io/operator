@@ -253,12 +253,14 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return RequeueWithError(err)
 	}
 
+	// Builds 0.12.0 created a ClusterRole and ClusterRolebinding for the Build API conversion webhook.
+	// These were removed in v0.13.0 - when upgrading, these should be removed if present.
 	err = deleteObjectsIfPresent(ctx, r.Client, []client.Object{
 		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "shipwright-build-webhook"}},
 		&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "shipwright-build-webhook"}},
 	})
 	if err != nil {
-		logger.Error(err, "deleting'shipwright-build-webhook' role and cluster role binding")
+		logger.Error(err, "deleting shipwright-build-webhook ClusterRole and ClusterRoleBinding")
 		return RequeueWithError(err)
 	}
 
