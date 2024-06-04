@@ -1,13 +1,12 @@
 package test
 
 import (
-	"bytes"
 	"context"
-	"io/fs"
-	"os"
+	"fmt"
 	"path/filepath"
 	"time"
 
+	"github.com/manifestival/manifestival"
 	o "github.com/onsi/gomega"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -15,10 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
 	"github.com/shipwright-io/operator/pkg/common"
 )
 
@@ -108,29 +105,18 @@ func ParseBuildStrategyNames() ([]string, error) {
 	}
 	strategyPath := filepath.Join(koDataPath, "samples", "buildstrategy")
 	sampleNames := []string{}
-	err = filepath.WalkDir(strategyPath, func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			return nil
-		}
-		clusterBuildStrategy := &v1alpha1.ClusterBuildStrategy{}
-		decodeErr := decodeYaml(path, clusterBuildStrategy)
-		if decodeErr != nil {
-			return decodeErr
-		}
-		sampleNames = append(sampleNames, clusterBuildStrategy.Name)
-		return nil
-	})
+	manifest, err := manifestival.ManifestFrom(manifestival.Recursive(strategyPath))
 	if err != nil {
-		return nil, err
+		return sampleNames, err
+	}
+	for _, obj := range manifest.Resources() {
+		if obj.GetKind() == "ClusterBuildStrategy" {
+			sampleNames = append(sampleNames, obj.GetName())
+		}
+
+	}
+	if len(sampleNames) == 0 {
+		return sampleNames, fmt.Errorf("no ClusterBuildStrategy objects found in %s", strategyPath)
 	}
 	return sampleNames, nil
-}
-
-func decodeYaml(path string, obj *v1alpha1.ClusterBuildStrategy) error {
-	yaml, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	decoder := k8syaml.NewYAMLOrJSONDecoder(bytes.NewBuffer(yaml), 16)
-	return decoder.Decode(obj)
 }
