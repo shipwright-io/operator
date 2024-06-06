@@ -269,7 +269,7 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	})
 	if err := r.Client.Status().Update(ctx, b); err != nil {
 		logger.Error(err, "updating ShipwrightBuild status")
-		RequeueWithError(err) //nolint:errcheck
+		return RequeueWithError(err)
 	}
 	logger.Info("All done!")
 	return NoRequeue()
