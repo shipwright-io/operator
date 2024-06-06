@@ -108,6 +108,17 @@ const (
 	AnnotationBuildVerifyRepository = BuildDomain + "/verify.repository"
 )
 
+const (
+	// OutputImageZeroTimestamp indicates that the UNIX timestamp 0 is to be used
+	OutputImageZeroTimestamp = "Zero"
+
+	// OutputImageSourceTimestamp indicates that the timestamp of the respective source it to be used
+	OutputImageSourceTimestamp = "SourceTimestamp"
+
+	// OutputImageBuildTimestamp indicates that the current timestamp of the build run itself is to be used
+	OutputImageBuildTimestamp = "BuildTimestamp"
+)
+
 // BuildSpec defines the desired state of Build
 type BuildSpec struct {
 	// Source refers to the Git repository containing the
@@ -233,6 +244,16 @@ type Image struct {
 	//
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// Timestamp references the optional image timestamp to be set, valid values are:
+	// - "Zero", to set 00:00:00 UTC on 1 January 1970
+	// - "SourceTimestamp", to set the source timestamp dereived from the input source
+	// - "BuildTimestamp", to set the timestamp of the current build itself
+	// - Parsable integer number defined as the epoch seconds
+	// - or nil/empty to not set any specific timestamp
+	//
+	// +optional
+	Timestamp *string `json:"timestamp,omitempty"`
 }
 
 // BuildStatus defines the observed state of Build
@@ -257,7 +278,6 @@ type BuildStatus struct {
 
 // Build is the Schema representing a Build definition
 // +kubebuilder:subresource:status
-// +kubebuilder:storageversion
 // +kubebuilder:resource:path=builds,scope=Namespaced
 // +kubebuilder:printcolumn:name="Registered",type="string",JSONPath=".status.registered",description="The register status of the Build"
 // +kubebuilder:printcolumn:name="Reason",type="string",JSONPath=".status.reason",description="The reason of the registered Build, either an error or succeed message"

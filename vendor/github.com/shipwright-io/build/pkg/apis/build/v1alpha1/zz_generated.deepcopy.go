@@ -904,6 +904,11 @@ func (in *Image) DeepCopyInto(out *Image) {
 			(*out)[key] = val
 		}
 	}
+	if in.Timestamp != nil {
+		in, out := &in.Timestamp, &out.Timestamp
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -1122,6 +1127,10 @@ func (in *SourceResult) DeepCopyInto(out *SourceResult) {
 		in, out := &in.Bundle, &out.Bundle
 		*out = new(BundleSourceResult)
 		**out = **in
+	}
+	if in.Timestamp != nil {
+		in, out := &in.Timestamp, &out.Timestamp
+		*out = (*in).DeepCopy()
 	}
 	return
 }
