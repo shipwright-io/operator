@@ -13,6 +13,7 @@ import (
 	"github.com/manifestival/manifestival"
 	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
@@ -83,6 +84,24 @@ func (r *ShipwrightBuildReconciler) unsetFinalizer(ctx context.Context, b *v1alp
 
 	b.SetFinalizers(finalizers)
 	return r.Update(ctx, b, &client.UpdateOptions{})
+}
+
+// deleteObjectsIfPresent deletes all the given objects if they are present in the cluster.
+func deleteObjectsIfPresent(ctx context.Context, k8sClient client.Client, objs []client.Object) error {
+	for _, obj := range objs {
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, obj)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("getting object %s: %v", obj.GetName(), err)
+		}
+		err = k8sClient.Delete(ctx, obj)
+		if err != nil {
+			return fmt.Errorf("deleting object %s: %v", obj.GetName(), err)
+		}
+	}
+	return nil
 }
 
 // Reconcile performs the resource reconciliation steps to deploy or remove Shipwright Build
@@ -233,6 +252,18 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		err = r.Client.Status().Update(ctx, b)
 		return RequeueWithError(err)
 	}
+
+	// Builds 0.12.0 created a ClusterRole and ClusterRolebinding for the Build API conversion webhook.
+	// These were removed in v0.13.0 - when upgrading, these should be removed if present.
+	err = deleteObjectsIfPresent(ctx, r.Client, []client.Object{
+		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "shipwright-build-webhook"}},
+		&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "shipwright-build-webhook"}},
+	})
+	if err != nil {
+		logger.Error(err, "deleting shipwright-build-webhook ClusterRole and ClusterRoleBinding")
+		return RequeueWithError(err)
+	}
+
 	if err := r.setFinalizer(ctx, b); err != nil {
 		logger.Info(fmt.Sprintf("%#v", b))
 		logger.Error(err, "setting the finalizer")

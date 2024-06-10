@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+	buildv1beta1 "github.com/shipwright-io/build/pkg/apis/build/v1beta1"
 	"github.com/shipwright-io/operator/pkg/common"
 	"github.com/shipwright-io/operator/test"
 )
@@ -61,7 +61,7 @@ func TestReconcileBuildStrategies(t *testing.T) {
 				})
 			}
 			crdClient := apiextensionsfake.NewSimpleClientset(objects...)
-			schemeBuilder := runtime.NewSchemeBuilder(scheme.AddToScheme, buildv1alpha1.AddToScheme)
+			schemeBuilder := runtime.NewSchemeBuilder(scheme.AddToScheme, buildv1beta1.AddToScheme)
 			scheme := runtime.NewScheme()
 			err := schemeBuilder.AddToScheme(scheme)
 			o.Expect(err).NotTo(HaveOccurred(), "create k8s client scheme")
@@ -78,7 +78,7 @@ func TestReconcileBuildStrategies(t *testing.T) {
 				t.Logf("build strategies: %s", strategies)
 				o.Expect(err).NotTo(HaveOccurred(), "parse build strategy names")
 				for _, strategy := range strategies {
-					obj := &buildv1alpha1.ClusterBuildStrategy{
+					obj := &buildv1beta1.ClusterBuildStrategy{
 						ObjectMeta: v1.ObjectMeta{
 							Name: strategy,
 						},

@@ -217,6 +217,9 @@ github.com/prometheus/statsd_exporter/pkg/mapper/fsm
 # github.com/shipwright-io/build v0.13.0
 ## explicit; go 1.21
 github.com/shipwright-io/build/pkg/apis/build/v1alpha1
+github.com/shipwright-io/build/pkg/apis/build/v1beta1
+github.com/shipwright-io/build/pkg/ctxlog
+github.com/shipwright-io/build/pkg/webhook
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag

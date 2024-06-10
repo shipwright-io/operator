@@ -29,7 +29,7 @@ import (
 
 	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 
-	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+	buildv1beta1 "github.com/shipwright-io/build/pkg/apis/build/v1beta1"
 	operatorv1alpha1 "github.com/shipwright-io/operator/api/v1alpha1"
 	"github.com/shipwright-io/operator/pkg/common"
 	"github.com/shipwright-io/operator/test"
@@ -187,7 +187,7 @@ var _ = BeforeSuite(func() {
 	err = crdv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = buildv1alpha1.AddToScheme(scheme.Scheme)
+	err = buildv1beta1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
