@@ -8,7 +8,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+	buildv1beta1 "github.com/shipwright-io/build/pkg/apis/build/v1beta1"
 	"github.com/shipwright-io/operator/api/v1alpha1"
 	"github.com/shipwright-io/operator/test"
 )
@@ -29,7 +29,7 @@ var _ = Describe("Install embedded build strategies", func() {
 			expectedBuildStrategies, err := test.ParseBuildStrategyNames()
 			Expect(err).NotTo(HaveOccurred())
 			for _, strategy := range expectedBuildStrategies {
-				strategyObj := &buildv1alpha1.ClusterBuildStrategy{
+				strategyObj := &buildv1beta1.ClusterBuildStrategy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: strategy,
 					},
