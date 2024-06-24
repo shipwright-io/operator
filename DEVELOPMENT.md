@@ -52,3 +52,8 @@ Changes that modify the `bundle` directory, however, may require the operator to
 deployed with Operator Lifecycle Manager. Refer to the
 [OLM development guide](/docs/development/olm-development.md) for instructions on how to build,
 deploy, and test the operator with OLM.
+
+## Releasing the Operator
+
+For maintainers who are asked to issue releases, please refer to the
+[release process](./docs/development/releasing.md) document.

@@ -55,6 +55,30 @@ This will run a script that does the following:
 
 Once the script completes, the Shipwright and Tekton operators will be installed on the cluster.
 
+## Testing a Release
+
+To test a release that has not been published to the Kubernetes Operators
+[OperatorHub](https://operatorhub.io/), do the following:
+
+### Step 1: Build and Push an Operator Catalog
+
+Like Step 2 above, you will need to publish a catalog containing the candidate operator release.
+Run the following command to set the correct `BUNDLE_IMG` for the catalog:
+
+```sh
+$ version=<version to test, no leading v> # example: 0.13.0-rc0
+$ make catalog-push IMAGE_REPO=<your-registry> VERSION="$version" BUNDLE_IMG="ghcr.io/shipwright-io/operator/operator-bundle:v$version"
+```
+
+### Step 2: Deploy the operator
+
+Similar to Step 3 above, deploy the operator with the catalog image:
+
+```sh
+$ version=<version to test, no leading `v`> # example: 0.13.0-rc0
+$ make catalog-run IMAGE_REPO=<your-registry> VERSION="$version"
+```
+
 ## Troubleshooting
 
 ### `sed` Command Not Found
