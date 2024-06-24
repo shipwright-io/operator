@@ -31,7 +31,7 @@ jobs:
         fetch-depth: 0  # Fetch all history, needed for release note generation.
     # Install tools
     - name: Install Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: 1.21.x
         cache: true
@@ -54,7 +54,8 @@ jobs:
         grep -o "ghcr.io[^\"]*" "${GITHUB_WORKSPACE}/_output/olm/bundle/manifests/shipwright-operator.clusterserviceversion.yaml" | uniq | xargs -n 1 cosign sign \
             -a sha=${{ github.sha }} \
             -a run_id=${{ github.run_id }} \
-            -a run_attempt=${{ github.run_attempt }}
+            -a run_attempt=${{ github.run_attempt }} \
+            --yes
     - name: Build Release Changelog
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
