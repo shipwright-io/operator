@@ -24,7 +24,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/shipwright-io/operator
     support: The Shipwright Contributors
-  name: shipwright-operator.v0.13.0-rc0
+  name: shipwright-operator.v0.14.0-rc0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -777,4 +777,4 @@ spec:
   provider:
     name: The Shipwright Contributors
     url: https://shipwright.io
-  version: 0.13.0-rc0
+  version: 0.14.0-rc0
