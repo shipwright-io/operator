@@ -8,22 +8,22 @@ metadata:
           "apiVersion": "operator.shipwright.io/v1alpha1",
           "kind": "ShipwrightBuild",
           "metadata": {
-            "name": "shipwright-build"
+            "labels": {
+              "app.kubernetes.io/created-by": "shipwright-operator",
+              "app.kubernetes.io/instance": "shipwrightbuild-sample",
+              "app.kubernetes.io/managed-by": "kustomize",
+              "app.kubernetes.io/name": "shipwrightbuild",
+              "app.kubernetes.io/part-of": "shipwright-operator"
+            },
+            "name": "shipwrightbuild-sample"
           },
-          "spec": {
-            "targetNamespace": "shipwright-build"
-          }
+          "spec": null
         }
       ]
     capabilities: Basic Install
-    categories: Developer Tools
-    certified: "false"
-    containerImage: ko://github.com/shipwright-io/operator
-    description: Shipwright is a framework for building container images on Kubernetes.
-    operators.operatorframework.io/builder: operator-sdk-v1.17.0+git
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-    repository: https://github.com/shipwright-io/operator
-    support: The Shipwright Contributors
+    createdAt: "2024-07-19T03:02:50Z"
+    operators.operatorframework.io/builder: operator-sdk-v1.35.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
   name: shipwright-operator.v0.14.0-rc0
   namespace: placeholder
 spec:
@@ -77,193 +77,6 @@ spec:
     spec:
       clusterPermissions:
       - rules:
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - clusterbuildstrategies
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - buildstrategies
-          verbs:
-          - get
-          - list
-          - watch
-          - create
-          - update
-          - patch
-          - delete
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - builds
-          verbs:
-          - get
-          - list
-          - watch
-          - create
-          - update
-          - patch
-          - delete
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - buildruns
-          verbs:
-          - get
-          - list
-          - watch
-          - create
-          - update
-          - patch
-          - delete
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - buildruns
-          verbs:
-          - get
-          - list
-          - watch
-          - update
-          - delete
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - buildruns/finalizers
-          verbs:
-          - update
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - buildruns/status
-          verbs:
-          - update
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - builds
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - builds/finalizers
-          verbs:
-          - update
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - builds/status
-          verbs:
-          - update
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - buildstrategies
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - shipwright.io
-          resources:
-          - clusterbuildstrategies
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - tekton.dev
-          resources:
-          - taskruns
-          verbs:
-          - get
-          - list
-          - watch
-          - create
-          - delete
-          - patch
-        - apiGroups:
-          - ""
-          resources:
-          - pods
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - secrets
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - configmaps
-          verbs:
-          - list
-        - apiGroups:
-          - ""
-          resources:
-          - serviceaccounts
-          verbs:
-          - get
-          - list
-          - watch
-          - create
-          - update
-          - delete
-        - apiGroups:
-          - ""
-          resources:
-          - configmaps
-          verbs:
-          - get
-          - create
-          - update
-        - apiGroups:
-          - coordination.k8s.io
-          resources:
-          - leases
-          verbs:
-          - create
-          - get
-          - update
-        - apiGroups:
-          - ""
-          resources:
-          - events
-          verbs:
-          - create
-        - apiGroups:
-          - ""
-          resources:
-          - pods
-          - events
-          - configmaps
-          - secrets
-          - limitranges
-          - namespaces
-          - services
-          verbs:
-          - '*'
-        - apiGroups:
-          - admissionregistration.k8s.io
-          - admissionregistration.k8s.io/v1beta1
-          resources:
-          - validatingwebhookconfigurations
-          verbs:
-          - '*'
         - apiGroups:
           - admissionregistration.k8s.io
           resources:
@@ -644,14 +457,21 @@ spec:
           - subjectaccessreviews
           verbs:
           - create
-        serviceAccountName: shipwright-operator
+        serviceAccountName: shipwright-operator-controller-manager
       deployments:
-      - name: shipwright-operator
+      - label:
+          app.kubernetes.io/component: manager
+          app.kubernetes.io/created-by: shipwright-operator
+          app.kubernetes.io/instance: controller-manager
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: deployment
+          app.kubernetes.io/part-of: shipwright-operator
+          control-plane: controller-manager
+        name: shipwright-operator-controller-manager
         spec:
           replicas: 1
           selector:
             matchLabels:
-              app: shipwright-operator
               control-plane: controller-manager
           strategy: {}
           template:
@@ -659,7 +479,6 @@ spec:
               annotations:
                 kubectl.kubernetes.io/default-container: manager
               labels:
-                app: shipwright-operator
                 control-plane: controller-manager
             spec:
               containers:
@@ -668,7 +487,7 @@ spec:
                 - --upstream=http://127.0.0.1:8080/
                 - --logtostderr=true
                 - --v=0
-                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.15.0
                 name: kube-rbac-proxy
                 ports:
                 - containerPort: 8443
@@ -681,14 +500,18 @@ spec:
                   requests:
                     cpu: 5m
                     memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
               - args:
                 - --health-probe-bind-address=:8081
                 - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
-                env:
-                - name: USE_MANAGED_WEBHOOK_CERTS
-                  value: "true"
-                image: ko://github.com/shipwright-io/operator
+                command:
+                - /manager
+                image: ghcr.io/shipwright-io/operator/operator:v0.14.0-rc0
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -704,16 +527,19 @@ spec:
                   periodSeconds: 10
                 resources:
                   limits:
-                    cpu: 200m
-                    memory: 100Mi
+                    cpu: 500m
+                    memory: 128Mi
                   requests:
-                    cpu: 100m
-                    memory: 20Mi
+                    cpu: 10m
+                    memory: 64Mi
                 securityContext:
                   allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
               securityContext:
                 runAsNonRoot: true
-              serviceAccountName: shipwright-operator
+              serviceAccountName: shipwright-operator-controller-manager
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
@@ -748,7 +574,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: shipwright-operator
+        serviceAccountName: shipwright-operator-controller-manager
     strategy: deployment
   installModes:
   - supported: false
@@ -761,9 +587,9 @@ spec:
     type: AllNamespaces
   keywords:
   - build
+  - cicd
   - shipwright
   - tekton
-  - cicd
   links:
   - name: Documentation
     url: https://shipwright.io

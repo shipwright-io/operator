@@ -489,13 +489,8 @@ func (suite *Suite) runSpecs(description string, suiteLabels Labels, suitePath s
 			newGroup(suite).run(specs.AtIndices(groupedSpecIndices[groupedSpecIdx]))
 		}
 
-		if suite.config.FailOnPending && specs.HasAnySpecsMarkedPending() {
+		if specs.HasAnySpecsMarkedPending() && suite.config.FailOnPending {
 			suite.report.SpecialSuiteFailureReasons = append(suite.report.SpecialSuiteFailureReasons, "Detected pending specs and --fail-on-pending is set")
-			suite.report.SuiteSucceeded = false
-		}
-
-		if suite.config.FailOnEmpty && specs.CountWithoutSkip() == 0 {
-			suite.report.SpecialSuiteFailureReasons = append(suite.report.SpecialSuiteFailureReasons, "Detected no specs ran and --fail-on-empty is set")
 			suite.report.SuiteSucceeded = false
 		}
 	}

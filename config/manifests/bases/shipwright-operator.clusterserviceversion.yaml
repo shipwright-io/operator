@@ -4,12 +4,6 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-    categories: Developer Tools
-    certified: "false"
-    containerImage: ko://github.com/shipwright-io/operator
-    description: Shipwright is a framework for building container images on Kubernetes.
-    repository: https://github.com/shipwright-io/operator
-    support: The Shipwright Contributors
   name: shipwright-operator.v0.0.0
   namespace: placeholder
 spec:
@@ -74,9 +68,9 @@ spec:
     type: AllNamespaces
   keywords:
   - build
+  - cicd
   - shipwright
   - tekton
-  - cicd
   links:
   - name: Documentation
     url: https://shipwright.io
