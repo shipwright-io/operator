@@ -1,0 +1,10 @@
+{
+    "schema": "olm.channel",
+    "name": "candidate",
+    "package": "shipwright-operator",
+    "entries": [
+        {
+            "name": "shipwright-operator-latest"
+        }
+    ]
+}
