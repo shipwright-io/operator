@@ -2,11 +2,9 @@ package buildstrategy
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"testing"
 
-	"github.com/manifestival/manifestival"
 	. "github.com/onsi/gomega"
 
 	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -20,6 +18,7 @@ import (
 
 	buildv1beta1 "github.com/shipwright-io/build/pkg/apis/build/v1beta1"
 	"github.com/shipwright-io/operator/internal/pkg/common"
+	testutils "github.com/shipwright-io/operator/test/utils"
 )
 
 func TestReconcileBuildStrategies(t *testing.T) {
@@ -75,7 +74,7 @@ func TestReconcileBuildStrategies(t *testing.T) {
 			o.Expect(requeue).To(BeEquivalentTo(tc.expectRequeue), "check reconcile requeue")
 
 			if tc.expectStrategiesInstalled {
-				strategies, err := ParseBuildStrategyNames()
+				strategies, err := testutils.ParseBuildStrategyNames()
 				t.Logf("build strategies: %s", strategies)
 				o.Expect(err).NotTo(HaveOccurred(), "parse build strategy names")
 				for _, strategy := range strategies {
@@ -90,29 +89,4 @@ func TestReconcileBuildStrategies(t *testing.T) {
 			}
 		})
 	}
-}
-
-// ParseBuildStrategyNames returns a list of object names from the embedded build strategy
-// manifests.
-func ParseBuildStrategyNames() ([]string, error) {
-	koDataPath, err := common.KoDataPath()
-	if err != nil {
-		return nil, err
-	}
-	strategyPath := filepath.Join(koDataPath, "samples", "buildstrategy")
-	sampleNames := []string{}
-	manifest, err := manifestival.ManifestFrom(manifestival.Recursive(strategyPath))
-	if err != nil {
-		return sampleNames, err
-	}
-	for _, obj := range manifest.Resources() {
-		if obj.GetKind() == "ClusterBuildStrategy" {
-			sampleNames = append(sampleNames, obj.GetName())
-		}
-
-	}
-	if len(sampleNames) == 0 {
-		return sampleNames, fmt.Errorf("no ClusterBuildStrategy objects found in %s", strategyPath)
-	}
-	return sampleNames, nil
 }
