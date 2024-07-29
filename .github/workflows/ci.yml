@@ -1,12 +1,12 @@
 name: ci/github
 
-on: 
+on:
   pull_request:
-    branches: 
+    branches:
       - main
       - "release-v*" # release branches
   push:
-    branches: 
+    branches:
       - main
       - "release-v*" # release branches
 
@@ -22,7 +22,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.21.x
+        go-version: 1.22.x
         cache: true
         check-latest: true
     - name: Build
@@ -37,7 +37,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.21.x
+        go-version: 1.22.x
         cache: true
         check-latest: true
     - name: Verify fmt
@@ -69,7 +69,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.21.x
+        go-version: 1.22.x
         cache: true
         check-latest: true
     - name: Install kubectl
