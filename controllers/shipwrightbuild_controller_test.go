@@ -47,7 +47,7 @@ func bootstrapShipwrightBuildReconciler(
 
 	logger := zap.New()
 
-	c := fake.NewFakeClientWithScheme(s, b) //nolint:golint,staticcheck
+	c := fake.NewClientBuilder().WithScheme(s).WithObjects(b).Build()
 	var crdClient *crdclientv1.Clientset
 	var toClient *tektonoperatorv1alpha1client.Clientset
 	if len(tcrds) > 0 {

@@ -34,12 +34,12 @@ Refer to the [ko documentation](https://ko.build/) for more information.
 
 To test the operator on a Kubernetes cluster, you first must have the following:
 
-* Access to a Kubernetes cluster v1.20 or higher, with cluster admin permissions.
-* Install [Tekton operator](https://github.com/tektoncd/operator) v0.50 or higher on the cluster.
+* Access to a Kubernetes cluster v1.30 or higher, with cluster admin permissions.
+* Install [Tekton operator](https://github.com/tektoncd/operator) v0.74.0 or higher on the cluster.
 
 ```bash
 $ export KUBECONFIG=/path/to/kubeconfig
-$ kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.21.0/release.notags.yaml
+$ kubectl apply -f https://github.com/tektoncd/operator/releases/download/v0.74.0/release.notags.yaml
 ```
 
 If pushing to an external image registry, you may need to provide credentials to ko:

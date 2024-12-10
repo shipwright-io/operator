@@ -9,7 +9,7 @@ Additional steps need to be taken to ensure the operator can be deployed with OL
 ## Prerequisites
 
 * Ensure you have access to a Kubernetes cluster via `kubectl` with cluster admin permissions.
-* Install [Go](https://go.dev/doc/install) version 1.21 or higher.
+* Install [Go](https://go.dev/doc/install) version 1.22 or higher.
 * Install OLM on your cluster. This can be done using the `make install-olm` command.
 * Ability to push to a container registry that is accessible inside your Kubernetes cluster.
 
