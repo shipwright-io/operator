@@ -34,9 +34,8 @@ func (td *TektonDashboard) Validate(ctx context.Context) (errs *apis.FieldError)
 		errs = errs.Also(apis.ErrInvalidValue(td.GetName(), errMsg))
 	}
 
-	if td.Spec.TargetNamespace == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
-	}
+	// execute common spec validations
+	errs = errs.Also(td.Spec.CommonSpec.validate("spec"))
 
 	return errs
 }

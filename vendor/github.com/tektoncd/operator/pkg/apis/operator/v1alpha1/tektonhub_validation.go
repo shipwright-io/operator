@@ -45,6 +45,17 @@ func (th *TektonHub) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return nil
 	}
 
+	// disallow to update the targetNamespace
+	if apis.IsInUpdate(ctx) {
+		existingTC := apis.GetBaseline(ctx).(*TektonHub)
+		if existingTC.Spec.GetTargetNamespace() != th.Spec.GetTargetNamespace() {
+			errs = errs.Also(apis.ErrGeneric("doesn't allow to update targetNamespace, delete existing TektonHub object and create the updated TektonHub object", "spec.targetNamespace"))
+		}
+	}
+
+	// execute common spec validations
+	errs = errs.Also(th.Spec.CommonSpec.validate("spec"))
+
 	// validate database secret name
 	if th.Spec.Db.DbSecretName != "" && th.Spec.Db.DbSecretName != HubDbSecretName {
 		errs = errs.Also(apis.ErrInvalidValue(th.Spec.Db.DbSecretName, "spec.db.secret"))

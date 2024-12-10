@@ -48,9 +48,12 @@ func (p *Pipeline) setDefaults() {
 	if p.RequireGitSshSecretKnownHosts == nil {
 		p.RequireGitSshSecretKnownHosts = ptr.Bool(config.DefaultRequireGitSSHSecretKnownHosts)
 	}
-	if p.EnableTektonOciBundles == nil {
-		p.EnableTektonOciBundles = ptr.Bool(config.DefaultEnableTektonOciBundles)
-	}
+
+	// not in use, see: https://github.com/tektoncd/pipeline/pull/7789
+	// this field is removed from pipeline component
+	// keeping here to maintain the API compatibility
+	p.EnableTektonOciBundles = nil
+
 	if p.EnableCustomTasks == nil {
 		// EnableCustomTask is always enable
 		p.EnableCustomTasks = ptr.Bool(true)
@@ -77,6 +80,46 @@ func (p *Pipeline) setDefaults() {
 	// Deprecated: set to nil, remove in further release
 	p.ScopeWhenExpressionsToTask = nil
 
+	if p.EnforceNonfalsifiability == "" {
+		p.EnforceNonfalsifiability = config.DefaultEnforceNonfalsifiability
+	}
+
+	if p.EnableKeepPodOnCancel == nil {
+		p.EnableKeepPodOnCancel = ptr.Bool(config.DefaultEnableKeepPodOnCancel.Enabled)
+	}
+
+	if p.ResultExtractionMethod == "" {
+		p.ResultExtractionMethod = config.DefaultResultExtractionMethod
+	}
+
+	if p.MaxResultSize == nil {
+		p.MaxResultSize = ptr.Int32(config.DefaultMaxResultSize)
+	}
+
+	if p.SetSecurityContext == nil {
+		p.SetSecurityContext = ptr.Bool(config.DefaultSetSecurityContext)
+	}
+
+	if p.Coschedule == "" {
+		p.Coschedule = config.DefaultCoschedule
+	}
+
+	if p.EnableCELInWhenExpression == nil {
+		p.EnableCELInWhenExpression = ptr.Bool(config.DefaultEnableCELInWhenExpression.Enabled)
+	}
+
+	if p.EnableStepActions == nil {
+		p.EnableStepActions = ptr.Bool(config.DefaultEnableStepActions.Enabled)
+	}
+
+	if p.EnableParamEnum == nil {
+		p.EnableParamEnum = ptr.Bool(config.DefaultEnableParamEnum.Enabled)
+	}
+
+	if p.DisableInlineSpec == "" {
+		p.DisableInlineSpec = config.DefaultDisableInlineSpec
+	}
+
 	if p.MetricsPipelinerunDurationType == "" {
 		p.MetricsPipelinerunDurationType = config.DefaultDurationPipelinerunType
 	}
@@ -88,6 +131,9 @@ func (p *Pipeline) setDefaults() {
 	}
 	if p.MetricsTaskrunLevel == "" {
 		p.MetricsTaskrunLevel = config.DefaultTaskrunLevel
+	}
+	if p.CountWithReason == nil {
+		p.CountWithReason = ptr.Bool(false)
 	}
 
 	// Resolvers
@@ -102,6 +148,15 @@ func (p *Pipeline) setDefaults() {
 	}
 	if p.EnableGitResolver == nil {
 		p.EnableGitResolver = ptr.Bool(true)
+	}
+
+	// Statefulset Ordinals
+	// if StatefulSet Ordinals mode, buckets should be equal to replicas
+	if p.Performance.StatefulsetOrdinals != nil && *p.Performance.StatefulsetOrdinals {
+		if p.Performance.Replicas != nil && *p.Performance.Replicas > 1 {
+			replicas := uint(*p.Performance.Replicas)
+			p.Performance.Buckets = &replicas
+		}
 	}
 
 	// run platform specific defaulting

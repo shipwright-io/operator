@@ -24,9 +24,11 @@ import (
 var (
 	_              TektonComponentStatus = (*TektonResultStatus)(nil)
 	resultsCondSet                       = apis.NewLivingConditionSet(
+		PreReconciler,
 		DependenciesInstalled,
 		InstallerSetAvailable,
 		InstallerSetReady,
+		PostReconciler,
 	)
 )
 
@@ -61,8 +63,16 @@ func (trs *TektonResultStatus) MarkNotReady(msg string) {
 		"Ready: %s", msg)
 }
 
+func (trs *TektonResultStatus) MarkPreReconcilerComplete() {
+	addonsCondSet.Manage(trs).MarkTrue(PreReconciler)
+}
+
 func (trs *TektonResultStatus) MarkInstallerSetAvailable() {
 	resultsCondSet.Manage(trs).MarkTrue(InstallerSetAvailable)
+}
+
+func (trs *TektonResultStatus) MarkInstallerSetReady() {
+	resultsCondSet.Manage(trs).MarkTrue(InstallerSetReady)
 }
 
 func (trs *TektonResultStatus) MarkInstallerSetNotAvailable(msg string) {
@@ -73,16 +83,16 @@ func (trs *TektonResultStatus) MarkInstallerSetNotAvailable(msg string) {
 		"Installer set not ready: %s", msg)
 }
 
-func (trs *TektonResultStatus) MarkInstallerSetReady() {
-	resultsCondSet.Manage(trs).MarkTrue(InstallerSetReady)
-}
-
 func (trs *TektonResultStatus) MarkInstallerSetNotReady(msg string) {
 	trs.MarkNotReady("TektonInstallerSet not ready")
 	resultsCondSet.Manage(trs).MarkFalse(
 		InstallerSetReady,
 		"Error",
 		"Installer set not ready: %s", msg)
+}
+
+func (trs *TektonResultStatus) MarkPostReconcilerComplete() {
+	resultsCondSet.Manage(trs).MarkTrue(PostReconciler)
 }
 
 // MarkDependenciesInstalled marks the DependenciesInstalled status as true.

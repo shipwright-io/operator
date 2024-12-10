@@ -33,22 +33,29 @@ const (
 	ProfileLite  = "lite"
 
 	// Addon Params
+	// Keeping ClusterTasksParams and CommunityClusterTasks params for backward compatibility
+	// will be removed from next operator api release
 	ClusterTasksParam      = "clusterTasks"
-	PipelineTemplatesParam = "pipelineTemplates"
 	CommunityClusterTasks  = "communityClusterTasks"
+	PipelineTemplatesParam = "pipelineTemplates"
+	ResolverTasks          = "resolverTasks"
+	ResolverStepActions    = "resolverStepActions"
 
 	// Hub Params
 	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
 
-	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
-	CreatedByKey           = "operator.tekton.dev/created-by"
-	ReleaseVersionKey      = "operator.tekton.dev/release-version"
-	Component              = "operator.tekton.dev/component" // Used in case a component has sub-components eg TektonHub
-	ReleaseMinorVersionKey = "operator.tekton.dev/release-minor-version"
-	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
-	InstallerSetType       = "operator.tekton.dev/type"
-	LabelOperandName       = "operator.tekton.dev/operand-name"
-	DbSecretHash           = "operator.tekton.dev/db-secret-hash"
+	LastAppliedHashKey              = "operator.tekton.dev/last-applied-hash"
+	CreatedByKey                    = "operator.tekton.dev/created-by"
+	ReleaseVersionKey               = "operator.tekton.dev/release-version"
+	ComponentKey                    = "operator.tekton.dev/component" // Used in case a component has sub-components eg OpenShiftPipelineAsCode
+	ReleaseMinorVersionKey          = "operator.tekton.dev/release-minor-version"
+	TargetNamespaceKey              = "operator.tekton.dev/target-namespace"
+	InstallerSetType                = "operator.tekton.dev/type"
+	LabelOperandName                = "operator.tekton.dev/operand-name"
+	DbSecretHash                    = "operator.tekton.dev/db-secret-hash"
+	DeploymentSpecHashValueLabelKey = "operator.tekton.dev/deployment-spec-applied-hash" // used to recreate pods, if there is a change detected in deployments spec
+	PreUpgradeVersionKey            = "operator.tekton.dev/pre-upgrade-version"          // used to monitor and execute pre upgrade functions
+	PostUpgradeVersionKey           = "operator.tekton.dev/post-upgrade-version"         // used to monitor and execute post upgrade functions
 
 	UpgradePending = "upgrade pending"
 	Reinstalling   = "reinstalling"
@@ -58,6 +65,12 @@ const (
 	// pruner default schedule, used in auto generate tektonConfig
 	PrunerDefaultSchedule = "0 8 * * *"
 	PrunerDefaultKeep     = uint(100)
+
+	// SCC params, OpenShift specific
+
+	// PipelinesSCC will be changed to `restricted` or `restricted-v2` once
+	// `pipelines-scc` is deprecated
+	PipelinesSCC = "pipelines-scc"
 )
 
 var (
@@ -100,9 +113,13 @@ var (
 	}
 
 	AddonParams = map[string]ParamValue{
+		// Keeping ClusterTasks and CommunityClusterTasks params
+		// for backward compatibility and will be removed in next operator api release
 		ClusterTasksParam:      defaultParamValue,
-		PipelineTemplatesParam: defaultParamValue,
 		CommunityClusterTasks:  defaultParamValue,
+		PipelineTemplatesParam: defaultParamValue,
+		ResolverTasks:          defaultParamValue,
+		ResolverStepActions:    defaultParamValue,
 	}
 
 	HubParams = map[string]ParamValue{
@@ -126,5 +143,6 @@ var (
 	ChainResourceName            = "chain"
 	OperandTektoncdChains        = "tektoncd-chains"
 	OpenShiftPipelinesAsCodeName = "pipelines-as-code"
+	ManualApprovalGates          = "manual-approval-gate"
 	PrunerResourceName           = "tektoncd-pruner"
 )
