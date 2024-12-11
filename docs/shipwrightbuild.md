@@ -3,7 +3,7 @@
 When the Shipwright Operator is installed with the Operator Lifecycle Manager, the
 `ShipwrightBuild` [custom resource definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) is added to your cluster.
 This custom resource is used to install and configure Shipwright Builds on your cluster.
-The current operator will install version `0.12.0` of Builds.
+The current operator will install version `0.14.0` of Builds.
 
 When the `ShipwrightBuild` instance is created, the following components are installed:
 
@@ -17,9 +17,9 @@ When the `ShipwrightBuild` instance is created, the following components are ins
   - `buildpacks-v3`
   - `buildpacks-v3-heroku`
   - `kaniko`
-  - `kaniko-trivy`
   - `ko`
   - `source-to-image`
+  - `source-to-image-redhat`
 
 
 ## ShipwrightBuild Reference
