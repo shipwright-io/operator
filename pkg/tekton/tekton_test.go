@@ -153,6 +153,8 @@ func TestReconcileTekton(t *testing.T) {
 				g.Expect(tektonConfig.Name).To(o.Equal("config"))
 				g.Expect(tektonConfig.Spec.Profile).To(o.Equal("lite"))
 				g.Expect(tektonConfig.Spec.TargetNamespace).To(o.Equal("tekton-pipelines"))
+				g.Expect(tektonConfig.Spec.Pruner.Disabled).To(o.Equal(false))
+				g.Expect(tektonConfig.Spec.Pruner.Keep).NotTo(o.BeNil())
 			}
 		})
 	}
