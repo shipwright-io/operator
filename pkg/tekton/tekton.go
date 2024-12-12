@@ -102,6 +102,9 @@ func IsTektonConfigPresent(ctx context.Context, client tektonoperatorclientv1alp
 // CreateTektonConfigWithProfileAndTargetNamespace creates a TektonConfig object with the given
 // profile and target namespace for Tekton components.
 func CreateTektonConfigWithProfileAndTargetNamespace(ctx context.Context, client tektonoperatorclientv1alpha1.OperatorV1alpha1Interface, profile string, targetNamepsace string) (*tektonoperatorv1alpha1.TektonConfig, error) {
+	// If creating a TektonConfig, enable the pruner with default keep of 100
+	// This matches the Tekton operator default
+	keep := uint(100)
 	tektonConfig := &tektonoperatorv1alpha1.TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "config",
@@ -110,6 +113,10 @@ func CreateTektonConfigWithProfileAndTargetNamespace(ctx context.Context, client
 			Profile: profile,
 			CommonSpec: tektonoperatorv1alpha1.CommonSpec{
 				TargetNamespace: targetNamepsace,
+			},
+			Pruner: tektonoperatorv1alpha1.Prune{
+				Disabled: false,
+				Keep:     &keep,
 			},
 		},
 	}
