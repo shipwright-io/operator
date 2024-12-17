@@ -9,4 +9,4 @@ spec:
   source: shipwright-operator
   sourceNamespace: shipwright-operator
   installPlanApproval: Automatic
-  startingCSV: shipwright-operator.v0.12.0
+  startingCSV: shipwright-operator.v0.14.0-rc0

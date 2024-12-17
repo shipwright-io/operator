@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -62,17 +63,31 @@ type TektonChainSpec struct {
 	Config Config `json:"config,omitempty"`
 }
 
-// Chain defines the field to provide chain configuration
 type Chain struct {
+	// enable or disable chains feature
+	Disabled bool `json:"disabled"`
+
+	// generate signing key
+	GenerateSigningSecret bool `json:"generateSigningSecret,omitempty"`
+
+	ChainProperties `json:",inline"`
+	ControllerEnvs  []corev1.EnvVar `json:"controllerEnvs,omitempty"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
+}
+
+// ChainProperties defines the field to provide chain configuration
+type ChainProperties struct {
 	// taskrun artifacts config
 	ArtifactsTaskRunFormat  string  `json:"artifacts.taskrun.format,omitempty"`
 	ArtifactsTaskRunStorage *string `json:"artifacts.taskrun.storage,omitempty"`
 	ArtifactsTaskRunSigner  string  `json:"artifacts.taskrun.signer,omitempty"`
 
 	// pipelinerun artifacts config
-	ArtifactsPipelineRunFormat  string  `json:"artifacts.pipelinerun.format,omitempty"`
-	ArtifactsPipelineRunStorage *string `json:"artifacts.pipelinerun.storage,omitempty"`
-	ArtifactsPipelineRunSigner  string  `json:"artifacts.pipelinerun.signer,omitempty"`
+	ArtifactsPipelineRunFormat               string    `json:"artifacts.pipelinerun.format,omitempty"`
+	ArtifactsPipelineRunStorage              *string   `json:"artifacts.pipelinerun.storage,omitempty"`
+	ArtifactsPipelineRunSigner               string    `json:"artifacts.pipelinerun.signer,omitempty"`
+	ArtifactsPipelineRunEnableDeepInspection BoolValue `json:"artifacts.pipelinerun.enable-deep-inspection,omitempty"`
 
 	// oci artifacts config
 	ArtifactsOCIFormat  string  `json:"artifacts.oci.format,omitempty"`
@@ -80,16 +95,19 @@ type Chain struct {
 	ArtifactsOCISigner  string  `json:"artifacts.oci.signer,omitempty"`
 
 	// storage configs
-	StorageGCSBucket             string `json:"storage.gcs.bucket,omitempty"`
-	StorageOCIRepository         string `json:"storage.oci.repository,omitempty"`
-	StorageOCIRepositoryInsecure *bool  `json:"storage.oci.repository.insecure,omitempty"`
-	StorageDocDBURL              string `json:"storage.docdb.url,omitempty"`
-	StorageGrafeasProjectID      string `json:"storage.grafeas.projectid,omitempty"`
-	StorageGrafeasNoteID         string `json:"storage.grafeas.noteid,omitempty"`
-	StorageGrafeasNoteHint       string `json:"storage.grafeas.notehint,omitempty"`
+	StorageGCSBucket              string `json:"storage.gcs.bucket,omitempty"`
+	StorageOCIRepository          string `json:"storage.oci.repository,omitempty"`
+	StorageOCIRepositoryInsecure  *bool  `json:"storage.oci.repository.insecure,omitempty"`
+	StorageDocDBURL               string `json:"storage.docdb.url,omitempty"`
+	StorageDocDBMongoServerURL    string `json:"storage.docdb.mongo-server-url,omitempty"`
+	StorageDocDBMongoServerURLDir string `json:"storage.docdb.mongo-server-url-dir,omitempty"`
+	StorageGrafeasProjectID       string `json:"storage.grafeas.projectid,omitempty"`
+	StorageGrafeasNoteID          string `json:"storage.grafeas.noteid,omitempty"`
+	StorageGrafeasNoteHint        string `json:"storage.grafeas.notehint,omitempty"`
 
 	// builder config
-	BuilderID string `json:"builder.id,omitempty"`
+	BuilderID                string `json:"builder.id,omitempty"`
+	BuildDefinitionBuildType string `json:"builddefinition.buildtype,omitempty"`
 
 	// x509 signer config
 	X509SignerFulcioEnabled     *bool  `json:"signers.x509.fulcio.enabled,omitempty"`
@@ -103,6 +121,7 @@ type Chain struct {
 	KMSRef               string `json:"signers.kms.kmsref,omitempty"`
 	KMSAuthAddress       string `json:"signers.kms.auth.address,omitempty"`
 	KMSAuthToken         string `json:"signers.kms.auth.token,omitempty"`
+	KMSAuthTokenPath     string `json:"signers.kms.auth.token-path,omitempty"`
 	KMSAuthOIDCPath      string `json:"signers.kms.auth.oidc.path,omitempty"`
 	KMSAuthOIDCRole      string `json:"signers.kms.auth.oidc.role,omitempty"`
 	KMSAuthSpireSock     string `json:"signers.kms.auth.spire.sock,omitempty"`

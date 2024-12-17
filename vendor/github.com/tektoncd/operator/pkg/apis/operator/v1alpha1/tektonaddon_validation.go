@@ -34,9 +34,8 @@ func (ta *TektonAddon) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrInvalidValue(ta.GetName(), errMsg))
 	}
 
-	if ta.Spec.TargetNamespace == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
-	}
+	// execute common spec validations
+	errs = errs.Also(ta.Spec.CommonSpec.validate("spec"))
 
 	if len(ta.Spec.Params) != 0 {
 		errs = errs.Also(validateAddonParams(ta.Spec.Params, "spec.params"))
@@ -59,13 +58,10 @@ func validateAddonParams(params []Param, pathToParams string) *apis.FieldError {
 			errs = errs.Also(apis.ErrInvalidArrayValue(p.Value, path, i))
 		}
 	}
-
 	paramsMap := ParseParams(params)
-	if (paramsMap[ClusterTasksParam] == "false") && (paramsMap[PipelineTemplatesParam] == "true") {
-		errs = errs.Also(apis.ErrGeneric("pipelineTemplates cannot be true if clusterTask is false", pathToParams))
-	}
-	if (paramsMap[ClusterTasksParam] == "false") && (paramsMap[CommunityClusterTasks] == "true") {
-		errs = errs.Also(apis.ErrGeneric("communityClusterTasks cannot be true if clusterTask is false", pathToParams))
+
+	if (paramsMap[ResolverTasks] == "false") && (paramsMap[PipelineTemplatesParam] == "true") {
+		errs = errs.Also(apis.ErrGeneric("pipelineTemplates cannot be true if resolverTask is false", pathToParams))
 	}
 
 	return errs

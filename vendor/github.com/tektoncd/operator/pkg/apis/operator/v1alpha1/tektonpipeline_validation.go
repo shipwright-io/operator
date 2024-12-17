@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -28,6 +29,10 @@ import (
 var (
 	validatePipelineAllowedApiFields          = sets.NewString("", config.AlphaAPIFields, config.BetaAPIFields, config.StableAPIFields)
 	validatePipelineVerificationNoMatchPolicy = sets.NewString("", config.FailNoMatchPolicy, config.WarnNoMatchPolicy, config.IgnoreNoMatchPolicy)
+	validatePipelineResultExtractionMethod    = sets.NewString("", config.ResultExtractionMethodTerminationMessage, config.ResultExtractionMethodSidecarLogs)
+	validatePipelineEnforceNonFalsifiability  = sets.NewString("", config.EnforceNonfalsifiabilityNone, config.EnforceNonfalsifiabilityWithSpire)
+	validatePipelineCoschedule                = sets.NewString("", config.CoscheduleDisabled, config.CoscheduleWorkspaces, config.CoschedulePipelineRuns, config.CoscheduleIsolatePipelineRun)
+	validatePipelineInlineSpecDisable         = sets.NewString("", "pipeline", "pipelinerun", "taskrun")
 )
 
 func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -41,11 +46,14 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 		errs = errs.Also(apis.ErrInvalidValue(tp.GetName(), errMsg))
 	}
 
-	if tp.Spec.TargetNamespace == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
-	}
+	// execute common spec validations
+	errs = errs.Also(tp.Spec.CommonSpec.validate("spec"))
 
-	return errs.Also(tp.Spec.PipelineProperties.validate("spec"))
+	errs = errs.Also(tp.Spec.PipelineProperties.validate("spec"))
+
+	errs = errs.Also(tp.Spec.Options.validate("spec"))
+
+	return errs
 }
 
 func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
@@ -54,15 +62,41 @@ func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, fmt.Sprintf("%s.enable-api-fields", path)))
 	}
 
+	if p.DisableInlineSpec != "" {
+		val := strings.Split(p.DisableInlineSpec, ",")
+		for _, v := range val {
+			if !validatePipelineInlineSpecDisable.Has(v) {
+				errs = errs.Also(apis.ErrInvalidValue(p.DisableInlineSpec, fmt.Sprintf("%s.disable-inline-spec", path)))
+			}
+		}
+	}
+
 	if p.DefaultTimeoutMinutes != nil {
 		if *p.DefaultTimeoutMinutes == 0 {
 			errs = errs.Also(apis.ErrInvalidValue(p.DefaultTimeoutMinutes, path+".default-timeout-minutes"))
+		}
+	}
+	if p.MaxResultSize != nil {
+		if *p.MaxResultSize >= 1572864 {
+			errs = errs.Also(apis.ErrInvalidValue(p.MaxResultSize, path+".max-result-size"))
 		}
 	}
 
 	// validate trusted-resources-verification-no-match-policy
 	if !validatePipelineVerificationNoMatchPolicy.Has(p.VerificationNoMatchPolicy) {
 		errs = errs.Also(apis.ErrInvalidValue(p.VerificationNoMatchPolicy, fmt.Sprintf("%s.trusted-resources-verification-no-match-policy", path)))
+	}
+
+	if !validatePipelineResultExtractionMethod.Has(p.ResultExtractionMethod) {
+		errs = errs.Also(apis.ErrInvalidValue(p.ResultExtractionMethod, fmt.Sprintf("%s.results-from", path)))
+	}
+
+	if !validatePipelineEnforceNonFalsifiability.Has(p.EnforceNonfalsifiability) {
+		errs = errs.Also(apis.ErrInvalidValue(p.EnforceNonfalsifiability, fmt.Sprintf("%s.enforce-nonfalsifiability", path)))
+	}
+
+	if !validatePipelineCoschedule.Has(p.Coschedule) {
+		errs = errs.Also(apis.ErrInvalidValue(p.Coschedule, fmt.Sprintf("%s.coschedule", path)))
 	}
 
 	// validate performance properties
@@ -79,6 +113,16 @@ func (prof *PipelinePerformanceProperties) validate(path string) *apis.FieldErro
 	if prof.Buckets != nil {
 		if *prof.Buckets < 1 || *prof.Buckets > 10 {
 			errs = errs.Also(apis.ErrOutOfBoundsValue(*prof.Buckets, 1, 10, bucketsPath))
+		}
+	}
+
+	// check for StatefulsetOrdinals and Replicas
+	if prof.StatefulsetOrdinals != nil && *prof.StatefulsetOrdinals {
+		if prof.Replicas != nil {
+			replicas := uint(*prof.Replicas)
+			if *prof.Buckets != replicas {
+				errs = errs.Also(apis.ErrInvalidValue(*prof.Replicas, fmt.Sprintf("%s.replicas", path), "spec.performance.replicas must equal spec.performance.buckets for statefulset ordinals"))
+			}
 		}
 	}
 

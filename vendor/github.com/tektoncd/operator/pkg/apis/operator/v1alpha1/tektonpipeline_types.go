@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -81,6 +82,8 @@ type Pipeline struct {
 	// The params to customize different components of Pipelines
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
 }
 
 // PipelineProperties defines customizable flags for Pipeline Component.
@@ -90,7 +93,6 @@ type PipelineProperties struct {
 	AwaitSidecarReadiness                    *bool  `json:"await-sidecar-readiness,omitempty"`
 	RunningInEnvironmentWithInjectedSidecars *bool  `json:"running-in-environment-with-injected-sidecars,omitempty"`
 	RequireGitSshSecretKnownHosts            *bool  `json:"require-git-ssh-secret-known-hosts,omitempty"`
-	EnableTektonOciBundles                   *bool  `json:"enable-tekton-oci-bundles,omitempty"`
 	EnableCustomTasks                        *bool  `json:"enable-custom-tasks,omitempty"`
 	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
 	EmbeddedStatus                           string `json:"embedded-status,omitempty"`
@@ -99,13 +101,31 @@ type PipelineProperties struct {
 	// This field will be removed, see https://github.com/tektoncd/operator/issues/1497
 	// originally this field was removed in https://github.com/tektoncd/operator/pull/1481
 	// there is no use with this field, just adding back to unblock the upgrade
+
+	// not in use, see: https://github.com/tektoncd/pipeline/pull/7789
+	// this field is removed from pipeline component
+	// keeping here to maintain the API compatibility
+	EnableTektonOciBundles *bool `json:"enable-tekton-oci-bundles,omitempty"`
+
 	VerificationMode          string `json:"verification-mode,omitempty"`
 	VerificationNoMatchPolicy string `json:"trusted-resources-verification-no-match-policy,omitempty"`
 	EnableProvenanceInStatus  *bool  `json:"enable-provenance-in-status,omitempty"`
 
-	// ScopeWhenExpressionsToTask Deprecated: remove in next release
+	// ScopeWhenExpressionsToTask is deprecated and never used.
 	ScopeWhenExpressionsToTask *bool `json:"scope-when-expressions-to-task,omitempty"`
-	PipelineMetricsProperties  `json:",inline"`
+
+	EnforceNonfalsifiability  string `json:"enforce-nonfalsifiability,omitempty"`
+	EnableKeepPodOnCancel     *bool  `json:"keep-pod-on-cancel,omitempty"`
+	ResultExtractionMethod    string `json:"results-from,omitempty"`
+	MaxResultSize             *int32 `json:"max-result-size,omitempty"`
+	SetSecurityContext        *bool  `json:"set-security-context,omitempty"`
+	Coschedule                string `json:"coschedule,omitempty"`
+	EnableCELInWhenExpression *bool  `json:"enable-cel-in-whenexpression,omitempty"`
+	EnableStepActions         *bool  `json:"enable-step-actions,omitempty"`
+	EnableParamEnum           *bool  `json:"enable-param-enum,omitempty"`
+	DisableInlineSpec         string `json:"disable-inline-spec,omitempty"`
+
+	PipelineMetricsProperties `json:",inline"`
 	// +optional
 	OptionalPipelineProperties `json:",inline"`
 	// +optional
@@ -126,6 +146,14 @@ type OptionalPipelineProperties struct {
 	DefaultTaskRunWorkspaceBinding      string `json:"default-task-run-workspace-binding,omitempty"`
 	DefaultMaxMatrixCombinationsCount   string `json:"default-max-matrix-combinations-count,omitempty"`
 	DefaultForbiddenEnv                 string `json:"default-forbidden-env,omitempty"`
+	DefaultResolverType                 string `json:"default-resolver-type,omitempty"`
+}
+
+// WebhookOptions defines options for webhooks
+type WebhookConfigurationOptions struct {
+	FailurePolicy  *admissionregistrationv1.FailurePolicyType `json:"failurePolicy,omitempty"`
+	TimeoutSeconds *int32                                     `json:"timeoutSeconds,omitempty"`
+	SideEffects    *admissionregistrationv1.SideEffectClass   `json:"sideEffects,omitempty"`
 }
 
 // PipelineMetricsProperties defines the fields which are configurable for
@@ -135,6 +163,7 @@ type PipelineMetricsProperties struct {
 	MetricsTaskrunDurationType     string `json:"metrics.taskrun.duration-type,omitempty"`
 	MetricsPipelinerunLevel        string `json:"metrics.pipelinerun.level,omitempty"`
 	MetricsPipelinerunDurationType string `json:"metrics.pipelinerun.duration-type,omitempty"`
+	CountWithReason                *bool  `json:"metrics.count.enable-reason,omitempty"`
 }
 
 // Resolvers defines the fields to configure resolvers
@@ -160,7 +189,11 @@ type PipelinePerformanceProperties struct {
 	// +optional
 	PipelinePerformanceLeaderElectionConfig `json:",inline"`
 	// +optional
+	PipelinePerformanceStatefulsetOrdinalsConfig `json:",inline"`
+	// +optional
 	PipelineDeploymentPerformanceArgs `json:",inline"`
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
 }
 
 // performance configurations to tune the performance of the pipeline controller
@@ -168,6 +201,12 @@ type PipelinePerformanceProperties struct {
 // https://tekton.dev/docs/pipelines/enabling-ha/
 type PipelinePerformanceLeaderElectionConfig struct {
 	Buckets *uint `json:"buckets,omitempty"`
+}
+
+// allow to configure pipelines controller ha mode to statefulset ordinals
+type PipelinePerformanceStatefulsetOrdinalsConfig struct {
+	//if is true, enable StatefulsetOrdinals mode
+	StatefulsetOrdinals *bool `json:"statefulset-ordinals,omitempty"`
 }
 
 // performance configurations to tune the performance of the pipeline controller

@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -35,9 +35,8 @@ func (tr *TektonTrigger) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrInvalidValue(tr.GetName(), errMsg))
 	}
 
-	if tr.Spec.TargetNamespace == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
-	}
+	// execute common spec validations
+	errs = errs.Also(tr.Spec.CommonSpec.validate("spec"))
 
 	return errs.Also(tr.Spec.TriggersProperties.validate("spec"))
 }
@@ -45,7 +44,7 @@ func (tr *TektonTrigger) Validate(ctx context.Context) (errs *apis.FieldError) {
 func (tr *TriggersProperties) validate(path string) (errs *apis.FieldError) {
 
 	if tr.EnableApiFields != "" {
-		if tr.EnableApiFields != config.StableAPIFields && tr.EnableApiFields != config.AlphaAPIFields {
+		if tr.EnableApiFields != config.StableAPIFieldValue && tr.EnableApiFields != config.AlphaAPIFieldValue {
 			errs = errs.Also(apis.ErrInvalidValue(tr.EnableApiFields, path+".enable-api-fields"))
 		}
 	}

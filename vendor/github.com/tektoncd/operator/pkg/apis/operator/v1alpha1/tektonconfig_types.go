@@ -66,10 +66,18 @@ type Prune struct {
 	KeepSince *uint `json:"keep-since,omitempty"`
 	// How frequent pruning should happen
 	Schedule string `json:"schedule,omitempty"`
+	// Optional deadline in seconds for starting the job if it misses scheduled time for any reason.
+	// Missed jobs executions will be counted as failed ones.
+	StartingDeadlineSeconds *int64 `json:"startingDeadlineSeconds,omitempty"`
 }
 
 func (p Prune) IsEmpty() bool {
 	return reflect.DeepEqual(p, Prune{})
+}
+
+type NamespaceMetadata struct {
+	Labels      map[string]string `json:"labels,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // TektonConfigSpec defines the desired state of TektonConfig
@@ -106,6 +114,9 @@ type TektonConfigSpec struct {
 	// Platforms allows configuring platform specific configurations
 	// +optional
 	Platforms Platforms `json:"platforms,omitempty"`
+	// holds target namespace metadata
+	// +optional
+	TargetNamespaceMetadata *NamespaceMetadata `json:"targetNamespaceMetadata,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
