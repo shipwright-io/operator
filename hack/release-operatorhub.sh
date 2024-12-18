@@ -54,8 +54,7 @@ popd
 
 # Commit and push changes to our GitHub fork
 git add "operators/shipwright-operator/${VERSION}"
-git commit -m "Update Shipwright Operator to ${VERSION}"
-git commit --amend --no-edit -s
+git commit -m "Update Shipwright Operator to ${VERSION}" -s
 git push --set-upstream origin "shipwright-${VERSION}"
 
 popd
