@@ -4,6 +4,10 @@ This document outlines the steps required to release the operator. This document
 have achieved the "Approver"/"Maintainer" status, and have permission to manually trigger GitHub
 Actions on this repo.
 
+To release operator updates to the [k8s community operators](https://github.com/k8s-operatorhub/community-operators),
+you must be listed as an approver in our [operator CI configuration](https://github.com/k8s-operatorhub/community-operators/blob/main/operators/shipwright-operator/ci.yaml)
+or request approval from a listed GitHub user.
+
 ## Release Candidates (`X.Y.0-rcN`)
 
 ### Step 0: Set Up the Release Branch
@@ -78,3 +82,49 @@ Work with the community to get these pull requests merged.
 Repeat the process in [Step 1](#step-1-create-a-release-candidate) and
 [Step 2](#step-2-publish-draft-release) above to create the release. For an official release, the
 version should adhere to the `X.Y.Z` format (not extra dashes).
+
+### Step 3 (if needed): Set up your machine to run the OperatorHub release script
+
+The OperatorHub release script requires the following:
+
+1. Fork the [k8s community-operators](https://github.com/k8s-operatorhub/community-operators)
+   repository.
+2. Clone your fork with the `origin` remote name. Be sure to set your name and email in your local
+   `git` configuration.
+3. Add the community operators repository as the `upstream` remote:
+
+   ```sh
+   $ git remote add upstream https://github.com/k8s-operatorhub/community-operators.git
+   ```
+
+4. Install the [crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md)
+   tool locally.
+
+### Step 4: Update the Operator on OperatorHub.io
+
+[OperatorHub.io](https://operatorhub.io) publishes a catalog of operators sourced from git. To add
+a new operator version, we must submit a pull request to the appropriate git repository.
+
+Run the script `./hack/release-operatorhub.sh` to create a new release branch in your fork. The
+script defaults to submitting pull requests to the k8s-operatorhub/community-operators catalog, but
+other catalogs with the same format are supported.
+
+The script accepts the following environment variables:
+
+- `OPERATORHUB_DIR`: directory where the operator catalog repository was cloned. 
+- `VERSION`: version of the operator to submit for update. Do not include the leading `v` in the
+   version name.
+- `HUB_REPO`: Regular expression to match for the operator catalog. Defaults to
+  `k8s-operatorhub\/community-operators` - be sure to escape special characters when overriding
+  this value.
+
+Once the script completes and pushes the branch to your fork, open a pull request against the
+[community operators](https://github.com/k8s-operatorhub/community-operators) repository.
+
+### Step 5 (optional): Update other operator catalogs
+
+OperatorHub.io is not the only catalog that can be used to publish operators on Kubernetes
+clusters. Community members can use the `release-operatorhub.sh` script to update any other catalog
+that uses the OperatorHub file structure by providing appropriate environment variable overrides.
+
+Maintainers are not required to submit updates to other operator catalogs.
