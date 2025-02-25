@@ -155,7 +155,7 @@ spec:
       serviceAccountName: shipwright-build-controller
       containers:
         - name: shipwright-build
-          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.14.0@sha256:f38b9266889be7e81a5f66d371da39506071719217207718b56c1297589f6a4f
+          image: ghcr.io/shipwright-io/build/shipwright-build-controller:nightly-2025-02-24-1740373406@sha256:88f2e8bdce9a0c6c94a4e04530163ea9fe1fedabb1b759060796d91627a60fc7
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -172,15 +172,15 @@ spec:
             - name: CONTROLLER_NAME
               value: "shipwright-build"
             - name: GIT_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/git:v0.14.0@sha256:81a8c0572364836b7f4728cfcb10a93326b06c9ae45bb57e56eec6e80469dd63
+              value: ghcr.io/shipwright-io/build/git:nightly-2025-02-24-1740373406@sha256:05fad6ce5e43fde514308514077a8c1b8c7e3ff3208d7178c9a268e5f1174a54
             - name: GIT_ENABLE_REWRITE_RULE
               value: "false"
             - name: IMAGE_PROCESSING_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/image-processing:v0.14.0@sha256:6532c8a246b3b9f433f758627230d62eb624baf58e309fbe106840209ed4c9b9
+              value: ghcr.io/shipwright-io/build/image-processing:nightly-2025-02-24-1740373406@sha256:6e6939f03a3797c0cf6d3d7a3007dd9a2a2e27f45eb4c886e7f5bec5171d43a8
             - name: BUNDLE_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/bundle:v0.14.0@sha256:d921fbbfd7d87bd43a5a3cecf9039c6a65306cf1ce9ee307c55ce522f7d86af2
+              value: ghcr.io/shipwright-io/build/bundle:nightly-2025-02-24-1740373406@sha256:f1db7795e4e6f0b34c83b62f3407bc1d8c46e88bcd19fae97e9c086f7d820fa6
             - name: WAITER_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/waiter:v0.14.0@sha256:4e9c45f8ebd723a07ceef9c6bc3b8727a0fd8149de7bee60d6ebae634bfedec9
+              value: ghcr.io/shipwright-io/build/waiter:nightly-2025-02-24-1740373406@sha256:cff7eebdf3dee2725e8aad224d2a887ad40864d1bca5aa6666ab5a9aff8ebe54
           ports:
             - containerPort: 8383
               name: metrics-port
@@ -237,7 +237,7 @@ spec:
       serviceAccountName: shipwright-build-webhook
       containers:
         - name: shipwright-build-webhook
-          image: ghcr.io/shipwright-io/build/shipwright-build-webhook:v0.14.0@sha256:aa7bd77d7884efb03bbbecbc249f92fcbcf85c1150ce11cae4eb751457a3cbb6
+          image: ghcr.io/shipwright-io/build/shipwright-build-webhook:nightly-2025-02-24-1740373406@sha256:4de187c0685d8bd66d22f16905242738b8e080e5b5f8da12d1cedc8e1e7cfc4f
           volumeMounts:
             - name: webhook-certs
               mountPath: /etc/webhook/certs
@@ -7273,6 +7273,9 @@ spec:
                               format: duration
                               type: string
                           type: object
+                        schedulerName:
+                          description: SchedulerName specifies the scheduler to be used to dispatch the Pod
+                          type: string
                         source:
                           description: |-
                             Source refers to the location where the source code is,
@@ -7361,6 +7364,45 @@ spec:
                           description: Timeout defines the maximum amount of time the Build should take to execute.
                           format: duration
                           type: string
+                        tolerations:
+                          description: If specified, the pod's tolerations.
+                          items:
+                            description: |-
+                              The pod this Toleration is attached to tolerates any taint that matches
+                              the triple <key,value,effect> using the matching operator <operator>.
+                            properties:
+                              effect:
+                                description: |-
+                                  Effect indicates the taint effect to match. Empty means match all taint effects.
+                                  When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                                type: string
+                              key:
+                                description: |-
+                                  Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                                  If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                                type: string
+                              operator:
+                                description: |-
+                                  Operator represents a key's relationship to the value.
+                                  Valid operators are Exists and Equal. Defaults to Equal.
+                                  Exists is equivalent to wildcard for value, so that a pod can
+                                  tolerate all taints of a particular category.
+                                type: string
+                              tolerationSeconds:
+                                description: |-
+                                  TolerationSeconds represents the period of time the toleration (which must be
+                                  of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                                  it is not set, which means tolerate the taint forever (do not evict). Zero and
+                                  negative values will be treated as 0 (evict immediately) by the system.
+                                format: int64
+                                type: integer
+                              value:
+                                description: |-
+                                  Value is the taint value the toleration matches to.
+                                  If the operator is Exists, the value should be empty, otherwise just a regular string.
+                                type: string
+                            type: object
+                          type: array
                         trigger:
                           description: Trigger defines the scenarios where a new build should be triggered.
                           properties:
@@ -9388,6 +9430,9 @@ spec:
                       format: duration
                       type: string
                   type: object
+                schedulerName:
+                  description: SchedulerName specifies the scheduler to be used to dispatch the Pod
+                  type: string
                 serviceAccount:
                   description: |-
                     ServiceAccount refers to the kubernetes serviceaccount
@@ -9424,6 +9469,45 @@ spec:
                   description: Timeout defines the maximum run time of this BuildRun.
                   format: duration
                   type: string
+                tolerations:
+                  description: If specified, the pod's tolerations.
+                  items:
+                    description: |-
+                      The pod this Toleration is attached to tolerates any taint that matches
+                      the triple <key,value,effect> using the matching operator <operator>.
+                    properties:
+                      effect:
+                        description: |-
+                          Effect indicates the taint effect to match. Empty means match all taint effects.
+                          When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                        type: string
+                      key:
+                        description: |-
+                          Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                          If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                        type: string
+                      operator:
+                        description: |-
+                          Operator represents a key's relationship to the value.
+                          Valid operators are Exists and Equal. Defaults to Equal.
+                          Exists is equivalent to wildcard for value, so that a pod can
+                          tolerate all taints of a particular category.
+                        type: string
+                      tolerationSeconds:
+                        description: |-
+                          TolerationSeconds represents the period of time the toleration (which must be
+                          of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                          it is not set, which means tolerate the taint forever (do not evict). Zero and
+                          negative values will be treated as 0 (evict immediately) by the system.
+                        format: int64
+                        type: integer
+                      value:
+                        description: |-
+                          Value is the taint value the toleration matches to.
+                          If the operator is Exists, the value should be empty, otherwise just a regular string.
+                        type: string
+                    type: object
+                  type: array
                 volumes:
                   description: |-
                     Volumes contains volume Overrides of the BuildStrategy volumes in case those are allowed
@@ -11399,6 +11483,9 @@ spec:
                           format: duration
                           type: string
                       type: object
+                    schedulerName:
+                      description: SchedulerName specifies the scheduler to be used to dispatch the Pod
+                      type: string
                     source:
                       description: |-
                         Source refers to the location where the source code is,
@@ -11487,6 +11574,45 @@ spec:
                       description: Timeout defines the maximum amount of time the Build should take to execute.
                       format: duration
                       type: string
+                    tolerations:
+                      description: If specified, the pod's tolerations.
+                      items:
+                        description: |-
+                          The pod this Toleration is attached to tolerates any taint that matches
+                          the triple <key,value,effect> using the matching operator <operator>.
+                        properties:
+                          effect:
+                            description: |-
+                              Effect indicates the taint effect to match. Empty means match all taint effects.
+                              When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                            type: string
+                          key:
+                            description: |-
+                              Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                              If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                            type: string
+                          operator:
+                            description: |-
+                              Operator represents a key's relationship to the value.
+                              Valid operators are Exists and Equal. Defaults to Equal.
+                              Exists is equivalent to wildcard for value, so that a pod can
+                              tolerate all taints of a particular category.
+                            type: string
+                          tolerationSeconds:
+                            description: |-
+                              TolerationSeconds represents the period of time the toleration (which must be
+                              of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                              it is not set, which means tolerate the taint forever (do not evict). Zero and
+                              negative values will be treated as 0 (evict immediately) by the system.
+                            format: int64
+                            type: integer
+                          value:
+                            description: |-
+                              Value is the taint value the toleration matches to.
+                              If the operator is Exists, the value should be empty, otherwise just a regular string.
+                            type: string
+                        type: object
+                      type: array
                     trigger:
                       description: Trigger defines the scenarios where a new build should be triggered.
                       properties:
@@ -15991,6 +16117,9 @@ spec:
                       format: duration
                       type: string
                   type: object
+                schedulerName:
+                  description: SchedulerName specifies the scheduler to be used to dispatch the Pod
+                  type: string
                 source:
                   description: |-
                     Source refers to the location where the source code is,
@@ -16079,6 +16208,45 @@ spec:
                   description: Timeout defines the maximum amount of time the Build should take to execute.
                   format: duration
                   type: string
+                tolerations:
+                  description: If specified, the pod's tolerations.
+                  items:
+                    description: |-
+                      The pod this Toleration is attached to tolerates any taint that matches
+                      the triple <key,value,effect> using the matching operator <operator>.
+                    properties:
+                      effect:
+                        description: |-
+                          Effect indicates the taint effect to match. Empty means match all taint effects.
+                          When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                        type: string
+                      key:
+                        description: |-
+                          Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                          If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                        type: string
+                      operator:
+                        description: |-
+                          Operator represents a key's relationship to the value.
+                          Valid operators are Exists and Equal. Defaults to Equal.
+                          Exists is equivalent to wildcard for value, so that a pod can
+                          tolerate all taints of a particular category.
+                        type: string
+                      tolerationSeconds:
+                        description: |-
+                          TolerationSeconds represents the period of time the toleration (which must be
+                          of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                          it is not set, which means tolerate the taint forever (do not evict). Zero and
+                          negative values will be treated as 0 (evict immediately) by the system.
+                        format: int64
+                        type: integer
+                      value:
+                        description: |-
+                          Value is the taint value the toleration matches to.
+                          If the operator is Exists, the value should be empty, otherwise just a regular string.
+                        type: string
+                    type: object
+                  type: array
                 trigger:
                   description: Trigger defines the scenarios where a new build should be triggered.
                   properties:
