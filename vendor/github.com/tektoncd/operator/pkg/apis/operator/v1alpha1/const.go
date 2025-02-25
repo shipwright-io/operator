@@ -33,10 +33,7 @@ const (
 	ProfileLite  = "lite"
 
 	// Addon Params
-	// Keeping ClusterTasksParams and CommunityClusterTasks params for backward compatibility
-	// will be removed from next operator api release
-	ClusterTasksParam      = "clusterTasks"
-	CommunityClusterTasks  = "communityClusterTasks"
+	CommunityResolverTasks = "communityResolverTasks"
 	PipelineTemplatesParam = "pipelineTemplates"
 	ResolverTasks          = "resolverTasks"
 	ResolverStepActions    = "resolverStepActions"
@@ -113,10 +110,7 @@ var (
 	}
 
 	AddonParams = map[string]ParamValue{
-		// Keeping ClusterTasks and CommunityClusterTasks params
-		// for backward compatibility and will be removed in next operator api release
-		ClusterTasksParam:      defaultParamValue,
-		CommunityClusterTasks:  defaultParamValue,
+		CommunityResolverTasks: defaultParamValue,
 		PipelineTemplatesParam: defaultParamValue,
 		ResolverTasks:          defaultParamValue,
 		ResolverStepActions:    defaultParamValue,
