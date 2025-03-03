@@ -155,7 +155,7 @@ spec:
       serviceAccountName: shipwright-build-controller
       containers:
         - name: shipwright-build
-          image: ghcr.io/shipwright-io/build/shipwright-build-controller:nightly-2025-02-24-1740373406@sha256:88f2e8bdce9a0c6c94a4e04530163ea9fe1fedabb1b759060796d91627a60fc7
+          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.15.2@sha256:5dcf4f49a342150ab417e09ff1b8d73c3ef39f780d9d3c41ba7f5d842908e00f
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -172,15 +172,15 @@ spec:
             - name: CONTROLLER_NAME
               value: "shipwright-build"
             - name: GIT_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/git:nightly-2025-02-24-1740373406@sha256:05fad6ce5e43fde514308514077a8c1b8c7e3ff3208d7178c9a268e5f1174a54
+              value: ghcr.io/shipwright-io/build/git:v0.15.2@sha256:649a483c3d87a538761817d5f509ee50a88d6d7b952114002c62ae13315217bd
             - name: GIT_ENABLE_REWRITE_RULE
               value: "false"
             - name: IMAGE_PROCESSING_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/image-processing:nightly-2025-02-24-1740373406@sha256:6e6939f03a3797c0cf6d3d7a3007dd9a2a2e27f45eb4c886e7f5bec5171d43a8
+              value: ghcr.io/shipwright-io/build/image-processing:v0.15.2@sha256:02f9073bcc9ca67c087e4ab954b44366d465ac6fc44e03a9320aeada14c295f0
             - name: BUNDLE_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/bundle:nightly-2025-02-24-1740373406@sha256:f1db7795e4e6f0b34c83b62f3407bc1d8c46e88bcd19fae97e9c086f7d820fa6
+              value: ghcr.io/shipwright-io/build/bundle:v0.15.2@sha256:84443b7ba9222f7486656e41b4b48aa9c8b7454ef578812f672232882c8149f8
             - name: WAITER_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/waiter:nightly-2025-02-24-1740373406@sha256:cff7eebdf3dee2725e8aad224d2a887ad40864d1bca5aa6666ab5a9aff8ebe54
+              value: ghcr.io/shipwright-io/build/waiter:v0.15.2@sha256:adc1c331430970b66ad6a2edfb8c21e89a0f5013e13f9ba9b3b727ed0be50e10
           ports:
             - containerPort: 8383
               name: metrics-port
@@ -237,7 +237,7 @@ spec:
       serviceAccountName: shipwright-build-webhook
       containers:
         - name: shipwright-build-webhook
-          image: ghcr.io/shipwright-io/build/shipwright-build-webhook:nightly-2025-02-24-1740373406@sha256:4de187c0685d8bd66d22f16905242738b8e080e5b5f8da12d1cedc8e1e7cfc4f
+          image: ghcr.io/shipwright-io/build/shipwright-build-webhook:v0.15.2@sha256:48406595f65439706df5a39571f07e0554ac982446013e2af1e893ca99189673
           volumeMounts:
             - name: webhook-certs
               mountPath: /etc/webhook/certs
