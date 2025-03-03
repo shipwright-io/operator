@@ -5,7 +5,7 @@ metadata:
 spec:
   steps:
     - name: build
-      image: quay.io/containers/buildah:v1.37.5
+      image: quay.io/containers/buildah:v1.38.1
       imagePullPolicy: Always
       workingDir: $(params.shp-source-root)
       securityContext:
@@ -21,8 +21,8 @@ spec:
           context=
           dockerfile=
           image=
-          target=
-          buildArgs=()
+          outputDirectory=
+          budArgs=()
           inBuildArgs=false
           registriesBlock=""
           inRegistriesBlock=false
@@ -55,12 +55,21 @@ spec:
               inRegistriesSearch=false
               image="$1"
               shift
+            elif [ "${arg}" == "--output-directory" ]; then
+              inBuildArgs=false
+              inRegistriesBlock=false
+              inRegistriesInsecure=false
+              inRegistriesSearch=false
+              outputDirectory="$1"
+              shift
             elif [ "${arg}" == "--target" ]; then
               inBuildArgs=false
               inRegistriesBlock=false
               inRegistriesInsecure=false
               inRegistriesSearch=false
-              target="$1"
+              if [ "$1" != "" ]; then
+                budArgs+=(--target "$1")
+              fi
               shift
             elif [ "${arg}" == "--build-args" ]; then
               inBuildArgs=true
@@ -83,7 +92,7 @@ spec:
               inRegistriesBlock=false
               inRegistriesInsecure=false
             elif [ "${inBuildArgs}" == "true" ]; then
-              buildArgs+=("--build-arg" "${arg}")
+              budArgs+=(--build-arg "${arg}")
             elif [ "${inRegistriesBlock}" == "true" ]; then
               registriesBlock="${registriesBlock}'${arg}', "
             elif [ "${inRegistriesInsecure}" == "true" ]; then
@@ -139,7 +148,7 @@ spec:
           # Building the image
           echo "[INFO] Building image ${image}"
           buildah --storage-driver=$(params.storage-driver) \
-            bud "${buildArgs[@]}" \
+            bud "${budArgs[@]}" \
             --registries-conf=/tmp/registries.conf \
             --tag="${image}" \
             --file="${dockerfile}" \
@@ -149,11 +158,13 @@ spec:
           echo "[INFO] Writing image ${image}"
           buildah --storage-driver=$(params.storage-driver) push \
             "${image}" \
-            "oci:${target}"
+            "oci:${outputDirectory}"
         # That's the separator between the shell script and its args
         - --
         - --context
         - $(params.shp-source-context)
+        - --output-directory
+        - $(params.shp-output-directory)
         - --dockerfile
         - $(params.dockerfile)
         - --image
@@ -167,7 +178,7 @@ spec:
         - --registries-search
         - $(params.registries-search[*])
         - --target
-        - $(params.shp-output-directory)
+        - $(params.target)
       resources:
         limits:
           cpu: "1"
@@ -203,6 +214,10 @@ spec:
       type: string
       default: "vfs"
       # For details see the "--storage-driver" section of https://github.com/containers/buildah/blob/main/docs/buildah.1.md#options
+    - name: target
+      description: "Sets the target stage to be built."
+      type: string
+      default: ""
   securityContext:
     runAsUser: 0
     runAsGroup: 0
@@ -215,7 +230,7 @@ metadata:
 spec:
   steps:
     - name: build-and-push
-      image: quay.io/containers/buildah:v1.37.5
+      image: quay.io/containers/buildah:v1.38.1
       imagePullPolicy: Always
       workingDir: $(params.shp-source-root)
       securityContext:
@@ -233,7 +248,7 @@ spec:
           context=
           dockerfile=
           image=
-          buildArgs=()
+          budArgs=()
           inBuildArgs=false
           registriesBlock=""
           inRegistriesBlock=false
@@ -267,6 +282,15 @@ spec:
               inRegistriesSearch=false
               image="$1"
               shift
+            elif [ "${arg}" == "--target" ]; then
+              inBuildArgs=false
+              inRegistriesBlock=false
+              inRegistriesInsecure=false
+              inRegistriesSearch=false
+              if [ "$1" != "" ]; then
+                budArgs+=(--target "$1")
+              fi
+              shift
             elif [ "${arg}" == "--build-args" ]; then
               inBuildArgs=true
               inRegistriesBlock=false
@@ -288,7 +312,7 @@ spec:
               inRegistriesBlock=false
               inRegistriesInsecure=false
             elif [ "${inBuildArgs}" == "true" ]; then
-              buildArgs+=("--build-arg" "${arg}")
+              budArgs+=(--build-arg "${arg}")
             elif [ "${inRegistriesBlock}" == "true" ]; then
               registriesBlock="${registriesBlock}'${arg}', "
             elif [ "${inRegistriesInsecure}" == "true" ]; then
@@ -349,7 +373,7 @@ spec:
           # Building the image
           echo "[INFO] Building image ${image}"
           buildah --storage-driver=$(params.storage-driver) \
-            bud "${buildArgs[@]}" \
+            bud "${budArgs[@]}" \
             --registries-conf=/tmp/registries.conf \
             --tag="${image}" \
             --file="${dockerfile}" \
@@ -378,6 +402,8 @@ spec:
         - $(params.registries-insecure[*])
         - --registries-search
         - $(params.registries-search[*])
+        - --target
+        - $(params.target)
       resources:
         limits:
           cpu: "1"
@@ -409,10 +435,14 @@ spec:
       type: string
       default: "Dockerfile"
     - name: storage-driver
-      description: "The storage driver to use, such as 'overlay' or 'vfs'"
+      description: "The storage driver to use, such as 'overlay' or 'vfs'."
       type: string
       default: "vfs"
       # For details see the "--storage-driver" section of https://github.com/containers/buildah/blob/main/docs/buildah.1.md#options
+    - name: target
+      description: "Sets the target stage to be built."
+      type: string
+      default: ""
   securityContext:
     runAsUser: 0
     runAsGroup: 0
@@ -425,9 +455,6 @@ metadata:
   annotations:
     # See https://github.com/moby/buildkit/blob/master/docs/rootless.md#about---oci-worker-no-process-sandbox for more information
     container.apparmor.security.beta.kubernetes.io/step-build-and-push: unconfined
-    # The usage of seccomp annotation will be deprecate in k8s v1.22.0, see
-    # https://kubernetes.io/docs/tutorials/clusters/seccomp/#create-a-pod-with-a-seccomp-profile-for-syscall-auditing for more information
-    container.seccomp.security.alpha.kubernetes.io/step-build-and-push: unconfined
 spec:
   parameters:
     - name: build-args
@@ -438,6 +465,10 @@ spec:
       description: "Configure BuildKit's cache usage. Allowed values are 'disabled' and 'registry'. The default is 'registry'."
       type: string
       default: registry
+    - name: dockerfile
+      description: The path to the Dockerfile to be used for building the image.
+      type: string
+      default: Dockerfile
     - name: platforms
       description: "Build the image for different platforms. By default, the image is built for the platform used by the FROM image. If that is present for multiple platforms, then it is built for the environment's platform."
       type: array
@@ -446,13 +477,13 @@ spec:
       description: "The secrets to pass to the build. Values must be in the format ID=FILE_CONTENT."
       type: array
       defaults: []
-    - name: dockerfile
-      description: The path to the Dockerfile to be used for building the image.
+    - name: target
+      description: "Sets the target stage to be built."
       type: string
-      default: "Dockerfile"
+      default: ""
   steps:
     - name: build-and-push
-      image: moby/buildkit:v0.17.0-rootless
+      image: moby/buildkit:v0.20.0-rootless
       imagePullPolicy: Always
       securityContext:
         allowPrivilegeEscalation: true
@@ -460,6 +491,8 @@ spec:
           add:
             - SETGID
             - SETUID
+        seccompProfile:
+          type: Unconfined
       workingDir: $(params.shp-source-root)
       env:
         - name: DOCKER_CONFIG
@@ -481,6 +514,8 @@ spec:
           value: $(params.shp-output-insecure)
         - name: PARAM_CACHE
           value: $(params.cache)
+        - name: PARAM_TARGET
+          value: $(params.target)
       command:
         - /bin/ash
       args:
@@ -530,6 +565,9 @@ spec:
             echo -n "InvalidParameterValue" > '$(results.shp-error-reason.path)'
             echo -n "An invalid value for the parameter 'cache' has been provided: '${PARAM_CACHE}'. Allowed values are 'disabled' and 'registry'." > '$(results.shp-error-message.path)'
             exit 1
+          fi
+          if [ "${PARAM_TARGET}" != "" ]; then
+            echo "--opt=target=${PARAM_TARGET} \\" >> /tmp/run.sh
           fi
 
           stage=""
@@ -729,6 +767,8 @@ spec:
         - --no-push
         - --tar-path
         - $(params.shp-output-directory)/image.tar
+        - --target
+        - $(params.target)
         # https://github.com/GoogleContainerTools/kaniko/issues/2164
         - --ignore-path
         - /product_uuid
@@ -744,6 +784,10 @@ spec:
       description: The path to the Dockerfile to be used for building the image.
       type: string
       default: "Dockerfile"
+    - name: target
+      description: "Sets the target stage to be built."
+      type: string
+      default: ""
   securityContext:
     runAsUser: 0
     runAsGroup: 0
@@ -760,7 +804,7 @@ spec:
       default: ""
     - name: go-version
       description: "Version of Go, must match a tag from https://hub.docker.com/_/golang?tab=tags"
-      default: "1.22"
+      default: "1.23"
     - name: ko-version
       description: "Version of ko, must be either 'latest', or a release name from https://github.com/ko-build/ko/releases"
       default: latest
@@ -890,7 +934,7 @@ spec:
         - name: s2i
           mountPath: /s2i
     - name: buildah
-      image: quay.io/containers/buildah:v1.37.5
+      image: quay.io/containers/buildah:v1.38.1
       imagePullPolicy: Always
       workingDir: /s2i
       securityContext:
