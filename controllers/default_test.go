@@ -47,12 +47,13 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 	g.BeforeEach(func(ctx g.SpecContext) {
 		// setting up the namespaces, where Shipwright Controller will be deployed
 		setupTektonCRDs(ctx)
+		createTektonConfig(ctx)
 		build = createShipwrightBuild(ctx, targetNamespace)
 	})
 
 	g.AfterEach(func(ctx g.SpecContext) {
 		deleteShipwrightBuild(ctx, build)
-
+		deleteTektonConfig(ctx)
 		g.By("checking that the shipwright-build-controller deployment has been removed")
 		deployment := baseDeployment.DeepCopy()
 		test.EventuallyRemoved(ctx, k8sClient, deployment)

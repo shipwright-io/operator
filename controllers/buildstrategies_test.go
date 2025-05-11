@@ -19,6 +19,7 @@ var _ = Describe("Install embedded build strategies", func() {
 
 	BeforeEach(func(ctx SpecContext) {
 		setupTektonCRDs(ctx)
+		createTektonConfig(ctx)
 		build = createShipwrightBuild(ctx, "shipwright")
 		test.CRDEventuallyExists(ctx, k8sClient, "clusterbuildstrategies.shipwright.io")
 	})
@@ -43,6 +44,7 @@ var _ = Describe("Install embedded build strategies", func() {
 
 	AfterEach(func(ctx SpecContext) {
 		deleteShipwrightBuild(ctx, build)
+		deleteTektonConfig(ctx)
 	})
 
 })

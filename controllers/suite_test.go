@@ -14,19 +14,21 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
+	corev1 "k8s.io/api/core/v1"
 	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 
 	buildv1beta1 "github.com/shipwright-io/build/pkg/apis/build/v1beta1"
@@ -40,12 +42,13 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	k8sClient   client.Client
-	ctx         context.Context
-	cancel      context.CancelFunc
-	testEnv     *envtest.Environment
-	restTimeout = 5 * time.Second
-	restRetry   = 100 * time.Millisecond
+	k8sClient      client.Client
+	ctx            context.Context
+	cancel         context.CancelFunc
+	testEnv        *envtest.Environment
+	restTimeout    = 5 * time.Second
+	restRetry      = 100 * time.Millisecond
+	tektonOpClient tektonoperatorv1alpha1client.OperatorV1alpha1Interface
 )
 
 func TestAPIs(t *testing.T) {
@@ -75,6 +78,7 @@ func setupTektonCRDs(ctx context.Context) {
 			{
 				Name:    "v1beta1",
 				Storage: true,
+				Served:  true,
 				Schema: &crdv1.CustomResourceValidation{
 					OpenAPIV3Schema: &crdv1.JSONSchemaProps{
 						Type:                   "object",
@@ -106,6 +110,7 @@ func setupTektonCRDs(ctx context.Context) {
 			{
 				Name:    "v1alpha1",
 				Storage: true,
+				Served:  true,
 				Schema: &crdv1.CustomResourceValidation{
 					OpenAPIV3Schema: &crdv1.JSONSchemaProps{
 						Type:                   "object",
@@ -168,6 +173,51 @@ func deleteShipwrightBuild(ctx context.Context, build *operatorv1alpha1.Shipwrig
 	test.EventuallyRemoved(ctx, k8sClient, build)
 }
 
+// createTektonConfig creates a TektonConfig instance with ready status
+func createTektonConfig(ctx context.Context) *tektonoperatorv1alpha1.TektonConfig {
+	By("creating TektonConfig instance")
+	tektonConfig := &tektonoperatorv1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+		Status: tektonoperatorv1alpha1.TektonConfigStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{
+					{
+						Type:   ConditionReady,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+		},
+	}
+	_, err := tektonOpClient.TektonConfigs().Create(ctx, tektonConfig, metav1.CreateOptions{})
+	if errors.IsAlreadyExists(err) {
+		// If it already exists, that's fine
+		err = nil
+	}
+	Expect(err).To(BeNil())
+
+	return tektonConfig
+}
+
+// deleteTektonConfig tears down the given TektonConfig instance.
+func deleteTektonConfig(ctx context.Context) {
+	By("deleting the TektonConfig instance")
+	err := tektonOpClient.TektonConfigs().Delete(ctx, "config", metav1.DeleteOptions{})
+	// the delete e2e's can delete this object before this AfterEach runs
+	if errors.IsNotFound(err) {
+		return
+	}
+	Expect(err).NotTo(HaveOccurred())
+
+	By("waiting for TektonConfig instance to be completely removed")
+	Eventually(func() error {
+		_, err := tektonOpClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+		return err
+	}, "30s", "5s").Should(WithTransform(errors.IsNotFound, BeTrue()))
+}
+
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
@@ -190,7 +240,8 @@ var _ = BeforeSuite(func() {
 	err = buildv1beta1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	// +kubebuilder:scaffold:scheme
+	err = tektonoperatorv1alpha1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
@@ -200,6 +251,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	toClient, err := tektonoperatorv1alpha1client.NewForConfig(mgr.GetConfig())
 	Expect(err).NotTo(HaveOccurred())
+	tektonOpClient = toClient
 	err = (&ShipwrightBuildReconciler{
 		CRDClient:            crdClient,
 		TektonOperatorClient: toClient,
