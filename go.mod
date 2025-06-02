@@ -12,9 +12,9 @@ require (
 	github.com/shipwright-io/build v0.15.0
 	github.com/tektoncd/operator v0.75.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.30.9
-	k8s.io/apiextensions-apiserver v0.30.9
-	k8s.io/apimachinery v0.30.9
+	k8s.io/api v0.32.5
+	k8s.io/apiextensions-apiserver v0.32.5
+	k8s.io/apimachinery v0.32.5
 	// go mod tidy forces this to v1.5.2
 	k8s.io/client-go v1.5.2
 	sigs.k8s.io/controller-runtime v0.18.7
@@ -32,6 +32,7 @@ require (
 	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
@@ -47,7 +48,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
-	github.com/imdario/mergo v0.3.16 // indirect; indirecthttps://github.com/kubernetes/kubernetes/tree/v1.30.8
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
@@ -60,6 +60,7 @@ require (
 	github.com/openshift/api v0.0.0-20240521185306-0314f31e7774 // indirect
 	github.com/openshift/apiserver-library-go v0.0.0-20230816171015-6bfafa975bfb // indirect
 	github.com/openshift/client-go v0.0.0-20240523113335-452272e0496d // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.21.0 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
@@ -68,6 +69,7 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/tektoncd/pipeline v0.68.0 // indirect
 	github.com/tektoncd/triggers v0.31.0 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
@@ -86,14 +88,15 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250127172529-29210b9bc287 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
+	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20240403164606-bc84c2ddaf99 // indirect
-	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0 // indirect
+	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
+	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 	knative.dev/pkg v0.0.0-20240416145024-0f34a8815650 // indirect
-	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
+	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.4.2 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
@@ -108,4 +111,4 @@ require (
 // go module version standardization (v0.y.z, with y and z representing the k8s 1.y.z minor/patch
 // versions). `go mod tidy` will often overwrite the desired client-go version to v1.5.2, so we
 // pin the version here.
-replace k8s.io/client-go => k8s.io/client-go v0.30.9
+replace k8s.io/client-go => k8s.io/client-go v0.32.5
