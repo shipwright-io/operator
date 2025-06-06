@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"net/http"
+	http "net/http"
 
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/client/clientset/versioned/scheme"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	scheme "github.com/tektoncd/operator/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
@@ -37,6 +37,7 @@ type OperatorV1alpha1Interface interface {
 	TektonHubsGetter
 	TektonInstallerSetsGetter
 	TektonPipelinesGetter
+	TektonPrunersGetter
 	TektonResultsGetter
 	TektonTriggersGetter
 }
@@ -80,6 +81,10 @@ func (c *OperatorV1alpha1Client) TektonInstallerSets() TektonInstallerSetInterfa
 
 func (c *OperatorV1alpha1Client) TektonPipelines() TektonPipelineInterface {
 	return newTektonPipelines(c)
+}
+
+func (c *OperatorV1alpha1Client) TektonPruners() TektonPrunerInterface {
+	return newTektonPruners(c)
 }
 
 func (c *OperatorV1alpha1Client) TektonResults() TektonResultInterface {
@@ -135,10 +140,10 @@ func New(c rest.Interface) *OperatorV1alpha1Client {
 }
 
 func setConfigDefaults(config *rest.Config) error {
-	gv := v1alpha1.SchemeGroupVersion
+	gv := operatorv1alpha1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	config.NegotiatedSerializer = rest.CodecFactoryForGeneratedClient(scheme.Scheme, scheme.Codecs).WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()
