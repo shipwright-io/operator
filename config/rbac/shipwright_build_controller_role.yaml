@@ -7,7 +7,7 @@ rules:
     resources: ['buildruns']
     # The build-run-deletion annotation sets an owner ref on BuildRun objects.
     # With the OwnerReferencesPermissionEnforcement admission controller enabled, controllers need the "delete" permission on objects that they set owner references on.
-    verbs: ['get', 'list', 'watch', 'update', 'delete']
+    verbs: ['get', 'list', 'watch', 'update', 'delete', 'patch']
   - apiGroups: ['shipwright.io']
     # BuildRuns are set as the owners of Tekton TaskRuns.
     # With the OwnerReferencesPermissionEnforcement admission controller enabled, controllers need the "update" permission on the finalizer of the parent object in the owner reference.
@@ -18,7 +18,7 @@ rules:
     verbs: ['update']
   - apiGroups: ['shipwright.io']
     resources: ['builds']
-    verbs: ['get', 'list', 'watch']
+    verbs: ['get', 'list', 'watch', 'patch']
   - apiGroups: ['shipwright.io']
     # The build-run-deletion annotation makes Builds an owner of BuildRun objects.
     # With the OwnerReferencesPermissionEnforcement admission controller enabled, controllers need the "update" permission on the finalizer of the parent object in the owner reference.
@@ -29,10 +29,10 @@ rules:
     verbs: ['update']
   - apiGroups: ['shipwright.io']
     resources: ['buildstrategies']
-    verbs: ['get', 'list', 'watch']
+    verbs: ['get', 'list', 'watch', 'patch']
   - apiGroups: ['shipwright.io']
     resources: ['clusterbuildstrategies']
-    verbs: ['get', 'list', 'watch']
+    verbs: ['get', 'list', 'watch', 'patch']
   - apiGroups: ['tekton.dev']
     resources: ['taskruns']
     # BuildRuns are set as the owners of Tekton TaskRuns.
@@ -50,6 +50,3 @@ rules:
   - apiGroups: ['']
     resources: ['serviceaccounts']
     verbs: ['get', 'list', 'watch', 'create', 'update', 'delete']
-  - apiGroups: ['apiextensions.k8s.io']
-    resources: ['customresourcedefinitions', 'customresourcedefinitions/status']
-    verbs: ['get', 'patch']
