@@ -63,6 +63,12 @@ type ShipwrightBuildReconciler struct {
 	BuildStrategyManifest manifestival.Manifest // Build strategies manifest to render
 }
 
+type TektonCheckResult struct {
+	IsReady        bool
+	ConditionToSet *metav1.Condition
+	Err            error
+}
+
 // setFinalizer append finalizer on the resource, and uses local client to update it immediately.
 func (r *ShipwrightBuildReconciler) setFinalizer(ctx context.Context, b *v1alpha1.ShipwrightBuild) error {
 	if common.Contains(b.GetFinalizers(), FinalizerAnnotation) {
@@ -104,6 +110,67 @@ func deleteObjectsIfPresent(ctx context.Context, k8sClient client.Client, objs [
 	return nil
 }
 
+// fetchAndCheckTektonConfig fetches the "config" `TektonConfig` instance on the cluster, and checks if its "Ready" condition reports `True`.
+// Returns `TektonCheckResult` which contains the result of the check and the condition to set.
+func (r *ShipwrightBuildReconciler) fetchAndCheckTektonConfig(ctx context.Context, logger logr.Logger) TektonCheckResult {
+	tektonConfig, err := r.TektonOperatorClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Error(err, "TektonConfig not found")
+			return TektonCheckResult{
+				IsReady: false,
+				Err:     err,
+				ConditionToSet: &metav1.Condition{
+					Type:    ConditionReady,
+					Status:  metav1.ConditionFalse,
+					Reason:  "TektonConfigMissing",
+					Message: "TektonConfig is missing from the cluster",
+				},
+			}
+		}
+
+		logger.Error(err, "Failed to fetch TektonConfig")
+		return TektonCheckResult{
+			IsReady: false,
+			Err:     err,
+			ConditionToSet: &metav1.Condition{
+				Type:    ConditionReady,
+				Status:  metav1.ConditionFalse,
+				Reason:  "TektonConfigFetchError",
+				Message: fmt.Sprintf("Unexpected error fetching TektonConfig: %v", err),
+			},
+		}
+	}
+
+	for _, condition := range tektonConfig.Status.Conditions {
+		if condition.Type == ConditionReady && condition.Status == corev1.ConditionTrue {
+			logger.Info("TektonConfig is ready")
+			return TektonCheckResult{
+				IsReady: true,
+				Err:     nil,
+				ConditionToSet: &metav1.Condition{
+					Type:    ConditionReady,
+					Status:  metav1.ConditionTrue,
+					Reason:  "TektonReady",
+					Message: "TektonConfig is Ready",
+				},
+			}
+		}
+	}
+
+	logger.Info("TektonConfig is not ready yet")
+	return TektonCheckResult{
+		IsReady: false,
+		Err:     nil,
+		ConditionToSet: &metav1.Condition{
+			Type:    ConditionReady,
+			Status:  metav1.ConditionFalse,
+			Reason:  "TektonNotReady",
+			Message: "TektonConfig is not Ready",
+		},
+	}
+}
+
 // Reconcile performs the resource reconciliation steps to deploy or remove Shipwright Build
 // instances. When deletion-timestamp is found, the removal of the previously deploy resources is
 // executed, otherwise the regular deploy workflow takes place.
@@ -141,6 +208,24 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		if err := r.Client.Status().Update(ctx, b); err != nil {
 			return RequeueWithError(err)
 		}
+	}
+
+	// Check TektonConfig status, update status and requeue if not ready
+	tektonconfigCheck := r.fetchAndCheckTektonConfig(ctx, logger)
+	apimeta.SetStatusCondition(&b.Status.Conditions, *tektonconfigCheck.ConditionToSet)
+	if updateErr := r.Client.Status().Update(ctx, b); updateErr != nil {
+		logger.Error(updateErr, "Failed to update ShipwrightBuild status")
+		return RequeueOnError(updateErr)
+	}
+
+	if tektonconfigCheck.Err != nil {
+		logger.Error(tektonconfigCheck.Err, "Failed to check TektonConfig, requeueing")
+		return RequeueOnError(tektonconfigCheck.Err)
+	}
+
+	if !tektonconfigCheck.IsReady {
+		logger.Info("TektonConfig is not ready, requeueing request")
+		return Requeue()
 	}
 
 	// selecting the target namespace based on the CRD information, when not informed using the

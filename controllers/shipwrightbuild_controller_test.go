@@ -9,23 +9,25 @@ import (
 
 	o "github.com/onsi/gomega"
 
+	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+	"github.com/shipwright-io/operator/api/v1alpha1"
+	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	crdclientv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/shipwright-io/operator/api/v1alpha1"
-	tektonoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	tektonoperatorv1alpha1client "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
-	crdv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 // bootstrapShipwrightBuildReconciler start up a new instance of ShipwrightBuildReconciler which is
@@ -35,6 +37,7 @@ func bootstrapShipwrightBuildReconciler(
 	b *v1alpha1.ShipwrightBuild,
 	tcfg *tektonoperatorv1alpha1.TektonConfig,
 	tcrds []*crdv1.CustomResourceDefinition,
+	statusObjects ...client.Object,
 ) (client.Client, *crdclientv1.Clientset, *tektonoperatorv1alpha1client.Clientset, *ShipwrightBuildReconciler) {
 	g := o.NewGomegaWithT(t)
 
@@ -44,10 +47,17 @@ func bootstrapShipwrightBuildReconciler(
 	s.AddKnownTypes(v1alpha1.GroupVersion, &v1alpha1.ShipwrightBuild{})
 	s.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRoleBinding{})
 	s.AddKnownTypes(rbacv1.SchemeGroupVersion, &rbacv1.ClusterRole{})
+	s.AddKnownTypes(tektonoperatorv1alpha1.SchemeGroupVersion, &tektonoperatorv1alpha1.TektonConfig{})
+	s.AddKnownTypes(buildv1alpha1.SchemeGroupVersion, &buildv1alpha1.ClusterBuildStrategy{})
 
 	logger := zap.New()
+	clientBuilder := fake.NewClientBuilder().WithScheme(s).WithObjects(b)
+	if len(statusObjects) > 0 {
+		// the fake client does not support the status subresource by default.
+		clientBuilder = clientBuilder.WithStatusSubresource(statusObjects...)
+	}
+	c := clientBuilder.Build()
 
-	c := fake.NewClientBuilder().WithScheme(s).WithObjects(b).Build()
 	var crdClient *crdclientv1.Clientset
 	var toClient *tektonoperatorv1alpha1client.Clientset
 	if len(tcrds) > 0 {
@@ -244,4 +254,119 @@ func TestShipwrightBuildReconciler_Reconcile(t *testing.T) {
 			testShipwrightBuildReconcilerReconcile(t, tt.targetNamespace)
 		})
 	}
+}
+
+func TestShipwrightBuildReconciler_OperandReadiness(t *testing.T) {
+	g := o.NewGomegaWithT(t)
+	ctx := context.TODO()
+
+	// ShipwrightBuild object
+	b := &v1alpha1.ShipwrightBuild{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "default",
+		},
+		Spec: v1alpha1.ShipwrightBuildSpec{
+			TargetNamespace: "namespace",
+		},
+		Status: v1alpha1.ShipwrightBuildStatus{
+			Conditions: []metav1.Condition{
+				{
+					Type:   ConditionReady,
+					Status: metav1.ConditionTrue,
+				},
+			},
+		},
+	}
+
+	// Mock TektonConfig to simulate Tekton Operator installation
+	tektonConfig := &tektonoperatorv1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+		Status: tektonoperatorv1alpha1.TektonConfigStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{
+					{
+						Type:    ConditionReady,
+						Status:  corev1.ConditionFalse,
+						Reason:  "Installed",
+						Message: "TektonConfig is not ready",
+					},
+				},
+			},
+		},
+	}
+	// Preload the fake client with a valid ClusterBuildStrategy to pass buildstrategy reconciliation
+	cbs := &buildv1alpha1.ClusterBuildStrategy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "buildah",
+		},
+		Spec: buildv1alpha1.BuildStrategySpec{
+			BuildSteps: []buildv1alpha1.BuildStep{
+				{
+					Container: corev1.Container{
+						Name:  "build-step",
+						Image: "quay.io/buildah/stable",
+					},
+				},
+			},
+		},
+	}
+
+	// Prepare cr
+	crd1 := &crdv1.CustomResourceDefinition{}
+	crd1.Name = "taskruns.tekton.dev"
+	crd2 := &crdv1.CustomResourceDefinition{}
+	crd2.Name = "tektonconfigs.operator.tekton.dev"
+	crd2.Labels = map[string]string{"operator.tekton.dev/release": common.TektonOpMinSupportedVersion}
+	crd3 := &crdv1.CustomResourceDefinition{}
+	crd3.Name = "clusterbuildstrategies.shipwright.io"
+	crds := []*crdv1.CustomResourceDefinition{crd1, crd2, crd3}
+
+	// Bootstrap the reconciler with the mock objects
+	c, _, _, r := bootstrapShipwrightBuildReconciler(t, b, nil, crds, &v1alpha1.ShipwrightBuild{})
+
+	// Inject a pre-created valid tektonconfig
+	_, err := r.TektonOperatorClient.TektonConfigs().Create(ctx, tektonConfig, metav1.CreateOptions{})
+	g.Expect(err).To(o.BeNil())
+
+	// Verify creation of tektonconfig
+	cfg, err := r.TektonOperatorClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+	g.Expect(err).To(o.BeNil())
+	g.Expect(cfg.Name).To(o.Equal("config"))
+	g.Expect(cfg.Status.Conditions[0].Type).To(o.Equal(apis.ConditionReady))
+
+	// Simulate reconciliation
+	namespacedName := types.NamespacedName{Namespace: "default", Name: "name"}
+	req := reconcile.Request{NamespacedName: namespacedName}
+	res, err := r.Reconcile(ctx, req)
+	g.Expect(err).To(o.BeNil())
+	g.Expect(res.Requeue).To(o.BeTrue(), "Reconciliation should requeue when TektonConfig is not ready")
+
+	// Verify that the ShipwrightBuild is marked as not ready
+	updated := &v1alpha1.ShipwrightBuild{}
+	err = c.Get(ctx, req.NamespacedName, updated)
+	g.Expect(err).To(o.BeNil())
+	g.Expect(updated.Status.IsReady()).To(o.BeFalse(), "ShipwrightBuild should not be ready when TektonConfig is not ready")
+
+	// Simulate TektonConfig becoming ready
+	tektonConfig.Status.Conditions[0].Status = corev1.ConditionTrue
+	tektonConfig.Status.Conditions[0].Reason = "Installed"
+	tektonConfig.Status.Conditions[0].Message = "TektonConfig is now ready"
+	_, err = r.TektonOperatorClient.TektonConfigs().Update(ctx, tektonConfig, metav1.UpdateOptions{})
+	g.Expect(err).To(o.BeNil())
+
+	// Inject a pre-created valid ClusterBuildStrategy
+	err = c.Create(ctx, cbs)
+	g.Expect(err).To(o.BeNil())
+	// Trigger reconciliation again
+	res, err = r.Reconcile(ctx, req)
+	g.Expect(err).To(o.BeNil())
+	g.Expect(res.Requeue).To(o.BeFalse(), "Should not requeue after TektonConfig is ready")
+
+	// Fetch and verify ShipwrightBuild is now ready
+	err = c.Get(ctx, req.NamespacedName, updated)
+	g.Expect(err).To(o.BeNil())
+	g.Expect(updated.Status.IsReady()).To(o.BeTrue(), "ShipwrightBuild should be ready when TektonConfig is ready")
 }
