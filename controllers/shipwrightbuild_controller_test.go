@@ -176,7 +176,7 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 		// This makes testing brittle and unable to capture the behavior on a real cluster.
 		// Requeue can return "true" because the tests think the CRD for ClusterBuildStrategies
 		// do not exist yet.
-		g.Expect(res.Requeue).To(o.BeTrue(), "checking requeue for Reconcile")
+		g.Expect(res.RequeueAfter).NotTo(o.BeZero(), "checking requeue for Reconcile")
 		err = c.Get(ctx, deploymentName, &appsv1.Deployment{})
 		g.Expect(err).To(o.BeNil())
 		err = c.Get(ctx, namespacedName, b)
@@ -199,7 +199,7 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 		// This makes testing brittle and unable to capture the behavior on a real cluster.
 		// Requeue can return "true" because the tests think the CRD for ClusterBuildStrategies
 		// do not exist yet.
-		g.Expect(res.Requeue).To(o.BeTrue())
+		g.Expect(res.RequeueAfter).NotTo(o.BeZero())
 		err = c.Get(ctx, deploymentName, deployment)
 		g.Expect(err).To(o.BeNil())
 		containers := deployment.Spec.Template.Spec.Containers
@@ -229,7 +229,7 @@ func testShipwrightBuildReconcilerReconcile(t *testing.T, targetNamespace string
 
 		res, err := r.Reconcile(ctx, req)
 		g.Expect(err).To(o.BeNil())
-		g.Expect(res.Requeue).To(o.BeFalse())
+		g.Expect(res.RequeueAfter).To(o.BeZero())
 
 		err = c.Get(ctx, deploymentName, &appsv1.Deployment{})
 		g.Expect(errors.IsNotFound(err)).To(o.BeTrue())
@@ -342,7 +342,7 @@ func TestShipwrightBuildReconciler_OperandReadiness(t *testing.T) {
 	req := reconcile.Request{NamespacedName: namespacedName}
 	res, err := r.Reconcile(ctx, req)
 	g.Expect(err).To(o.BeNil())
-	g.Expect(res.Requeue).To(o.BeTrue(), "Reconciliation should requeue when TektonConfig is not ready")
+	g.Expect(res.RequeueAfter).NotTo(o.BeZero(), "Reconciliation should requeue when TektonConfig is not ready")
 
 	// Verify that the ShipwrightBuild is marked as not ready
 	updated := &v1alpha1.ShipwrightBuild{}
@@ -363,7 +363,7 @@ func TestShipwrightBuildReconciler_OperandReadiness(t *testing.T) {
 	// Trigger reconciliation again
 	res, err = r.Reconcile(ctx, req)
 	g.Expect(err).To(o.BeNil())
-	g.Expect(res.Requeue).To(o.BeFalse(), "Should not requeue after TektonConfig is ready")
+	g.Expect(res.RequeueAfter).To(o.BeZero(), "Should not requeue after TektonConfig is ready")
 
 	// Fetch and verify ShipwrightBuild is now ready
 	err = c.Get(ctx, req.NamespacedName, updated)
