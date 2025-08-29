@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/manifestival/manifestival"
@@ -180,7 +181,11 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// ReconcileTekton
 	_, requeue, err := tekton.ReconcileTekton(ctx, r.CRDClient, r.TektonOperatorClient)
 	if err != nil {
-		return ctrl.Result{Requeue: requeue}, err
+		requeueInterval := 0 * time.Second
+		if requeue {
+			requeueInterval = 1 * time.Second
+		}
+		return ctrl.Result{RequeueAfter: requeueInterval}, err
 	}
 	if requeue {
 		return Requeue()
@@ -261,7 +266,11 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if common.BoolFromEnvVar(UseManagedWebhookCerts) {
 		requeue, err = certmanager.ReconcileCertManager(ctx, r.CRDClient, r.Client, r.Logger, targetNamespace)
 		if err != nil {
-			return ctrl.Result{Requeue: requeue}, err
+			requeueInterval := 0 * time.Second
+			if requeue {
+				requeueInterval = 1 * time.Second
+			}
+			return ctrl.Result{RequeueAfter: requeueInterval}, err
 		}
 		if requeue {
 			return Requeue()

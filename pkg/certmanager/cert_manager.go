@@ -36,14 +36,14 @@ func ReconcileCertManager(ctx context.Context, crdClient crdclientv1.Apiextensio
 
 	manifest, err := common.SetupManifestival(client, "certificates.yaml", false, logger)
 	if err != nil {
-		return true, fmt.Errorf("Error creating inital certificates manifest")
+		return true, fmt.Errorf("error creating inital certificates manifest")
 	}
 	manifest, err = manifest.
 		Filter(mf.Not(mf.ByKind("Namespace"))).
 		Transform(mf.InjectNamespace(namespace), injectDnsNames(buildCertDomains(namespace)))
 
 	if err != nil {
-		return true, fmt.Errorf("Error transorming manifest using target namespace")
+		return true, fmt.Errorf("error transorming manifest using target namespace")
 	}
 
 	if err = manifest.Apply(); err != nil {
