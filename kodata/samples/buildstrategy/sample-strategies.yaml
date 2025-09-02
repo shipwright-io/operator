@@ -5,7 +5,7 @@ metadata:
 spec:
   steps:
     - name: build
-      image: quay.io/containers/buildah:v1.38.1
+      image: quay.io/containers/buildah:v1.40.1
       imagePullPolicy: Always
       workingDir: $(params.shp-source-root)
       securityContext:
@@ -230,7 +230,7 @@ metadata:
 spec:
   steps:
     - name: build-and-push
-      image: quay.io/containers/buildah:v1.38.1
+      image: quay.io/containers/buildah:v1.40.1
       imagePullPolicy: Always
       workingDir: $(params.shp-source-root)
       securityContext:
@@ -483,7 +483,7 @@ spec:
       default: ""
   steps:
     - name: build-and-push
-      image: moby/buildkit:v0.20.0-rootless
+      image: moby/buildkit:v0.23.2-rootless
       imagePullPolicy: Always
       securityContext:
         allowPrivilegeEscalation: true
@@ -732,7 +732,7 @@ metadata:
 spec:
   steps:
     - name: build-and-push
-      image: gcr.io/kaniko-project/executor:v1.23.2
+      image: gcr.io/kaniko-project/executor:v1.24.0
       workingDir: $(params.shp-source-root)
       securityContext:
         capabilities:
@@ -804,7 +804,7 @@ spec:
       default: ""
     - name: go-version
       description: "Version of Go, must match a tag from https://hub.docker.com/_/golang?tab=tags"
-      default: "1.23"
+      default: "1.24"
     - name: ko-version
       description: "Version of ko, must be either 'latest', or a release name from https://github.com/ko-build/ko/releases"
       default: latest
@@ -934,7 +934,7 @@ spec:
         - name: s2i
           mountPath: /s2i
     - name: buildah
-      image: quay.io/containers/buildah:v1.38.1
+      image: quay.io/containers/buildah:v1.40.1
       imagePullPolicy: Always
       workingDir: /s2i
       securityContext:
@@ -1099,7 +1099,7 @@ spec:
           name: gen-source
       workingDir: $(params.shp-source-root)
     - name: build-and-push
-      image: gcr.io/kaniko-project/executor:v1.23.2
+      image: gcr.io/kaniko-project/executor:v1.24.0
       command:
         - /kaniko/executor
       args:
