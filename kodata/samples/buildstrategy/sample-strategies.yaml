@@ -5,7 +5,7 @@ metadata:
 spec:
   steps:
     - name: build
-      image: quay.io/containers/buildah:v1.40.1
+      image: quay.io/containers/buildah:v1.42.1
       imagePullPolicy: Always
       workingDir: $(params.shp-source-root)
       securityContext:
@@ -230,7 +230,7 @@ metadata:
 spec:
   steps:
     - name: build-and-push
-      image: quay.io/containers/buildah:v1.40.1
+      image: quay.io/containers/buildah:v1.42.1
       imagePullPolicy: Always
       workingDir: $(params.shp-source-root)
       securityContext:
@@ -483,7 +483,7 @@ spec:
       default: ""
   steps:
     - name: build-and-push
-      image: moby/buildkit:v0.23.2-rootless
+      image: moby/buildkit:v0.26.2-rootless
       imagePullPolicy: Always
       securityContext:
         allowPrivilegeEscalation: true
@@ -934,7 +934,7 @@ spec:
         - name: s2i
           mountPath: /s2i
     - name: buildah
-      image: quay.io/containers/buildah:v1.40.1
+      image: quay.io/containers/buildah:v1.42.1
       imagePullPolicy: Always
       workingDir: /s2i
       securityContext:
