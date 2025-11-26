@@ -13,11 +13,14 @@ Once OLM has been deployed, use the following command to install the latest oper
 $ kubectl apply -f https://operatorhub.io/install/shipwright-operator.yaml
 ```
 
-## OLM Dependencies
-When installed via OLM using the provided Shipwright Operator Bundle, the Shipwright operator will ask OLM to deploy the following operators:
-- The [Tekton operator](https://tekton.dev/docs/operator/) to deploy and manage Tekton Pipelines.
-- The [Cert-Manager operator](https://cert-manager.io/docs/installation/operator-lifecycle-manager/) to provision certificates for admission/conversion webhooks.
-For this to work, the Shipwright operator must be included in a catalog that includes these other operators.
+## Prerequisites
+
+Before installing the Shipwright operator, you must have the following components installed in your cluster:
+
+- **Tekton**: The Shipwright operator requires Tekton Pipelines to be installed. Follow the [Tekton installation instructions](https://tekton.dev/docs/setup/) to install Tekton in your cluster.
+- **cert-manager**: The Shipwright operator uses cert-manager to provision certificates for admission/conversion webhooks. Follow the [cert-manager installation instructions](https://cert-manager.io/docs/installation/) to install cert-manager in your cluster.
+
+**Note**: The cert-manager operator has been deprecated. Please install cert-manager directly using the recommended installation method from the [cert-manager documentation](https://cert-manager.io/docs/installation/).
 
 ## Usage
 

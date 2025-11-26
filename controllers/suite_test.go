@@ -126,6 +126,20 @@ func setupTektonCRDs(ctx context.Context) {
 		tektonOpCRD.Status.StoredVersions = []string{"v1alpha1"}
 		err = k8sClient.Create(ctx, tektonOpCRD, &client.CreateOptions{})
 		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for the CRD to be established before proceeding
+		Eventually(func() bool {
+			crd := &crdv1.CustomResourceDefinition{}
+			if err := k8sClient.Get(ctx, types.NamespacedName{Name: "tektonconfigs.operator.tekton.dev"}, crd); err != nil {
+				return false
+			}
+			for _, condition := range crd.Status.Conditions {
+				if condition.Type == crdv1.Established && condition.Status == crdv1.ConditionTrue {
+					return true
+				}
+			}
+			return false
+		}).Should(BeTrue(), "TektonConfig CRD should be established")
 	}
 	Expect(err).NotTo(HaveOccurred())
 }
@@ -191,12 +205,15 @@ func createTektonConfig(ctx context.Context) *tektonoperatorv1alpha1.TektonConfi
 			},
 		},
 	}
-	_, err := tektonOpClient.TektonConfigs().Create(ctx, tektonConfig, metav1.CreateOptions{})
+	// Use controller-runtime client instead of REST client for better compatibility with envtest
+	err := k8sClient.Create(ctx, tektonConfig, &client.CreateOptions{})
 	if errors.IsAlreadyExists(err) {
-		// If it already exists, that's fine
-		err = nil
+		// If it already exists, fetch it
+		err = k8sClient.Get(ctx, types.NamespacedName{Name: "config"}, tektonConfig)
+		Expect(err).NotTo(HaveOccurred())
+	} else {
+		Expect(err).NotTo(HaveOccurred())
 	}
-	Expect(err).To(BeNil())
 
 	return tektonConfig
 }
@@ -204,7 +221,12 @@ func createTektonConfig(ctx context.Context) *tektonoperatorv1alpha1.TektonConfi
 // deleteTektonConfig tears down the given TektonConfig instance.
 func deleteTektonConfig(ctx context.Context) {
 	By("deleting the TektonConfig instance")
-	err := tektonOpClient.TektonConfigs().Delete(ctx, "config", metav1.DeleteOptions{})
+	tektonConfig := &tektonoperatorv1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+	}
+	err := k8sClient.Delete(ctx, tektonConfig, &client.DeleteOptions{})
 	// the delete e2e's can delete this object before this AfterEach runs
 	if errors.IsNotFound(err) {
 		return
@@ -212,10 +234,10 @@ func deleteTektonConfig(ctx context.Context) {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("waiting for TektonConfig instance to be completely removed")
-	Eventually(func() error {
-		_, err := tektonOpClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
-		return err
-	}, "30s", "5s").Should(WithTransform(errors.IsNotFound, BeTrue()))
+	Eventually(func() bool {
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: "config"}, tektonConfig)
+		return errors.IsNotFound(err)
+	}, "30s", "5s").Should(BeTrue(), "TektonConfig should be deleted")
 }
 
 var _ = BeforeSuite(func() {
