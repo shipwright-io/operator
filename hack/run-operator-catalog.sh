@@ -17,6 +17,8 @@
 # - SUBSCRIPTION_NAMESPACE: Namespace to install the operator via an OLM subscription. Defaults to
 #   shipwright-operator.
 # - NAME_PREFIX: prefix to use for all resource names. Defaults to "shipwright-"
+# - TEKTON_OPERATOR_VERSION: Tekton Operator version to install. Defaults to v0.77.0 (matches go.mod).
+# - CERT_MANAGER_VERSION: cert-manager version to install. Defaults to v1.13.0.
 
 set -eu -o pipefail
 
@@ -81,6 +83,90 @@ function wait_for_pod() {
     ${KUBECTL_BIN} wait --for=condition=Ready pod -l "${label}" -n "${namespace}" --timeout "${timeout}"
 }
 
+function install_tekton() {
+    echo "Installing Tekton Operator"
+    # Install Tekton Operator using the official installation method (https://github.com/tektoncd/operator/releases)
+    # Minimum supported version is v0.50.0 (see pkg/common/const.go)
+    # Default version matches the dependency in go.mod (v0.77.0) for stability
+    # Can be overridden via TEKTON_OPERATOR_VERSION env var
+    TEKTON_OPERATOR_VERSION=${TEKTON_OPERATOR_VERSION:-v0.77.0}
+    echo "Installing Tekton Operator version ${TEKTON_OPERATOR_VERSION}"
+    if ! ${KUBECTL_BIN} apply -f "https://storage.googleapis.com/tekton-releases/operator/previous/${TEKTON_OPERATOR_VERSION}/release.yaml"; then
+        echo "Warning: Failed to install Tekton Operator ${TEKTON_OPERATOR_VERSION}, falling back to latest"
+        ${KUBECTL_BIN} apply -f "https://storage.googleapis.com/tekton-releases/operator/latest/release.yaml"
+    fi
+    
+    echo "Waiting for Tekton Operator to be ready"
+    # Wait for the operator namespace to exist first
+    for i in {1..30}; do
+        if ${KUBECTL_BIN} get namespace tekton-operator &>/dev/null; then
+            break
+        fi
+        sleep 2
+    done
+    
+    if ! wait_for_pod "app=tekton-operator" "tekton-operator" 5m; then
+        echo "Failed to deploy Tekton Operator"
+        ${KUBECTL_BIN} get pods -n tekton-operator
+        exit 1
+    fi
+    
+    echo "Creating TektonConfig instance"
+    # Check if TektonConfig already exists, delete it if it does to avoid annotation warnings
+    if ${KUBECTL_BIN} get tektonconfigs.operator.tekton.dev/config &>/dev/null; then
+        echo "TektonConfig already exists, deleting it to recreate cleanly"
+        ${KUBECTL_BIN} delete tektonconfigs.operator.tekton.dev/config --ignore-not-found=true
+        # Wait a moment for deletion to complete
+        sleep 2
+    fi
+    
+    ${KUBECTL_BIN} apply -f - <<EOF
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonConfig
+metadata:
+  name: config
+spec:
+  profile: lite
+  targetNamespace: tekton-pipelines
+EOF
+    
+    echo "Waiting for TektonConfig to be ready"
+    if ! ${KUBECTL_BIN} wait --for=condition=Ready tektonconfigs.operator.tekton.dev/config --timeout=5m; then
+        echo "Failed to deploy TektonConfig"
+        ${KUBECTL_BIN} get tektonconfigs -o yaml
+        ${KUBECTL_BIN} get tektonconfigs config -o yaml
+        exit 1
+    fi
+}
+
+function install_cert_manager() {
+    echo "Installing cert-manager"
+    # Install cert-manager using the official installation method (https://github.com/cert-manager/cert-manager/releases)
+    # Default version is v1.13.0 (stable release)
+    # Can be overridden via CERT_MANAGER_VERSION env var
+    CERT_MANAGER_VERSION=${CERT_MANAGER_VERSION:-v1.13.0}
+    echo "Installing cert-manager version ${CERT_MANAGER_VERSION}"
+    ${KUBECTL_BIN} apply -f "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
+    
+    echo "Waiting for cert-manager pods to be ready"
+    if ! wait_for_pod "app.kubernetes.io/instance=cert-manager" "cert-manager" 5m; then
+        echo "Failed to deploy cert-manager"
+        ${KUBECTL_BIN} get pods -n cert-manager
+        exit 1
+    fi
+    
+    echo "Waiting for cert-manager webhook to be ready"
+    # Wait for the webhook to be ready by checking if it can validate certificates
+    for i in {1..30}; do
+        if ${KUBECTL_BIN} get validatingwebhookconfigurations cert-manager-webhook &>/dev/null; then
+            echo "cert-manager webhook is ready"
+            return 0
+        fi
+        sleep 2
+    done
+    echo "Warning: cert-manager webhook may not be fully ready, continuing anyway"
+}
+
 add_kustomizations
 
 echo "Deploying catalog source"
@@ -107,6 +193,10 @@ if ! wait_for_pod "app=shipwright-operator" "${SUBSCRIPTION_NAMESPACE}" 5m; then
     dump_state
     exit 1
 fi
+
+echo "Installing prerequisites"
+install_cert_manager
+install_tekton
 
 echo "Deploying Shipwright build controller"
 
