@@ -22,17 +22,16 @@ spec:
       kind: ShipwrightBuild
       name: shipwrightbuilds.operator.shipwright.io
       version: v1alpha1
-    required:
-    - kind: TektonConfig
-      name: tektonconfigs.operator.tekton.dev
-      version: v1alpha1
-    - kind: Certificate
-      name: certificates.cert-manager.io
-      version: v1
   description: |
     Shipwright is a framework for building container images on Kubernetes.
 
     Read more: [https://shipwright.io](https://shipwright.io)
+
+    ## Prerequisites
+
+    Before installing the Shipwright operator, ensure the following components are installed:
+    - **Tekton**: Follow the [Tekton installation instructions](https://tekton.dev/docs/setup/) to install Tekton Pipelines.
+    - **cert-manager**: Follow the [cert-manager installation instructions](https://cert-manager.io/docs/installation/) to install cert-manager for webhook certificate provisioning.
 
     ## Usage
 
