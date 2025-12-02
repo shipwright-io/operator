@@ -11,9 +11,9 @@ require (
 	github.com/onsi/gomega v1.38.2
 	github.com/shipwright-io/build v0.18.0
 	github.com/tektoncd/operator v0.77.0
-	gopkg.in/yaml.v2 v2.4.0
+	go.yaml.in/yaml/v3 v3.0.4
 	k8s.io/api v0.33.6
-	k8s.io/apiextensions-apiserver v0.33.4
+	k8s.io/apiextensions-apiserver v0.33.6
 	k8s.io/apimachinery v0.33.6
 	// go mod tidy forces this to v1.5.2
 	k8s.io/client-go v1.5.2
@@ -76,7 +76,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
@@ -94,6 +93,7 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
