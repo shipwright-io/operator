@@ -91,9 +91,9 @@ function install_tekton() {
     # Can be overridden via TEKTON_OPERATOR_VERSION env var
     TEKTON_OPERATOR_VERSION=${TEKTON_OPERATOR_VERSION:-v0.77.0}
     echo "Installing Tekton Operator version ${TEKTON_OPERATOR_VERSION}"
-    if ! ${KUBECTL_BIN} apply -f "https://storage.googleapis.com/tekton-releases/operator/previous/${TEKTON_OPERATOR_VERSION}/release.yaml"; then
+    if ! ${KUBECTL_BIN} apply -f "https://infra.tekton.dev/tekton-releases/operator/previous/${TEKTON_OPERATOR_VERSION}/release.yaml"; then
         echo "Warning: Failed to install Tekton Operator ${TEKTON_OPERATOR_VERSION}, falling back to latest"
-        ${KUBECTL_BIN} apply -f "https://storage.googleapis.com/tekton-releases/operator/latest/release.yaml"
+        ${KUBECTL_BIN} apply -f "https://infra.tekton.dev/tekton-releases/operator/latest/release.yaml"
     fi
     
     echo "Waiting for Tekton Operator to be ready"
