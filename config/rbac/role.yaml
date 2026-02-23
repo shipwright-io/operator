@@ -5,9 +5,15 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - admissionregistration.k8s.io
+  - ""
   resources:
-  - validatingwebhookconfigurations
+  - configmaps
+  - events
+  - limitranges
+  - namespaces
+  - pods
+  - secrets
+  - services
   verbs:
   - create
   - delete
@@ -17,6 +23,36 @@ rules:
   - update
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resourceNames:
+  - shipwright-build-controller
+  resources:
+  - serviceaccounts
+  verbs:
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resourceNames:
+  - shipwright-build-webhook
+  resources:
+  - serviceaccounts
+  verbs:
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - admissionregistration.k8s.io
   - admissionregistration.k8s.io/v1beta1
   resources:
   - validatingwebhookconfigurations
@@ -97,15 +133,6 @@ rules:
   - update
 - apiGroups:
   - cert-manager.io
-  resources:
-  - certificates
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-- apiGroups:
-  - cert-manager.io
   resourceNames:
   - shipwright-build-webhook-cert
   resources:
@@ -117,6 +144,7 @@ rules:
 - apiGroups:
   - cert-manager.io
   resources:
+  - certificates
   - issuers
   verbs:
   - create
@@ -129,65 +157,6 @@ rules:
   - selfsigned-issuer
   resources:
   - issuers
-  verbs:
-  - delete
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - events
-  - limitranges
-  - namespaces
-  - pods
-  - secrets
-  - services
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - serviceaccounts
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resourceNames:
-  - shipwright-build-controller
-  resources:
-  - serviceaccounts
-  verbs:
-  - delete
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resourceNames:
-  - shipwright-build-webhook
-  resources:
-  - serviceaccounts
   verbs:
   - delete
   - patch
@@ -228,6 +197,9 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - clusterrolebindings
+  - clusterroles
+  - rolebindings
+  - roles
   verbs:
   - create
   - get
@@ -239,6 +211,9 @@ rules:
   - shipwright-build-controller
   resources:
   - clusterrolebindings
+  - clusterroles
+  - rolebindings
+  - roles
   verbs:
   - delete
   - patch
@@ -249,19 +224,13 @@ rules:
   - shipwright-build-webhook
   resources:
   - clusterrolebindings
+  - clusterroles
+  - rolebindings
+  - roles
   verbs:
   - delete
   - patch
   - update
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterroles
-  verbs:
-  - create
-  - get
-  - list
-  - watch
 - apiGroups:
   - rbac.authorization.k8s.io
   resourceNames:
@@ -278,84 +247,6 @@ rules:
   - shipwright-build-aggregate-view
   resources:
   - clusterroles
-  verbs:
-  - delete
-  - patch
-  - update
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resourceNames:
-  - shipwright-build-controller
-  resources:
-  - clusterroles
-  verbs:
-  - delete
-  - patch
-  - update
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resourceNames:
-  - shipwright-build-webhook
-  resources:
-  - clusterroles
-  verbs:
-  - delete
-  - patch
-  - update
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - rolebindings
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resourceNames:
-  - shipwright-build-controller
-  resources:
-  - rolebindings
-  verbs:
-  - delete
-  - patch
-  - update
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resourceNames:
-  - shipwright-build-webhook
-  resources:
-  - rolebindings
-  verbs:
-  - delete
-  - patch
-  - update
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - roles
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resourceNames:
-  - shipwright-build-controller
-  resources:
-  - roles
-  verbs:
-  - delete
-  - patch
-  - update
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resourceNames:
-  - shipwright-build-webhook
-  resources:
-  - roles
   verbs:
   - delete
   - patch

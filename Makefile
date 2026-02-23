@@ -237,6 +237,7 @@ endef
 bundle: manifests kustomize operator-sdk ko ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests --interactive=false -q
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+	$(SED_BIN) -i.bak '/^    createdAt: /d' bundle/manifests/shipwright-operator.clusterserviceversion.yaml && rm -f bundle/manifests/shipwright-operator.clusterserviceversion.yaml.bak
 	$(OPERATOR_SDK) bundle validate ./bundle
 
 .PHONY: verify-bundle
@@ -341,7 +342,7 @@ KO ?= $(LOCALBIN)/ko
 
 ## Tool Versions
 
-KO_VERSION ?= v0.15.2
+KO_VERSION ?= v0.18.1
 
 .PHONY: ko
 ko: $(KO) ## Download ko locally if necessary

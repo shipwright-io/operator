@@ -60,7 +60,7 @@ jobs:
           # Kubernetes version must match a built KinD node image.
           # See release notes in https://github.com/kubernetes-sigs/kind/releases for supported
           # node image versions.
-          - v1.35.0
+          - v1.33.1
       max-parallel: 2
     runs-on: ubuntu-latest
     steps:
