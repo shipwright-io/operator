@@ -49,8 +49,9 @@ jobs:
     - name: Verify OLM bundle
       run: make verify-bundle
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v5
+      uses: golangci/golangci-lint-action@v7
       with:
+        version: v2.11.2
         args: --timeout=10m
   e2e:
     strategy:

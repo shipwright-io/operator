@@ -21,7 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
+	k8stesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,9 +53,9 @@ func bootstrapShipwrightBuildReconciler(
 	s.AddKnownTypes(buildv1alpha1.SchemeGroupVersion, &buildv1alpha1.ClusterBuildStrategy{})
 
 	logger := zap.New()
-	clientBuilder := fake.NewClientBuilder().WithScheme(s).WithObjects(b)
+	tracker := k8stesting.NewObjectTracker(s, serializer.NewCodecFactory(s).UniversalDecoder())
+	clientBuilder := fake.NewClientBuilder().WithScheme(s).WithObjects(b).WithObjectTracker(tracker)
 	if len(statusObjects) > 0 {
-		// the fake client does not support the status subresource by default.
 		clientBuilder = clientBuilder.WithStatusSubresource(statusObjects...)
 	}
 	c := clientBuilder.Build()
