@@ -20,7 +20,7 @@ metadata:
     certified: "false"
     containerImage: ko://github.com/shipwright-io/operator
     description: Shipwright is a framework for building container images on Kubernetes.
-    operators.operatorframework.io/builder: operator-sdk-v1.17.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/shipwright-io/operator
     support: The Shipwright Contributors
@@ -268,9 +268,15 @@ spec:
           verbs:
           - '*'
         - apiGroups:
-          - admissionregistration.k8s.io
+          - ""
           resources:
-          - validatingwebhookconfigurations
+          - configmaps
+          - events
+          - limitranges
+          - namespaces
+          - pods
+          - secrets
+          - services
           verbs:
           - create
           - delete
@@ -280,6 +286,36 @@ spec:
           - update
           - watch
         - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts
+          verbs:
+          - create
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resourceNames:
+          - shipwright-build-controller
+          resources:
+          - serviceaccounts
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          resourceNames:
+          - shipwright-build-webhook
+          resources:
+          - serviceaccounts
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - admissionregistration.k8s.io
           - admissionregistration.k8s.io/v1beta1
           resources:
           - validatingwebhookconfigurations
@@ -360,15 +396,6 @@ spec:
           - update
         - apiGroups:
           - cert-manager.io
-          resources:
-          - certificates
-          verbs:
-          - create
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - cert-manager.io
           resourceNames:
           - shipwright-build-webhook-cert
           resources:
@@ -380,6 +407,7 @@ spec:
         - apiGroups:
           - cert-manager.io
           resources:
+          - certificates
           - issuers
           verbs:
           - create
@@ -392,65 +420,6 @@ spec:
           - selfsigned-issuer
           resources:
           - issuers
-          verbs:
-          - delete
-          - patch
-          - update
-        - apiGroups:
-          - ""
-          resources:
-          - configmaps
-          - events
-          - limitranges
-          - namespaces
-          - pods
-          - secrets
-          - services
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - namespaces
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - serviceaccounts
-          verbs:
-          - create
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ""
-          resourceNames:
-          - shipwright-build-controller
-          resources:
-          - serviceaccounts
-          verbs:
-          - delete
-          - patch
-          - update
-        - apiGroups:
-          - ""
-          resourceNames:
-          - shipwright-build-webhook
-          resources:
-          - serviceaccounts
           verbs:
           - delete
           - patch
@@ -491,6 +460,9 @@ spec:
           - rbac.authorization.k8s.io
           resources:
           - clusterrolebindings
+          - clusterroles
+          - rolebindings
+          - roles
           verbs:
           - create
           - get
@@ -502,6 +474,9 @@ spec:
           - shipwright-build-controller
           resources:
           - clusterrolebindings
+          - clusterroles
+          - rolebindings
+          - roles
           verbs:
           - delete
           - patch
@@ -512,19 +487,13 @@ spec:
           - shipwright-build-webhook
           resources:
           - clusterrolebindings
+          - clusterroles
+          - rolebindings
+          - roles
           verbs:
           - delete
           - patch
           - update
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resources:
-          - clusterroles
-          verbs:
-          - create
-          - get
-          - list
-          - watch
         - apiGroups:
           - rbac.authorization.k8s.io
           resourceNames:
@@ -541,84 +510,6 @@ spec:
           - shipwright-build-aggregate-view
           resources:
           - clusterroles
-          verbs:
-          - delete
-          - patch
-          - update
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resourceNames:
-          - shipwright-build-controller
-          resources:
-          - clusterroles
-          verbs:
-          - delete
-          - patch
-          - update
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resourceNames:
-          - shipwright-build-webhook
-          resources:
-          - clusterroles
-          verbs:
-          - delete
-          - patch
-          - update
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resources:
-          - rolebindings
-          verbs:
-          - create
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resourceNames:
-          - shipwright-build-controller
-          resources:
-          - rolebindings
-          verbs:
-          - delete
-          - patch
-          - update
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resourceNames:
-          - shipwright-build-webhook
-          resources:
-          - rolebindings
-          verbs:
-          - delete
-          - patch
-          - update
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resources:
-          - roles
-          verbs:
-          - create
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resourceNames:
-          - shipwright-build-controller
-          resources:
-          - roles
-          verbs:
-          - delete
-          - patch
-          - update
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resourceNames:
-          - shipwright-build-webhook
-          resources:
-          - roles
           verbs:
           - delete
           - patch
@@ -649,7 +540,10 @@ spec:
           - create
         serviceAccountName: shipwright-operator
       deployments:
-      - name: shipwright-operator
+      - label:
+          app: shipwright-operator
+          control-plane: controller-manager
+        name: shipwright-operator
         spec:
           replicas: 1
           selector:
