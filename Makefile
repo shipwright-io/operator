@@ -217,7 +217,7 @@ kustomize: ## Download kustomize locally if necessary.
 ENVTEST = $(shell pwd)/bin/setup-envtest
 .PHONY: envtest
 envtest: ## Download envtest-setup locally if necessary.
-	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.21)
+	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.22)
 
 
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
@@ -237,6 +237,7 @@ endef
 bundle: manifests kustomize operator-sdk ko ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests --interactive=false -q
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+	# Remove the createdAt field from the CSV to avoid test failures. TODO: Remove this once we have a proper solution for this.
 	$(SED_BIN) -i.bak '/^    createdAt: /d' bundle/manifests/shipwright-operator.clusterserviceversion.yaml && rm -f bundle/manifests/shipwright-operator.clusterserviceversion.yaml.bak
 	$(OPERATOR_SDK) bundle validate ./bundle
 
