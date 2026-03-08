@@ -5,6 +5,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"os"
 
@@ -20,6 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -45,10 +47,14 @@ var (
 	webhookPort int
 	// enableLeaderElection enables leader election process, for high-available deployments.
 	enableLeaderElection bool
+	// secureMetrics controls whether the metrics endpoint is served over HTTPS with authn/authz.
+	secureMetrics bool
+	// enableHTTP2 controls whether HTTP/2 is enabled for the metrics and webhook servers.
+	enableHTTP2 bool
 )
 
 func init() {
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8443",
 		"The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081",
 		"The address the probe endpoint binds to.")
@@ -57,6 +63,10 @@ func init() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&secureMetrics, "metrics-secure", true,
+		"If set, the metrics endpoint is served securely via HTTPS with authentication and authorization.")
+	flag.BoolVar(&enableHTTP2, "enable-http2", false,
+		"If set, HTTP/2 will be enabled for the metrics and webhook servers.")
 
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(operatorv1alpha1.AddToScheme(scheme))
@@ -71,13 +81,30 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	disableHTTP2 := func(c *tls.Config) {
+		if !enableHTTP2 {
+			c.NextProtos = []string{"http/1.1"}
+		}
+	}
+
+	tlsOpts := []func(*tls.Config){disableHTTP2}
+
+	metricsServerOptions := server.Options{
+		BindAddress:   metricsAddr,
+		SecureServing: secureMetrics,
+		TLSOpts:       tlsOpts,
+	}
+
+	if secureMetrics {
+		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme: scheme,
-		Metrics: server.Options{
-			BindAddress: metricsAddr,
-		},
+		Scheme:  scheme,
+		Metrics: metricsServerOptions,
 		WebhookServer: webhook.NewServer(webhook.Options{
-			Port: webhookPort,
+			Port:    webhookPort,
+			TLSOpts: tlsOpts,
 		}),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
