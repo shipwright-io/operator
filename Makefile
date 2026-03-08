@@ -205,7 +205,7 @@ bin-dir: ## Creates a local "bin" directory for helper applications.
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 .PHONY: controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.18.0)
 
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 .PHONY: kustomize
@@ -213,7 +213,7 @@ kustomize: ## Download kustomize locally if necessary.
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5@v5.5.0)
 
 # Starting in 0.18, setup-envtest requires a golang that aligns with the associated k8s version
-# For k8s 1.30.z, the golang version is v1.22
+# For k8s 1.33.z, the golang version is v1.25
 ENVTEST = $(shell pwd)/bin/setup-envtest
 .PHONY: envtest
 envtest: ## Download envtest-setup locally if necessary.
@@ -237,6 +237,8 @@ endef
 bundle: manifests kustomize operator-sdk ko ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests --interactive=false -q
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+	# Remove the createdAt field from the CSV to avoid test failures. TODO: Remove this once we have a proper solution for this.
+	$(SED_BIN) -i.bak '/^    createdAt: /d' bundle/manifests/shipwright-operator.clusterserviceversion.yaml && rm -f bundle/manifests/shipwright-operator.clusterserviceversion.yaml.bak
 	$(OPERATOR_SDK) bundle validate ./bundle
 
 .PHONY: verify-bundle
@@ -341,7 +343,7 @@ KO ?= $(LOCALBIN)/ko
 
 ## Tool Versions
 
-KO_VERSION ?= v0.15.2
+KO_VERSION ?= v0.18.1
 
 .PHONY: ko
 ko: $(KO) ## Download ko locally if necessary
