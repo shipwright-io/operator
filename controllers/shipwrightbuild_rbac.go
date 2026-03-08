@@ -41,3 +41,5 @@ package controllers
 // +kubebuilder:rbac:groups=cert-manager.io,resources=issuers,resourceNames=selfsigned-issuer,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=get;list;watch;create
 // +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,resourceNames=shipwright-build-webhook-cert,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
+// +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
