@@ -24,7 +24,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/shipwright-io/operator
     support: The Shipwright Contributors
-  name: shipwright-operator.v0.16.0
+  name: shipwright-operator.v0.19.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -186,6 +186,17 @@ spec:
           - tekton.dev
           resources:
           - taskruns
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+        - apiGroups:
+          - tekton.dev
+          resources:
+          - pipelineruns
           verbs:
           - get
           - list
@@ -674,4 +685,4 @@ spec:
   provider:
     name: The Shipwright Contributors
     url: https://shipwright.io
-  version: 0.16.0
+  version: 0.19.1
