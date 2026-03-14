@@ -26,5 +26,5 @@ When the `ShipwrightBuild` instance is created, the following components are ins
 
 | Field | Description |
 | ----- | ----------- |
-| spec.targetNamespace | The target namespace where Shipwright Build will be deployed. If omitted, this will default to `shipwright-build` |
+| spec.targetNamespace | **Deprecated.** The target namespace where Shipwright Build will be deployed. If omitted, operands are deployed in the operator's own namespace (determined by the `POD_NAMESPACE` environment variable). Setting this field still works but logs a deprecation warning. This field will be removed in a future release. |
 | status.conditions | Conditions which report the status of Shipwright Build. Current reported conditions:<br><br>- `Ready` |

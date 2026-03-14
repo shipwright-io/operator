@@ -11,6 +11,8 @@ import (
 // ShipwrightBuildSpec defines the configuration of a Shipwright Build deployment.
 type ShipwrightBuildSpec struct {
 	// TargetNamespace is the target namespace where Shipwright's build controller will be deployed.
+	//
+	// Deprecated: will be removed in a future release. Defaults to the operator's namespace.
 	TargetNamespace string `json:"targetNamespace,omitempty"`
 }
 
