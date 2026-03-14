@@ -37,8 +37,6 @@ import (
 const (
 	// FinalizerAnnotation annotation string appended on finalizer slice.
 	FinalizerAnnotation = "finalizer.operator.shipwright.io"
-	// defaultTargetNamespace fallback namespace when `.spec.namepace` is not informed.
-	defaultTargetNamespace = "shipwright-build"
 
 	// Ready object is providing service.
 	ConditionReady = "Ready"
@@ -62,6 +60,7 @@ type ShipwrightBuildReconciler struct {
 	Manifest              manifestival.Manifest // release manifests render
 	TektonManifest        manifestival.Manifest // Tekton release manifest render
 	BuildStrategyManifest manifestival.Manifest // Build strategies manifest to render
+	OperatorNamespace     string                // namespace the operator is running in
 }
 
 type TektonCheckResult struct {
@@ -233,34 +232,33 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return Requeue()
 	}
 
-	// selecting the target namespace based on the CRD information, when not informed using the
-	// default namespace instead
 	targetNamespace := b.Spec.TargetNamespace
-	if targetNamespace == "" {
-		logger.Info(
-			"Namespace is not informed! Target namespace is selected from default settings instead",
-			"defaultTargetNamespace", defaultTargetNamespace,
+	if targetNamespace != "" && targetNamespace != r.OperatorNamespace {
+		logger.Info("spec.targetNamespace is deprecated, will be removed in a future release",
+			"targetNamespace", targetNamespace,
+			"operatorNamespace", r.OperatorNamespace,
 		)
-		targetNamespace = defaultTargetNamespace
-	}
-	logger = logger.WithValues("targetNamespace", targetNamespace)
-	// create if it does not exist
-	ns := &corev1.Namespace{}
-	if err := r.Get(ctx, types.NamespacedName{Name: targetNamespace}, ns); err != nil {
-		if !errors.IsNotFound(err) {
-			logger.Info("retrieving target namespace %s error: %s", targetNamespace, err.Error())
-			return RequeueOnError(err)
-		}
-		ns.Name = targetNamespace
-
-		if err = r.Create(ctx, ns, &client.CreateOptions{Raw: &metav1.CreateOptions{}}); err != nil {
-			if !errors.IsAlreadyExists(err) {
-				logger.Info("creating target namespace %s error: %s", targetNamespace, err.Error())
+		// Deprecated path: create the target namespace if it does not exist
+		ns := &corev1.Namespace{}
+		if err := r.Get(ctx, types.NamespacedName{Name: targetNamespace}, ns); err != nil {
+			if !errors.IsNotFound(err) {
+				logger.Info("retrieving target namespace %s error: %s", targetNamespace, err.Error())
 				return RequeueOnError(err)
 			}
+			ns.Name = targetNamespace
+
+			if err = r.Create(ctx, ns, &client.CreateOptions{Raw: &metav1.CreateOptions{}}); err != nil {
+				if !errors.IsAlreadyExists(err) {
+					logger.Info("creating target namespace %s error: %s", targetNamespace, err.Error())
+					return RequeueOnError(err)
+				}
+			}
+			logger.Info("created target namespace")
 		}
-		logger.Info("created target namespace")
+	} else {
+		targetNamespace = r.OperatorNamespace
 	}
+	logger = logger.WithValues("targetNamespace", targetNamespace)
 
 	// ReconcileCertManager
 	if common.BoolFromEnvVar(UseManagedWebhookCerts) {
