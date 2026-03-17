@@ -71,12 +71,13 @@ jobs:
         "${GITHUB_WORKSPACE}/.github/draft_release_notes.sh"
     - name: Draft release
       id: draft_release
-      uses: actions/create-release@v1
-      with:
-        release_name: ${{ inputs.release }}
-        tag_name: ${{ inputs.release }}
-        draft: true
-        prerelease: true
-        body_path: Changes.md
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ inputs.release }}" \
+          --repo "${{ github.repository }}" \
+          --title "${{ inputs.release }}" \
+          --notes-file Changes.md \
+          --draft \
+          --prerelease \
+          --target ${{ inputs.git-ref }}
