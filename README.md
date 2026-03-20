@@ -35,12 +35,11 @@ apiVersion: operator.shipwright.io/v1alpha1
 kind: ShipwrightBuild
 metadata:
   name: shipwright-operator
-spec:
-  targetNamespace: shipwright-build
+spec: {}
 ```
 
-The operator will deploy Shipwright Builds in the provided `targetNamespace`.
-When `.spec.targetNamespace` is not set, the namespace will default to `shipwright-build`.
+The operator will deploy Shipwright Builds in the operator's own namespace by default.
+The `.spec.targetNamespace` field is **deprecated** — if set, it is still honored but logs a deprecation warning. It will be removed in a future release.
 Refer to the [ShipwrightBuild documentation](docs/shipwrightbuild.md) for more information about this custom resource.
 
 The operator handles differents environment variables to customize Shiprwright controller installation:

@@ -280,6 +280,7 @@ var _ = BeforeSuite(func() {
 		Client:               mgr.GetClient(),
 		Scheme:               scheme.Scheme,
 		Logger:               ctrl.Log.WithName("controllers").WithName("shipwrightbuild"),
+		OperatorNamespace:    testOperatorNamespace,
 	}).SetupWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
