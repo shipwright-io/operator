@@ -134,7 +134,7 @@ func TestReconcileTekton(t *testing.T) {
 					return true, nil, tc.createTektonConfigErr
 				})
 			}
-			tektonConfig, requeue, err := ReconcileTekton(ctx, crdClient.ApiextensionsV1(), tektonOperatorClient.OperatorV1alpha1())
+			tektonConfig, requeue, err := ReconcileTekton(ctx, crdClient.ApiextensionsV1(), tektonOperatorClient.OperatorV1alpha1(), false)
 			if tc.expectError {
 				g.Expect(err).To(o.HaveOccurred())
 			} else {
@@ -151,7 +151,7 @@ func TestReconcileTekton(t *testing.T) {
 			if tc.expectTektonConfigCreateAction && tc.createTektonConfigErr == nil {
 				g.Expect(tektonConfig).NotTo(o.BeNil())
 				g.Expect(tektonConfig.Name).To(o.Equal("config"))
-				g.Expect(tektonConfig.Spec.Profile).To(o.Equal("lite"))
+				g.Expect(tektonConfig.Spec.Profile).To(o.Equal(ProfileLite))
 				g.Expect(tektonConfig.Spec.TargetNamespace).To(o.Equal("tekton-pipelines"))
 				g.Expect(tektonConfig.Spec.Pruner.Disabled).To(o.Equal(false))
 				g.Expect(tektonConfig.Spec.Pruner.Keep).NotTo(o.BeNil())
@@ -412,6 +412,133 @@ func TestIsTektonConfigPresent(t *testing.T) {
 				t.Errorf("expected TektonConfig presence to be %t, got %t", tc.expectPresent, isPresent)
 			}
 		})
+	}
+}
+
+func TestReconcileTektonWithTriggersEnabled(t *testing.T) {
+	cases := []struct {
+		name               string
+		tektonConfigObj    *tektonoperatorv1alpha1.TektonConfig
+		expectProfile      string
+		expectUpdateAction bool
+		expectCreateAction bool
+	}{
+		{
+			name:               "creates TektonConfig with base profile",
+			expectProfile:      ProfileBase,
+			expectCreateAction: true,
+		},
+		{
+			name: "upgrades existing lite to base",
+			tektonConfigObj: &tektonoperatorv1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "config",
+				},
+				Spec: tektonoperatorv1alpha1.TektonConfigSpec{
+					Profile: ProfileLite,
+				},
+			},
+			expectProfile:      ProfileBase,
+			expectUpdateAction: true,
+		},
+		{
+			name: "existing base profile unchanged",
+			tektonConfigObj: &tektonoperatorv1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "config",
+				},
+				Spec: tektonoperatorv1alpha1.TektonConfigSpec{
+					Profile: ProfileBase,
+				},
+			},
+		},
+	}
+
+	tektonConfigCRD := &apiextensionsv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tektonconfigs.operator.tekton.dev",
+			Labels: map[string]string{
+				"operator.tekton.dev/release": common.TektonOpMinSupportedVersion,
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := o.NewWithT(t)
+			ctx := context.TODO()
+
+			crdClient := apiextensionsfake.NewSimpleClientset(tektonConfigCRD)
+
+			tektonConfigs := []runtime.Object{}
+			if tc.tektonConfigObj != nil {
+				tektonConfigs = append(tektonConfigs, tc.tektonConfigObj)
+			}
+			tektonOperatorClient := tektonoperatorfake.NewSimpleClientset(tektonConfigs...)
+
+			tektonConfig, requeue, err := ReconcileTekton(ctx, crdClient.ApiextensionsV1(), tektonOperatorClient.OperatorV1alpha1(), true)
+			g.Expect(err).NotTo(o.HaveOccurred())
+			g.Expect(requeue).To(o.BeFalse())
+
+			if tc.expectCreateAction {
+				g.Expect(tektonConfig).NotTo(o.BeNil())
+				g.Expect(tektonConfig.Spec.Profile).To(o.Equal(tc.expectProfile))
+			}
+
+			if tc.expectUpdateAction {
+				updateOccurred := false
+				for _, action := range tektonOperatorClient.Actions() {
+					if action.Matches("update", "tektonconfigs") {
+						updateOccurred = true
+					}
+				}
+				g.Expect(updateOccurred).To(o.BeTrue())
+				g.Expect(tektonConfig).NotTo(o.BeNil())
+				g.Expect(tektonConfig.Spec.Profile).To(o.Equal(tc.expectProfile))
+			}
+
+			if !tc.expectCreateAction && !tc.expectUpdateAction {
+				for _, action := range tektonOperatorClient.Actions() {
+					g.Expect(action.Matches("update", "tektonconfigs")).To(o.BeFalse(), "no update should occur")
+					g.Expect(action.Matches("create", "tektonconfigs")).To(o.BeFalse(), "no create should occur")
+				}
+			}
+		})
+	}
+}
+
+func TestReconcileTektonNoProfileDowngrade(t *testing.T) {
+	g := o.NewWithT(t)
+	ctx := context.TODO()
+
+	tektonConfigCRD := &apiextensionsv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tektonconfigs.operator.tekton.dev",
+			Labels: map[string]string{
+				"operator.tekton.dev/release": common.TektonOpMinSupportedVersion,
+			},
+		},
+	}
+	crdClient := apiextensionsfake.NewSimpleClientset(tektonConfigCRD)
+
+	existingConfig := &tektonoperatorv1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+		Spec: tektonoperatorv1alpha1.TektonConfigSpec{
+			Profile: ProfileBase,
+		},
+	}
+	tektonOperatorClient := tektonoperatorfake.NewSimpleClientset(existingConfig)
+
+	// Call with triggersEnabled=false — should NOT downgrade from "base" to "lite"
+	_, requeue, err := ReconcileTekton(ctx, crdClient.ApiextensionsV1(), tektonOperatorClient.OperatorV1alpha1(), false)
+	g.Expect(err).NotTo(o.HaveOccurred())
+	g.Expect(requeue).To(o.BeFalse())
+
+	// Verify no update action occurred
+	for _, action := range tektonOperatorClient.Actions() {
+		g.Expect(action.Matches("update", "tektonconfigs")).To(o.BeFalse(), "profile should not be downgraded")
 	}
 }
 

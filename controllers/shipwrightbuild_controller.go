@@ -32,6 +32,7 @@ import (
 	"github.com/shipwright-io/operator/pkg/certmanager"
 	"github.com/shipwright-io/operator/pkg/common"
 	"github.com/shipwright-io/operator/pkg/tekton"
+	"github.com/shipwright-io/operator/pkg/triggers"
 )
 
 const (
@@ -62,6 +63,7 @@ type ShipwrightBuildReconciler struct {
 	Manifest              manifestival.Manifest // release manifests render
 	TektonManifest        manifestival.Manifest // Tekton release manifest render
 	BuildStrategyManifest manifestival.Manifest // Build strategies manifest to render
+	TriggersManifest      manifestival.Manifest // Triggers manifest to render
 }
 
 type TektonCheckResult struct {
@@ -178,18 +180,6 @@ func (r *ShipwrightBuildReconciler) fetchAndCheckTektonConfig(ctx context.Contex
 func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Logger.WithValues("namespace", req.Namespace, "name", req.Name)
 	logger.Info("Starting resource reconciliation...")
-	// ReconcileTekton
-	_, requeue, err := tekton.ReconcileTekton(ctx, r.CRDClient, r.TektonOperatorClient)
-	if err != nil {
-		requeueInterval := 0 * time.Second
-		if requeue {
-			requeueInterval = 1 * time.Second
-		}
-		return ctrl.Result{RequeueAfter: requeueInterval}, err
-	}
-	if requeue {
-		return Requeue()
-	}
 
 	// retrieving the ShipwrightBuild instance requested for reconcile
 	b := &v1alpha1.ShipwrightBuild{}
@@ -201,6 +191,22 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		logger.Error(err, "retrieving ShipwrightBuild object from cache")
 		return RequeueOnError(err)
 	}
+
+	triggersEnabled := b.Spec.TriggersEnabled()
+
+	// ReconcileTekton
+	_, requeue, err := tekton.ReconcileTekton(ctx, r.CRDClient, r.TektonOperatorClient, triggersEnabled)
+	if err != nil {
+		requeueInterval := 0 * time.Second
+		if requeue {
+			requeueInterval = 1 * time.Second
+		}
+		return ctrl.Result{RequeueAfter: requeueInterval}, err
+	}
+	if requeue {
+		return Requeue()
+	}
+
 	init := b.Status.Conditions == nil
 	if init {
 		b.Status.Conditions = make([]metav1.Condition, 0)
@@ -312,6 +318,12 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			logger.Info("Finalizers removed, deletion of manifests completed!")
 			return NoRequeue()
 		}
+		logger.Info("Deleting triggers resources")
+		if err := r.deleteTriggersManifest(targetNamespace); err != nil {
+			logger.Error(err, "deleting triggers resources")
+			return RequeueWithError(err)
+		}
+
 		logger.Info("Deleting cluster build strategies")
 		if err := r.BuildStrategyManifest.Delete(); err != nil {
 			logger.Error(err, "deleting cluster build strategies")
@@ -386,6 +398,44 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return Requeue()
 	}
 
+	// Reconcile triggers
+	if triggersEnabled {
+		triggersManifest, err := r.TriggersManifest.
+			Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
+			Transform(
+				manifestival.InjectNamespace(targetNamespace),
+				common.DeploymentImages(images),
+			)
+		if err != nil {
+			logger.Error(err, "transforming triggers manifests")
+			return RequeueWithError(err)
+		}
+
+		requeue, err = triggers.ReconcileTriggers(ctx, r.CRDClient, logger, triggersManifest)
+		if err != nil {
+			logger.Error(err, "reconcile triggers")
+			return RequeueWithError(err)
+		}
+		if requeue {
+			logger.Info("requeue waiting for triggers preconditions")
+			apimeta.SetStatusCondition(&b.Status.Conditions, metav1.Condition{
+				Type:    ConditionReady,
+				Status:  metav1.ConditionUnknown,
+				Reason:  "TriggersWaiting",
+				Message: "Waiting for triggers preconditions to be met",
+			})
+			if updateErr := r.Client.Status().Update(ctx, b); updateErr != nil {
+				return RequeueWithError(updateErr)
+			}
+			return Requeue()
+		}
+	} else {
+		if err := r.deleteTriggersManifest(targetNamespace); err != nil {
+			logger.Error(err, "cleaning up triggers resources")
+			return RequeueWithError(err)
+		}
+	}
+
 	apimeta.SetStatusCondition(&b.Status.Conditions, metav1.Condition{
 		Type:    ConditionReady,
 		Status:  metav1.ConditionTrue,
@@ -400,6 +450,17 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	return NoRequeue()
 }
 
+// deleteTriggersManifest deletes the triggers resources in the given namespace.
+func (r *ShipwrightBuildReconciler) deleteTriggersManifest(targetNamespace string) error {
+	triggersManifest, err := r.TriggersManifest.
+		Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
+		Transform(manifestival.InjectNamespace(targetNamespace))
+	if err != nil {
+		return err
+	}
+	return triggersManifest.Delete()
+}
+
 // setupManifestival instantiate manifestival with local controller attributes, as well as tekton prereqs.
 func (r *ShipwrightBuildReconciler) setupManifestival() error {
 	var err error
@@ -408,6 +469,10 @@ func (r *ShipwrightBuildReconciler) setupManifestival() error {
 		return err
 	}
 	r.BuildStrategyManifest, err = common.SetupManifestival(r.Client, filepath.Join("samples", "buildstrategy"), true, r.Logger)
+	if err != nil {
+		return err
+	}
+	r.TriggersManifest, err = common.SetupManifestival(r.Client, "triggers-release.yaml", false, r.Logger)
 	if err != nil {
 		return err
 	}

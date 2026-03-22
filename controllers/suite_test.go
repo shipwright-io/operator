@@ -144,13 +144,13 @@ func setupTektonCRDs(ctx context.Context) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-// createShipwrightBuild creates an instance of the ShipwrightBuild object with the given target
-// namespace.
-func createShipwrightBuild(ctx context.Context, targetNamespace string) *operatorv1alpha1.ShipwrightBuild {
+// createShipwrightBuild creates an instance of the ShipwrightBuild object with the given name and
+// target namespace.
+func createShipwrightBuild(ctx context.Context, name string, targetNamespace string) *operatorv1alpha1.ShipwrightBuild {
 	By("creating a ShipwrightBuild instance")
 	build := &operatorv1alpha1.ShipwrightBuild{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "cluster",
+			Name: name,
 		},
 		Spec: operatorv1alpha1.ShipwrightBuildSpec{
 			TargetNamespace: targetNamespace,
@@ -161,6 +161,29 @@ func createShipwrightBuild(ctx context.Context, targetNamespace string) *operato
 
 	// when the finalizer is in place, the deployment of manifest elements is done, and therefore
 	// functional testing can proceed
+	By("waiting for the finalizer to be set")
+	test.EventuallyContainFinalizer(ctx, k8sClient, build, FinalizerAnnotation)
+	return build
+}
+
+// createShipwrightBuildWithTriggers creates an instance of the ShipwrightBuild object with triggers enabled.
+func createShipwrightBuildWithTriggers(ctx context.Context, name string, targetNamespace string) *operatorv1alpha1.ShipwrightBuild {
+	By("creating a ShipwrightBuild instance with triggers enabled")
+	enableTriggers := true
+	build := &operatorv1alpha1.ShipwrightBuild{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: operatorv1alpha1.ShipwrightBuildSpec{
+			TargetNamespace: targetNamespace,
+			Triggers: &operatorv1alpha1.TriggersSpec{
+				Enable: &enableTriggers,
+			},
+		},
+	}
+	err := k8sClient.Create(ctx, build, &client.CreateOptions{})
+	Expect(err).NotTo(HaveOccurred())
+
 	By("waiting for the finalizer to be set")
 	test.EventuallyContainFinalizer(ctx, k8sClient, build, FinalizerAnnotation)
 	return build

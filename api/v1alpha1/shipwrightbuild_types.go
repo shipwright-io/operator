@@ -8,10 +8,32 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TriggersSpec defines the desired state of the Triggers component.
+type TriggersSpec struct {
+	// Enable controls whether the triggers component is deployed.
+	// Triggers are only deployed when Enable is explicitly set to true.
+	// +optional
+	Enable *bool `json:"enable,omitempty"`
+}
+
 // ShipwrightBuildSpec defines the configuration of a Shipwright Build deployment.
 type ShipwrightBuildSpec struct {
 	// TargetNamespace is the target namespace where Shipwright's build controller will be deployed.
 	TargetNamespace string `json:"targetNamespace,omitempty"`
+
+	// Triggers configures the deployment of the Shipwright Triggers component.
+	// When omitted, triggers are not deployed.
+	// +optional
+	Triggers *TriggersSpec `json:"triggers,omitempty"`
+}
+
+// TriggersEnabled returns true if the Triggers component should be deployed.
+// Triggers are only deployed when spec.triggers.enable is explicitly set to true.
+func (s *ShipwrightBuildSpec) TriggersEnabled() bool {
+	if s.Triggers == nil || s.Triggers.Enable == nil {
+		return false
+	}
+	return *s.Triggers.Enable
 }
 
 // ShipwrightBuildStatus defines the observed state of ShipwrightBuild

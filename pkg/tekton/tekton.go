@@ -12,12 +12,22 @@ import (
 	"k8s.io/apimachinery/pkg/util/version"
 )
 
+const (
+	// ProfileLite configures TektonConfig with only Tekton Pipelines.
+	ProfileLite = "lite"
+	// ProfileBase configures TektonConfig with Tekton Pipelines, Triggers, and Dashboard.
+	ProfileBase = "base"
+)
+
 // ReconcileTekton ensures that Tekton Pipelines has been installed.
 // If Tekton Pipelines has not been installed, ReconcileTekton will create a TektonConfig object
 // so that the Tekton Operator deploys Tekton Pipelines.
+// When triggersEnabled is true, the TektonConfig profile is set to "base" instead of "lite".
+// The profile is not downgraded when triggers are disabled.
 func ReconcileTekton(ctx context.Context,
 	crdClient crdclientv1.ApiextensionsV1Interface,
-	tektonOperatorClient tektonoperatorclientv1alpha1.OperatorV1alpha1Interface) (*tektonoperatorv1alpha1.TektonConfig, bool, error) {
+	tektonOperatorClient tektonoperatorclientv1alpha1.OperatorV1alpha1Interface,
+	triggersEnabled bool) (*tektonoperatorv1alpha1.TektonConfig, bool, error) {
 	pipelinesInstalled, err := IsTektonPipelinesInstalled(ctx, crdClient)
 	if err != nil {
 		return nil, true, err
@@ -39,17 +49,37 @@ func ReconcileTekton(ctx context.Context,
 	if tektonVersion.Major() < common.TektonOpMinSupportedMajor+1 && tektonVersion.Minor() < common.TektonOpMinSupportedMinor {
 		return nil, true, fmt.Errorf("insufficient Tekton Operator version - must be greater than %s", common.TektonOpMinSupportedVersion)
 	}
+
+	profile := ProfileLite
+	if triggersEnabled {
+		profile = ProfileBase
+	}
+
 	tektonConfigPresent, err := IsTektonConfigPresent(ctx, tektonOperatorClient)
 	if err != nil {
 		return nil, true, err
 	}
 	if tektonConfigPresent {
+		// If triggers are enabled and the existing TektonConfig has "lite" profile, upgrade to "base"
+		if triggersEnabled {
+			existingConfig, err := tektonOperatorClient.TektonConfigs().Get(ctx, "config", metav1.GetOptions{})
+			if err != nil {
+				return nil, true, err
+			}
+			if existingConfig.Spec.Profile == ProfileLite {
+				existingConfig.Spec.Profile = ProfileBase
+				updated, err := tektonOperatorClient.TektonConfigs().Update(ctx, existingConfig, metav1.UpdateOptions{})
+				if err != nil {
+					return updated, true, err
+				}
+				return updated, false, nil
+			}
+		}
 		return nil, false, nil
 	}
-	// the tekton operator 'lite' profile is all Shipwright currently needs, so configure that up;
-	// when Shipwright starts leveraging triggers, we will want to bump up to a 'base' or higher
+
 	tektonConfig, err := CreateTektonConfigWithProfileAndTargetNamespace(ctx,
-		tektonOperatorClient, "lite", "tekton-pipelines")
+		tektonOperatorClient, profile, "tekton-pipelines")
 	if err != nil {
 		return tektonConfig, true, err
 	}
