@@ -111,6 +111,29 @@ func TestReconcileTekton(t *testing.T) {
 			expectRequeue: false,
 			expectError:   false,
 		},
+		{
+			// Externally managed TektonConfig with a richer profile must not be
+			// touched by the operator.
+			name: "TektonConfig externally managed with basic profile",
+			tektonConfigCRD: &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "tektonconfigs.operator.tekton.dev",
+					Labels: map[string]string{
+						"operator.tekton.dev/release": common.TektonOpMinSupportedVersion,
+					},
+				},
+			},
+			tektonConfigObj: &tektonoperatorv1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "config",
+				},
+				Spec: tektonoperatorv1alpha1.TektonConfigSpec{
+					Profile: tektonoperatorv1alpha1.ProfileBasic,
+				},
+			},
+			expectRequeue: false,
+			expectError:   false,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -146,12 +169,15 @@ func TestReconcileTekton(t *testing.T) {
 				if action.Matches("create", "tektonconfigs") {
 					createOccurred = true
 				}
+				// The operator must never update an existing TektonConfig.
+				g.Expect(action.Matches("update", "tektonconfigs")).To(o.BeFalse(),
+					"ReconcileTekton must not update an existing TektonConfig")
 			}
 			g.Expect(createOccurred).To(o.Equal(tc.expectTektonConfigCreateAction))
 			if tc.expectTektonConfigCreateAction && tc.createTektonConfigErr == nil {
 				g.Expect(tektonConfig).NotTo(o.BeNil())
 				g.Expect(tektonConfig.Name).To(o.Equal("config"))
-				g.Expect(tektonConfig.Spec.Profile).To(o.Equal("lite"))
+				g.Expect(tektonConfig.Spec.Profile).To(o.Equal(tektonoperatorv1alpha1.ProfileLite))
 				g.Expect(tektonConfig.Spec.TargetNamespace).To(o.Equal("tekton-pipelines"))
 				g.Expect(tektonConfig.Spec.Pruner.Disabled).To(o.Equal(false))
 				g.Expect(tektonConfig.Spec.Pruner.Keep).NotTo(o.BeNil())

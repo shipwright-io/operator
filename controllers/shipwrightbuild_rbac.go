@@ -37,6 +37,14 @@ package controllers
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings,resourceNames=shipwright-build-webhook,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,resourceNames=shipwright-build-webhook,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,resourceNames=shipwright-build-webhook,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,resourceNames=shipwright-triggers,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,resourceNames=shipwright-triggers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=serviceaccounts,resourceNames=shipwright-triggers,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=services,resourceNames=shipwright-triggers,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles,resourceNames=shipwright-triggers,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings,resourceNames=shipwright-triggers,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,resourceNames=shipwright-triggers,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,resourceNames=shipwright-triggers,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=cert-manager.io,resources=issuers,verbs=get;list;watch;create
 // +kubebuilder:rbac:groups=cert-manager.io,resources=issuers,resourceNames=selfsigned-issuer,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=cert-manager.io,resources=certificates,verbs=get;list;watch;create

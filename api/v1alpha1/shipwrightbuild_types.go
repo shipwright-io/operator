@@ -8,10 +8,47 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TriggersDeployment indicates whether the Shipwright Triggers component
+// should be deployed.
+// +kubebuilder:validation:Enum=Enabled;Disabled
+type TriggersDeployment string
+
+const (
+	// TriggersDeploymentEnabled indicates that the Shipwright Triggers
+	// component should be deployed.
+	TriggersDeploymentEnabled TriggersDeployment = "Enabled"
+	// TriggersDeploymentDisabled indicates that the Shipwright Triggers
+	// component should not be deployed.
+	TriggersDeploymentDisabled TriggersDeployment = "Disabled"
+)
+
+// TriggersSpec defines the desired state of the Triggers component.
+type TriggersSpec struct {
+	// Deployment controls whether the triggers component is deployed.
+	// Defaults to "Disabled".
+	// +kubebuilder:default=Disabled
+	// +optional
+	Deployment TriggersDeployment `json:"deployment,omitempty"`
+}
+
 // ShipwrightBuildSpec defines the configuration of a Shipwright Build deployment.
 type ShipwrightBuildSpec struct {
 	// TargetNamespace is the target namespace where Shipwright's build controller will be deployed.
 	TargetNamespace string `json:"targetNamespace,omitempty"`
+
+	// Triggers configures the deployment of the Shipwright Triggers component.
+	// When omitted, triggers are not deployed.
+	// +optional
+	Triggers *TriggersSpec `json:"triggers,omitempty"`
+}
+
+// TriggersEnabled returns true if the Triggers component should be deployed.
+// Triggers are only deployed when spec.triggers.deployment is set to "Enabled".
+func (s *ShipwrightBuildSpec) TriggersEnabled() bool {
+	if s.Triggers == nil {
+		return false
+	}
+	return s.Triggers.Deployment == TriggersDeploymentEnabled
 }
 
 // ShipwrightBuildStatus defines the observed state of ShipwrightBuild

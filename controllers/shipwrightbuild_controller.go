@@ -32,6 +32,7 @@ import (
 	"github.com/shipwright-io/operator/pkg/certmanager"
 	"github.com/shipwright-io/operator/pkg/common"
 	"github.com/shipwright-io/operator/pkg/tekton"
+	"github.com/shipwright-io/operator/pkg/triggers"
 )
 
 const (
@@ -62,6 +63,7 @@ type ShipwrightBuildReconciler struct {
 	Manifest              manifestival.Manifest // release manifests render
 	TektonManifest        manifestival.Manifest // Tekton release manifest render
 	BuildStrategyManifest manifestival.Manifest // Build strategies manifest to render
+	TriggersManifest      manifestival.Manifest // Triggers manifest to render
 }
 
 type TektonCheckResult struct {
@@ -312,6 +314,12 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			logger.Info("Finalizers removed, deletion of manifests completed!")
 			return NoRequeue()
 		}
+		logger.Info("Deleting triggers resources")
+		if err := r.deleteTriggersManifest(targetNamespace); err != nil {
+			logger.Error(err, "deleting triggers resources")
+			return RequeueWithError(err)
+		}
+
 		logger.Info("Deleting cluster build strategies")
 		if err := r.BuildStrategyManifest.Delete(); err != nil {
 			logger.Error(err, "deleting cluster build strategies")
@@ -386,6 +394,46 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return Requeue()
 	}
 
+	// Reconcile triggers
+	if b.Spec.TriggersEnabled() {
+		triggersManifest, err := r.TriggersManifest.
+			Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
+			Transform(
+				// TODO: Remove this when we remove the target namespace feature.
+				// See https://github.com/shipwright-io/operator/issues/241
+				manifestival.InjectNamespace(targetNamespace),
+				common.DeploymentImages(images),
+			)
+		if err != nil {
+			logger.Error(err, "transforming triggers manifests")
+			return RequeueWithError(err)
+		}
+
+		requeue, err = triggers.ReconcileTriggers(ctx, r.CRDClient, logger, triggersManifest)
+		if err != nil {
+			logger.Error(err, "reconcile triggers")
+			return RequeueWithError(err)
+		}
+		if requeue {
+			logger.Info("requeue waiting for triggers preconditions")
+			apimeta.SetStatusCondition(&b.Status.Conditions, metav1.Condition{
+				Type:    ConditionReady,
+				Status:  metav1.ConditionUnknown,
+				Reason:  "TriggersWaiting",
+				Message: "Waiting for triggers preconditions to be met",
+			})
+			if updateErr := r.Client.Status().Update(ctx, b); updateErr != nil {
+				return RequeueWithError(updateErr)
+			}
+			return Requeue()
+		}
+	} else {
+		if err := r.deleteTriggersManifest(targetNamespace); err != nil {
+			logger.Error(err, "cleaning up triggers resources")
+			return RequeueWithError(err)
+		}
+	}
+
 	apimeta.SetStatusCondition(&b.Status.Conditions, metav1.Condition{
 		Type:    ConditionReady,
 		Status:  metav1.ConditionTrue,
@@ -400,6 +448,19 @@ func (r *ShipwrightBuildReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	return NoRequeue()
 }
 
+// deleteTriggersManifest deletes the triggers resources in the given namespace.
+func (r *ShipwrightBuildReconciler) deleteTriggersManifest(targetNamespace string) error {
+	triggersManifest, err := r.TriggersManifest.
+		Filter(manifestival.Not(manifestival.ByKind("Namespace"))).
+		// TODO: Remove this when we remove the target namespace feature.
+		// See https://github.com/shipwright-io/operator/issues/241
+		Transform(manifestival.InjectNamespace(targetNamespace))
+	if err != nil {
+		return err
+	}
+	return triggersManifest.Delete()
+}
+
 // setupManifestival instantiate manifestival with local controller attributes, as well as tekton prereqs.
 func (r *ShipwrightBuildReconciler) setupManifestival() error {
 	var err error
@@ -408,6 +469,10 @@ func (r *ShipwrightBuildReconciler) setupManifestival() error {
 		return err
 	}
 	r.BuildStrategyManifest, err = common.SetupManifestival(r.Client, filepath.Join("samples", "buildstrategy"), true, r.Logger)
+	if err != nil {
+		return err
+	}
+	r.TriggersManifest, err = common.SetupManifestival(r.Client, "triggers-release.yaml", false, r.Logger)
 	if err != nil {
 		return err
 	}

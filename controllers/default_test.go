@@ -48,7 +48,7 @@ var _ = g.Describe("Reconcile default ShipwrightBuild installation", func() {
 		// setting up the namespaces, where Shipwright Controller will be deployed
 		setupTektonCRDs(ctx)
 		createTektonConfig(ctx)
-		build = createShipwrightBuild(ctx, targetNamespace)
+		build = createShipwrightBuild(ctx, "cluster", targetNamespace)
 	})
 
 	g.AfterEach(func(ctx g.SpecContext) {

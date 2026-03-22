@@ -45,6 +45,21 @@ spec:
                 description: TargetNamespace is the target namespace where Shipwright's
                   build controller will be deployed.
                 type: string
+              triggers:
+                description: |-
+                  Triggers configures the deployment of the Shipwright Triggers component.
+                  When omitted, triggers are not deployed.
+                properties:
+                  deployment:
+                    default: Disabled
+                    description: |-
+                      Deployment controls whether the triggers component is deployed.
+                      Defaults to "Disabled".
+                    enum:
+                    - Enabled
+                    - Disabled
+                    type: string
+                type: object
             type: object
           status:
             description: ShipwrightBuildStatus defines the observed state of ShipwrightBuild

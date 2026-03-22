@@ -326,6 +326,17 @@ spec:
           - patch
           - update
         - apiGroups:
+          - ""
+          resourceNames:
+          - shipwright-triggers
+          resources:
+          - serviceaccounts
+          - services
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
           - admissionregistration.k8s.io
           - admissionregistration.k8s.io/v1beta1
           resources:
@@ -392,6 +403,16 @@ spec:
         - apiGroups:
           - apps
           resourceNames:
+          - shipwright-triggers
+          resources:
+          - deployments
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - apps
+          resourceNames:
           - shipwright-build-controller
           resources:
           - deployments/finalizers
@@ -401,6 +422,14 @@ spec:
           - apps
           resourceNames:
           - shipwright-build-webhook
+          resources:
+          - deployments/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - apps
+          resourceNames:
+          - shipwright-triggers
           resources:
           - deployments/finalizers
           verbs:
@@ -508,6 +537,19 @@ spec:
         - apiGroups:
           - rbac.authorization.k8s.io
           resourceNames:
+          - shipwright-triggers
+          resources:
+          - clusterrolebindings
+          - clusterroles
+          - rolebindings
+          - roles
+          verbs:
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resourceNames:
           - shipwright-build-aggregate-edit
           resources:
           - clusterroles
@@ -549,6 +591,50 @@ spec:
           - subjectaccessreviews
           verbs:
           - create
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - buildruns
+          verbs:
+          - create
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - shipwright.io
+          resources:
+          - builds
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - tekton.dev
+          resources:
+          - customruns
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - tekton.dev
+          resources:
+          - customruns/finalizers
+          - customruns/status
+          verbs:
+          - patch
+          - update
+        - apiGroups:
+          - tekton.dev
+          resources:
+          - pipelineruns
+          verbs:
+          - get
+          - list
+          - patch
+          - update
+          - watch
         serviceAccountName: shipwright-operator
       deployments:
       - label:
