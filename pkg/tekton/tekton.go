@@ -14,7 +14,9 @@ import (
 
 // ReconcileTekton ensures that Tekton Pipelines has been installed.
 // If Tekton Pipelines has not been installed, ReconcileTekton will create a TektonConfig object
-// so that the Tekton Operator deploys Tekton Pipelines.
+// with the "lite" profile so that the Tekton Operator deploys Tekton Pipelines.
+// If a TektonConfig already exists, ReconcileTekton leaves it untouched, regardless of its
+// profile, so that externally managed configurations are preserved.
 func ReconcileTekton(ctx context.Context,
 	crdClient crdclientv1.ApiextensionsV1Interface,
 	tektonOperatorClient tektonoperatorclientv1alpha1.OperatorV1alpha1Interface) (*tektonoperatorv1alpha1.TektonConfig, bool, error) {
@@ -39,6 +41,7 @@ func ReconcileTekton(ctx context.Context,
 	if tektonVersion.Major() < common.TektonOpMinSupportedMajor+1 && tektonVersion.Minor() < common.TektonOpMinSupportedMinor {
 		return nil, true, fmt.Errorf("insufficient Tekton Operator version - must be greater than %s", common.TektonOpMinSupportedVersion)
 	}
+
 	tektonConfigPresent, err := IsTektonConfigPresent(ctx, tektonOperatorClient)
 	if err != nil {
 		return nil, true, err
@@ -46,10 +49,9 @@ func ReconcileTekton(ctx context.Context,
 	if tektonConfigPresent {
 		return nil, false, nil
 	}
-	// the tekton operator 'lite' profile is all Shipwright currently needs, so configure that up;
-	// when Shipwright starts leveraging triggers, we will want to bump up to a 'base' or higher
+
 	tektonConfig, err := CreateTektonConfigWithProfileAndTargetNamespace(ctx,
-		tektonOperatorClient, "lite", "tekton-pipelines")
+		tektonOperatorClient, tektonoperatorv1alpha1.ProfileLite, "tekton-pipelines")
 	if err != nil {
 		return tektonConfig, true, err
 	}

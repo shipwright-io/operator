@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: triggers-controller
+rules:
+  - apiGroups: ['shipwright.io']
+    resources: ['buildruns']
+    verbs: ['create', 'get', 'list', 'update', 'watch']
+  - apiGroups: ['shipwright.io']
+    resources: ['builds']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['tekton.dev']
+    resources: ['customruns']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['tekton.dev']
+    resources: ['customruns/finalizers', 'customruns/status']
+    verbs: ['patch', 'update']
+  - apiGroups: ['tekton.dev']
+    resources: ['pipelineruns']
+    verbs: ['get', 'list', 'patch', 'update', 'watch']

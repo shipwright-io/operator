@@ -1,0 +1,260 @@
+# Source: shipwright-triggers/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: shipwright-build
+  name: shipwright-triggers
+  labels:
+    helm.sh/chart: shipwright-triggers-0.0.1
+    meta.helm.sh/release-name: shipwright-triggers
+    meta.helm.sh/release-namespace: shipwright-build
+    app.kubernetes.io/name: shipwright-triggers
+    app.kubernetes.io/instance: shipwright-triggers
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: shipwright-triggers/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    helm.sh/chart: shipwright-triggers-0.0.1
+    meta.helm.sh/release-name: shipwright-triggers
+    meta.helm.sh/release-namespace: shipwright-build
+    app.kubernetes.io/name: shipwright-triggers
+    app.kubernetes.io/instance: shipwright-triggers
+    app.kubernetes.io/managed-by: Helm
+  name: shipwright-triggers
+rules:
+  - apiGroups:
+      - shipwright.io
+    resources:
+      - buildruns
+    verbs:
+      - create
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - shipwright.io
+    resources:
+      - builds
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - customruns
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - customruns/finalizers
+      - customruns/status
+    verbs:
+      - patch
+      - update
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - pipelineruns
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+---
+# Source: shipwright-triggers/templates/role-binding.yaml
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shipwright-triggers
+  labels:
+    helm.sh/chart: shipwright-triggers-0.0.1
+    meta.helm.sh/release-name: shipwright-triggers
+    meta.helm.sh/release-namespace: shipwright-build
+    app.kubernetes.io/name: shipwright-triggers
+    app.kubernetes.io/instance: shipwright-triggers
+    app.kubernetes.io/managed-by: Helm
+subjects:
+  - kind: ServiceAccount
+    namespace: shipwright-build
+    name: shipwright-triggers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: shipwright-triggers
+---
+# Source: shipwright-triggers/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: shipwright-build
+  labels:
+    helm.sh/chart: shipwright-triggers-0.0.1
+    meta.helm.sh/release-name: shipwright-triggers
+    meta.helm.sh/release-namespace: shipwright-build
+    app.kubernetes.io/name: shipwright-triggers
+    app.kubernetes.io/instance: shipwright-triggers
+    app.kubernetes.io/managed-by: Helm
+  name: shipwright-triggers
+rules:
+  - apiGroups:
+      - shipwright.io
+    resources:
+      - buildruns
+    verbs:
+      - create
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - shipwright.io
+    resources:
+      - builds
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - customruns
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - customruns/finalizers
+      - customruns/status
+    verbs:
+      - patch
+      - update
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - pipelineruns
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+---
+# Source: shipwright-triggers/templates/role-binding.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: shipwright-build
+  name: shipwright-triggers
+  labels:
+    helm.sh/chart: shipwright-triggers-0.0.1
+    meta.helm.sh/release-name: shipwright-triggers
+    meta.helm.sh/release-namespace: shipwright-build
+    app.kubernetes.io/name: shipwright-triggers
+    app.kubernetes.io/instance: shipwright-triggers
+    app.kubernetes.io/managed-by: Helm
+subjects:
+  - kind: ServiceAccount
+    namespace: shipwright-build
+    name: shipwright-triggers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: shipwright-triggers
+---
+# Source: shipwright-triggers/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: shipwright-build
+  name: shipwright-triggers
+  labels:
+    helm.sh/chart: shipwright-triggers-0.0.1
+    meta.helm.sh/release-name: shipwright-triggers
+    meta.helm.sh/release-namespace: shipwright-build
+    app.kubernetes.io/name: shipwright-triggers
+    app.kubernetes.io/instance: shipwright-triggers
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: shipwright-triggers
+    app.kubernetes.io/instance: shipwright-triggers
+---
+# Source: shipwright-triggers/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: shipwright-build
+  name: shipwright-triggers
+  labels:
+    helm.sh/chart: shipwright-triggers-0.0.1
+    meta.helm.sh/release-name: shipwright-triggers
+    meta.helm.sh/release-namespace: shipwright-build
+    app.kubernetes.io/name: shipwright-triggers
+    app.kubernetes.io/instance: shipwright-triggers
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shipwright-triggers
+      app.kubernetes.io/instance: shipwright-triggers
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shipwright-triggers
+        app.kubernetes.io/instance: shipwright-triggers
+    spec:
+      serviceAccountName: shipwright-triggers
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: shipwright-triggers
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          image: "ghcr.io/shipwright-io/triggers/triggers@sha256:66166ea3a992d251d72d8ae548b9d31f48ad41ac2f98f385641627a18e0c5666"
+          args:
+            - --health-probe-bind-address
+            - ":8081"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: webhook
+              containerPort: 80
+              protocol: TCP
+            - name: probe
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: probe
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: probe
+
+---

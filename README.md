@@ -41,6 +41,21 @@ spec:
 
 The operator will deploy Shipwright Builds in the provided `targetNamespace`.
 When `.spec.targetNamespace` is not set, the namespace will default to `shipwright-build`.
+
+To deploy [Shipwright Triggers](https://github.com/shipwright-io/triggers), add the `triggers` field:
+
+```yaml
+---
+apiVersion: operator.shipwright.io/v1alpha1
+kind: ShipwrightBuild
+metadata:
+  name: shipwright-operator
+spec:
+  targetNamespace: shipwright-build
+  triggers:
+    deployment: Enabled
+```
+
 Refer to the [ShipwrightBuild documentation](docs/shipwrightbuild.md) for more information about this custom resource.
 
 The operator handles differents environment variables to customize Shiprwright controller installation:
@@ -52,6 +67,7 @@ The operator handles differents environment variables to customize Shiprwright c
 - IMAGE_SHIPWRIGHT_BUNDLE_CONTAINER_IMAGE: defines the Shipwright Bundle Image to use
 - IMAGE_SHIPWRIGHT_WAITER_CONTAINER_IMAGE: defines the Shipwright Waiter Image to use
 - IMAGE_SHIPWRIGHT_SHIPWRIGHT_BUILD_WEBHOOK: defines the Shipwright Build Webhook Image to use
+- IMAGE_SHIPWRIGHT_SHIPWRIGHT_TRIGGERS: defines the Shipwright Triggers Image to use
 
 For more information about the function of these images, please consider the Shipwright Build doc https://github.com/shipwright-io/build/blob/main/docs/configuration.md
 
