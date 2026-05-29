@@ -32,6 +32,11 @@ spec:
       containers:
       - args:
         - --leader-elect
+        - --metrics-bind-address=:8443
+        ports:
+        - containerPort: 8443
+          protocol: TCP
+          name: https
         env:
         - name: USE_MANAGED_WEBHOOK_CERTS
           value: "true"
