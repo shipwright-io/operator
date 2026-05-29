@@ -102,3 +102,5 @@ jobs:
         make catalog-push IMAGE_REPO=localhost:5000 OPM_USE_HTTP=true
     - name: Run Operator with Catalog
       run: make catalog-run IMAGE_REPO=localhost:5000
+    - name: Verify metrics endpoint
+      run: make verify-metrics

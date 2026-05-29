@@ -322,6 +322,10 @@ catalog-run: ## Run the operator from a catalog image, using an OLM subscription
 verify-kind:
 	KUBECTL_BIN=$(KUBECTL_BIN) test/kind/verify-kind.sh
 
+.PHONY: verify-metrics
+verify-metrics: ## Verify the operator's /metrics endpoint enforces authn/authz and serves metrics
+	KUBECTL_BIN=$(KUBECTL_BIN) NAMESPACE=$(CATALOG_NAMESPACE) test/kind/verify-metrics.sh
+
 .PHONY: deploy-kind-registry
 deploy-kind-registry:
 	CONTAINER_ENGINE=$(CONTAINER_ENGINE) KUBECTL_BIN=$(KUBECTL_BIN) test/kind/deploy-registry.sh
