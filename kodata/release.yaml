@@ -69,6 +69,9 @@ rules:
     resources: ['pods']
     verbs: ['get', 'list', 'watch']
   - apiGroups: ['']
+    resources: ['nodes']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['']
     resources: ['secrets']
     verbs: ['get', 'list', 'watch']
   - apiGroups: ['']
@@ -155,7 +158,7 @@ spec:
       serviceAccountName: shipwright-build-controller
       containers:
         - name: shipwright-build
-          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.19.1@sha256:8999b3966fdf2ce231499266c56c2878e17a6cdec40eaa6f79302880ec6a22a5
+          image: ghcr.io/shipwright-io/build/shipwright-build-controller:v0.20.0@sha256:a2a4d7d20d96e9804e862fd24d9d2b7a726cc9bdce43b1facb65576c03dd481c
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -172,15 +175,15 @@ spec:
             - name: CONTROLLER_NAME
               value: "shipwright-build"
             - name: GIT_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/git:v0.19.1@sha256:83d69d550c7979c1bf52cc88cdc02fe8c3f6d6a61c953641d73ee6173eaccb88
+              value: ghcr.io/shipwright-io/build/git:v0.20.0@sha256:54767613da2d96a38c374a59394020d8c8c0f266af415681ef3adf62deb81de2
             - name: GIT_ENABLE_REWRITE_RULE
               value: "false"
             - name: IMAGE_PROCESSING_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/image-processing:v0.19.1@sha256:14a5615d9f2b6a05b001f3e3aba159e6cc6ad08ff4aea64c43964db71eee5bac
+              value: ghcr.io/shipwright-io/build/image-processing:v0.20.0@sha256:6952eddb477e2ec6b3fe4e5690ba55bc3c5f8b95dd3ee7e90c7b2ae5f250493d
             - name: BUNDLE_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/bundle:v0.19.1@sha256:96b03305a90ce267a185070974411604e4b8fe1eafe0e74365086eb82bbd8dfb
+              value: ghcr.io/shipwright-io/build/bundle:v0.20.0@sha256:01d360f173a00fdd0a24e18ea46743700c611d64fcb0a0df699311768358dc97
             - name: WAITER_CONTAINER_IMAGE
-              value: ghcr.io/shipwright-io/build/waiter:v0.19.1@sha256:e0b1822e08f686ca03d2941814c506dca537bc5bf091defc64c2480af2ada495
+              value: ghcr.io/shipwright-io/build/waiter:v0.20.0@sha256:626e9119c0b12deeb91da4ee0b76c0978710e31f332272ebb298245587a092bc
           ports:
             - containerPort: 8383
               name: metrics-port
@@ -237,7 +240,7 @@ spec:
       serviceAccountName: shipwright-build-webhook
       containers:
         - name: shipwright-build-webhook
-          image: ghcr.io/shipwright-io/build/shipwright-build-webhook:v0.19.1@sha256:2195272d8a9fbd9be15c67ae48a5f47e7b932d6d745d80e1b8f48407f455539d
+          image: ghcr.io/shipwright-io/build/shipwright-build-webhook:v0.20.0@sha256:0a25cbf390a30e5a8d50c4199452cdeeace3e9ed2512165598f0ae41ca7a3607
           volumeMounts:
             - name: webhook-certs
               mountPath: /etc/webhook/certs
@@ -308,7 +311,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: buildruns.shipwright.io
 spec:
   conversion:
@@ -1502,7 +1505,7 @@ spec:
                                       resources:
                                         description: |-
                                           resources represents the minimum resources the volume should have.
-                                          If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                          Users are allowed to specify resource requirements
                                           that are lower than previous value but must still be higher than capacity recorded in the
                                           status field of the claim.
                                           More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -1821,7 +1824,7 @@ spec:
                               A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                               The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                               The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                              The volume will be mounted read-only (ro) and non-executable files (noexec).
+                              The volume will be mounted read-only (ro).
                               Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                               The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                             properties:
@@ -1986,8 +1989,7 @@ spec:
                             description: |-
                               portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                               Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                              are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                              is on.
+                              are redirected to the pxd.portworx.com CSI driver.
                             properties:
                               fsType:
                                 description: |-
@@ -2334,6 +2336,24 @@ spec:
                                         signerName:
                                           description: Kubelet's generated CSRs will be addressed to this signer.
                                           type: string
+                                        userAnnotations:
+                                          additionalProperties:
+                                            type: string
+                                          description: |-
+                                            userAnnotations allow pod authors to pass additional information to
+                                            the signer implementation.  Kubernetes does not restrict or validate this
+                                            metadata in any way.
+
+                                            These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                            the PodCertificateRequest objects that Kubelet creates.
+
+                                            Entries are subject to the same validation as object metadata annotations,
+                                            with the addition that all keys must be domain-prefixed. No restrictions
+                                            are placed on values, except an overall size limitation on the entire field.
+
+                                            Signers should document the keys and values they support. Signers should
+                                            deny requests that contain keys they do not recognize.
+                                          type: object
                                       required:
                                         - keyType
                                         - signerName
@@ -3661,7 +3681,7 @@ spec:
                                   resources:
                                     description: |-
                                       resources represents the minimum resources the volume should have.
-                                      If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                      Users are allowed to specify resource requirements
                                       that are lower than previous value but must still be higher than capacity recorded in the
                                       status field of the claim.
                                       More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -3980,7 +4000,7 @@ spec:
                           A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                           The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                           The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                          The volume will be mounted read-only (ro) and non-executable files (noexec).
+                          The volume will be mounted read-only (ro).
                           Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                           The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                         properties:
@@ -4145,8 +4165,7 @@ spec:
                         description: |-
                           portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                           Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                          are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                          is on.
+                          are redirected to the pxd.portworx.com CSI driver.
                         properties:
                           fsType:
                             description: |-
@@ -4493,6 +4512,24 @@ spec:
                                     signerName:
                                       description: Kubelet's generated CSRs will be addressed to this signer.
                                       type: string
+                                    userAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: |-
+                                        userAnnotations allow pod authors to pass additional information to
+                                        the signer implementation.  Kubernetes does not restrict or validate this
+                                        metadata in any way.
+
+                                        These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                        the PodCertificateRequest objects that Kubelet creates.
+
+                                        Entries are subject to the same validation as object metadata annotations,
+                                        with the addition that all keys must be domain-prefixed. No restrictions
+                                        are placed on values, except an overall size limitation on the entire field.
+
+                                        Signers should document the keys and values they support. Signers should
+                                        deny requests that contain keys they do not recognize.
+                                      type: object
                                   required:
                                     - keyType
                                     - signerName
@@ -6019,7 +6056,7 @@ spec:
                                       resources:
                                         description: |-
                                           resources represents the minimum resources the volume should have.
-                                          If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                          Users are allowed to specify resource requirements
                                           that are lower than previous value but must still be higher than capacity recorded in the
                                           status field of the claim.
                                           More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -6338,7 +6375,7 @@ spec:
                               A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                               The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                               The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                              The volume will be mounted read-only (ro) and non-executable files (noexec).
+                              The volume will be mounted read-only (ro).
                               Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                               The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                             properties:
@@ -6503,8 +6540,7 @@ spec:
                             description: |-
                               portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                               Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                              are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                              is on.
+                              are redirected to the pxd.portworx.com CSI driver.
                             properties:
                               fsType:
                                 description: |-
@@ -6851,6 +6887,24 @@ spec:
                                         signerName:
                                           description: Kubelet's generated CSRs will be addressed to this signer.
                                           type: string
+                                        userAnnotations:
+                                          additionalProperties:
+                                            type: string
+                                          description: |-
+                                            userAnnotations allow pod authors to pass additional information to
+                                            the signer implementation.  Kubernetes does not restrict or validate this
+                                            metadata in any way.
+
+                                            These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                            the PodCertificateRequest objects that Kubelet creates.
+
+                                            Entries are subject to the same validation as object metadata annotations,
+                                            with the addition that all keys must be domain-prefixed. No restrictions
+                                            are placed on values, except an overall size limitation on the entire field.
+
+                                            Signers should document the keys and values they support. Signers should
+                                            deny requests that contain keys they do not recognize.
+                                          type: object
                                       required:
                                         - keyType
                                         - signerName
@@ -7623,6 +7677,31 @@ spec:
                                 type: string
                               description: Labels references the additional labels to be applied on the image
                               type: object
+                            platforms:
+                              description: |-
+                                Platforms is the list of OS and CPU architecture combinations to build for.
+                                When non-empty, the build controller orchestrates parallel builds for each
+                                platform and assembles the results into an OCI image index (manifest list).
+                              items:
+                                description: |-
+                                  ImagePlatform describes the operating system and CPU architecture
+                                  of a container image, following the OCI image index specification.
+                                properties:
+                                  arch:
+                                    description: Arch is the CPU architecture of the image platform (e.g. "amd64", "arm64", "s390x", "ppc64le").
+                                    type: string
+                                  os:
+                                    description: OS is the operating system of the image platform (e.g. "linux").
+                                    type: string
+                                required:
+                                  - arch
+                                  - os
+                                type: object
+                              type: array
+                              x-kubernetes-list-map-keys:
+                                - os
+                                - arch
+                              x-kubernetes-list-type: map
                             pushSecret:
                               description: Describes the secret name for pushing a container image.
                               type: string
@@ -8002,9 +8081,10 @@ spec:
                               operator:
                                 description: |-
                                   Operator represents a key's relationship to the value.
-                                  Valid operators are Exists and Equal. Defaults to Equal.
+                                  Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                                   Exists is equivalent to wildcard for value, so that a pod can
                                   tolerate all taints of a particular category.
+                                  Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                                 type: string
                               tolerationSeconds:
                                 description: |-
@@ -8647,7 +8727,7 @@ spec:
                                           resources:
                                             description: |-
                                               resources represents the minimum resources the volume should have.
-                                              If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                              Users are allowed to specify resource requirements
                                               that are lower than previous value but must still be higher than capacity recorded in the
                                               status field of the claim.
                                               More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -8966,7 +9046,7 @@ spec:
                                   A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                                   The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                                   The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                                  The volume will be mounted read-only (ro) and non-executable files (noexec).
+                                  The volume will be mounted read-only (ro).
                                   Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                                   The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                                 properties:
@@ -9131,8 +9211,7 @@ spec:
                                 description: |-
                                   portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                                   Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                                  are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                                  is on.
+                                  are redirected to the pxd.portworx.com CSI driver.
                                 properties:
                                   fsType:
                                     description: |-
@@ -9479,6 +9558,24 @@ spec:
                                             signerName:
                                               description: Kubelet's generated CSRs will be addressed to this signer.
                                               type: string
+                                            userAnnotations:
+                                              additionalProperties:
+                                                type: string
+                                              description: |-
+                                                userAnnotations allow pod authors to pass additional information to
+                                                the signer implementation.  Kubernetes does not restrict or validate this
+                                                metadata in any way.
+
+                                                These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                                the PodCertificateRequest objects that Kubelet creates.
+
+                                                Entries are subject to the same validation as object metadata annotations,
+                                                with the addition that all keys must be domain-prefixed. No restrictions
+                                                are placed on values, except an overall size limitation on the entire field.
+
+                                                Signers should document the keys and values they support. Signers should
+                                                deny requests that contain keys they do not recognize.
+                                              type: object
                                           required:
                                             - keyType
                                             - signerName
@@ -10066,6 +10163,31 @@ spec:
                         type: string
                       description: Labels references the additional labels to be applied on the image
                       type: object
+                    platforms:
+                      description: |-
+                        Platforms is the list of OS and CPU architecture combinations to build for.
+                        When non-empty, the build controller orchestrates parallel builds for each
+                        platform and assembles the results into an OCI image index (manifest list).
+                      items:
+                        description: |-
+                          ImagePlatform describes the operating system and CPU architecture
+                          of a container image, following the OCI image index specification.
+                        properties:
+                          arch:
+                            description: Arch is the CPU architecture of the image platform (e.g. "amd64", "arm64", "s390x", "ppc64le").
+                            type: string
+                          os:
+                            description: OS is the operating system of the image platform (e.g. "linux").
+                            type: string
+                        required:
+                          - arch
+                          - os
+                        type: object
+                      type: array
+                      x-kubernetes-list-map-keys:
+                        - os
+                        - arch
+                      x-kubernetes-list-type: map
                     pushSecret:
                       description: Describes the secret name for pushing a container image.
                       type: string
@@ -10367,9 +10489,10 @@ spec:
                       operator:
                         description: |-
                           Operator represents a key's relationship to the value.
-                          Valid operators are Exists and Equal. Defaults to Equal.
+                          Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                           Exists is equivalent to wildcard for value, so that a pod can
                           tolerate all taints of a particular category.
+                          Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                         type: string
                       tolerationSeconds:
                         description: |-
@@ -10945,7 +11068,7 @@ spec:
                                   resources:
                                     description: |-
                                       resources represents the minimum resources the volume should have.
-                                      If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                      Users are allowed to specify resource requirements
                                       that are lower than previous value but must still be higher than capacity recorded in the
                                       status field of the claim.
                                       More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -11264,7 +11387,7 @@ spec:
                           A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                           The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                           The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                          The volume will be mounted read-only (ro) and non-executable files (noexec).
+                          The volume will be mounted read-only (ro).
                           Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                           The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                         properties:
@@ -11429,8 +11552,7 @@ spec:
                         description: |-
                           portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                           Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                          are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                          is on.
+                          are redirected to the pxd.portworx.com CSI driver.
                         properties:
                           fsType:
                             description: |-
@@ -11777,6 +11899,24 @@ spec:
                                     signerName:
                                       description: Kubelet's generated CSRs will be addressed to this signer.
                                       type: string
+                                    userAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: |-
+                                        userAnnotations allow pod authors to pass additional information to
+                                        the signer implementation.  Kubernetes does not restrict or validate this
+                                        metadata in any way.
+
+                                        These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                        the PodCertificateRequest objects that Kubelet creates.
+
+                                        Entries are subject to the same validation as object metadata annotations,
+                                        with the addition that all keys must be domain-prefixed. No restrictions
+                                        are placed on values, except an overall size limitation on the entire field.
+
+                                        Signers should document the keys and values they support. Signers should
+                                        deny requests that contain keys they do not recognize.
+                                      type: object
                                   required:
                                     - keyType
                                     - signerName
@@ -12366,6 +12506,31 @@ spec:
                             type: string
                           description: Labels references the additional labels to be applied on the image
                           type: object
+                        platforms:
+                          description: |-
+                            Platforms is the list of OS and CPU architecture combinations to build for.
+                            When non-empty, the build controller orchestrates parallel builds for each
+                            platform and assembles the results into an OCI image index (manifest list).
+                          items:
+                            description: |-
+                              ImagePlatform describes the operating system and CPU architecture
+                              of a container image, following the OCI image index specification.
+                            properties:
+                              arch:
+                                description: Arch is the CPU architecture of the image platform (e.g. "amd64", "arm64", "s390x", "ppc64le").
+                                type: string
+                              os:
+                                description: OS is the operating system of the image platform (e.g. "linux").
+                                type: string
+                            required:
+                              - arch
+                              - os
+                            type: object
+                          type: array
+                          x-kubernetes-list-map-keys:
+                            - os
+                            - arch
+                          x-kubernetes-list-type: map
                         pushSecret:
                           description: Describes the secret name for pushing a container image.
                           type: string
@@ -12745,9 +12910,10 @@ spec:
                           operator:
                             description: |-
                               Operator represents a key's relationship to the value.
-                              Valid operators are Exists and Equal. Defaults to Equal.
+                              Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                               Exists is equivalent to wildcard for value, so that a pod can
                               tolerate all taints of a particular category.
+                              Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                             type: string
                           tolerationSeconds:
                             description: |-
@@ -13390,7 +13556,7 @@ spec:
                                       resources:
                                         description: |-
                                           resources represents the minimum resources the volume should have.
-                                          If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                          Users are allowed to specify resource requirements
                                           that are lower than previous value but must still be higher than capacity recorded in the
                                           status field of the claim.
                                           More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -13709,7 +13875,7 @@ spec:
                               A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                               The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                               The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                              The volume will be mounted read-only (ro) and non-executable files (noexec).
+                              The volume will be mounted read-only (ro).
                               Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                               The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                             properties:
@@ -13874,8 +14040,7 @@ spec:
                             description: |-
                               portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                               Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                              are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                              is on.
+                              are redirected to the pxd.portworx.com CSI driver.
                             properties:
                               fsType:
                                 description: |-
@@ -14222,6 +14387,24 @@ spec:
                                         signerName:
                                           description: Kubelet's generated CSRs will be addressed to this signer.
                                           type: string
+                                        userAnnotations:
+                                          additionalProperties:
+                                            type: string
+                                          description: |-
+                                            userAnnotations allow pod authors to pass additional information to
+                                            the signer implementation.  Kubernetes does not restrict or validate this
+                                            metadata in any way.
+
+                                            These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                            the PodCertificateRequest objects that Kubelet creates.
+
+                                            Entries are subject to the same validation as object metadata annotations,
+                                            with the addition that all keys must be domain-prefixed. No restrictions
+                                            are placed on values, except an overall size limitation on the entire field.
+
+                                            Signers should document the keys and values they support. Signers should
+                                            deny requests that contain keys they do not recognize.
+                                          type: object
                                       required:
                                         - keyType
                                         - signerName
@@ -14781,7 +14964,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: builds.shipwright.io
 spec:
   conversion:
@@ -15961,7 +16144,7 @@ spec:
                                   resources:
                                     description: |-
                                       resources represents the minimum resources the volume should have.
-                                      If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                      Users are allowed to specify resource requirements
                                       that are lower than previous value but must still be higher than capacity recorded in the
                                       status field of the claim.
                                       More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -16280,7 +16463,7 @@ spec:
                           A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                           The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                           The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                          The volume will be mounted read-only (ro) and non-executable files (noexec).
+                          The volume will be mounted read-only (ro).
                           Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                           The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                         properties:
@@ -16445,8 +16628,7 @@ spec:
                         description: |-
                           portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                           Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                          are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                          is on.
+                          are redirected to the pxd.portworx.com CSI driver.
                         properties:
                           fsType:
                             description: |-
@@ -16793,6 +16975,24 @@ spec:
                                     signerName:
                                       description: Kubelet's generated CSRs will be addressed to this signer.
                                       type: string
+                                    userAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: |-
+                                        userAnnotations allow pod authors to pass additional information to
+                                        the signer implementation.  Kubernetes does not restrict or validate this
+                                        metadata in any way.
+
+                                        These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                        the PodCertificateRequest objects that Kubelet creates.
+
+                                        Entries are subject to the same validation as object metadata annotations,
+                                        with the addition that all keys must be domain-prefixed. No restrictions
+                                        are placed on values, except an overall size limitation on the entire field.
+
+                                        Signers should document the keys and values they support. Signers should
+                                        deny requests that contain keys they do not recognize.
+                                      type: object
                                   required:
                                     - keyType
                                     - signerName
@@ -17447,6 +17647,31 @@ spec:
                         type: string
                       description: Labels references the additional labels to be applied on the image
                       type: object
+                    platforms:
+                      description: |-
+                        Platforms is the list of OS and CPU architecture combinations to build for.
+                        When non-empty, the build controller orchestrates parallel builds for each
+                        platform and assembles the results into an OCI image index (manifest list).
+                      items:
+                        description: |-
+                          ImagePlatform describes the operating system and CPU architecture
+                          of a container image, following the OCI image index specification.
+                        properties:
+                          arch:
+                            description: Arch is the CPU architecture of the image platform (e.g. "amd64", "arm64", "s390x", "ppc64le").
+                            type: string
+                          os:
+                            description: OS is the operating system of the image platform (e.g. "linux").
+                            type: string
+                        required:
+                          - arch
+                          - os
+                        type: object
+                      type: array
+                      x-kubernetes-list-map-keys:
+                        - os
+                        - arch
+                      x-kubernetes-list-type: map
                     pushSecret:
                       description: Describes the secret name for pushing a container image.
                       type: string
@@ -17826,9 +18051,10 @@ spec:
                       operator:
                         description: |-
                           Operator represents a key's relationship to the value.
-                          Valid operators are Exists and Equal. Defaults to Equal.
+                          Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                           Exists is equivalent to wildcard for value, so that a pod can
                           tolerate all taints of a particular category.
+                          Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                         type: string
                       tolerationSeconds:
                         description: |-
@@ -18471,7 +18697,7 @@ spec:
                                   resources:
                                     description: |-
                                       resources represents the minimum resources the volume should have.
-                                      If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                      Users are allowed to specify resource requirements
                                       that are lower than previous value but must still be higher than capacity recorded in the
                                       status field of the claim.
                                       More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -18790,7 +19016,7 @@ spec:
                           A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                           The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                           The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                          The volume will be mounted read-only (ro) and non-executable files (noexec).
+                          The volume will be mounted read-only (ro).
                           Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                           The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                         properties:
@@ -18955,8 +19181,7 @@ spec:
                         description: |-
                           portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                           Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                          are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                          is on.
+                          are redirected to the pxd.portworx.com CSI driver.
                         properties:
                           fsType:
                             description: |-
@@ -19303,6 +19528,24 @@ spec:
                                     signerName:
                                       description: Kubelet's generated CSRs will be addressed to this signer.
                                       type: string
+                                    userAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: |-
+                                        userAnnotations allow pod authors to pass additional information to
+                                        the signer implementation.  Kubernetes does not restrict or validate this
+                                        metadata in any way.
+
+                                        These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                        the PodCertificateRequest objects that Kubelet creates.
+
+                                        Entries are subject to the same validation as object metadata annotations,
+                                        with the addition that all keys must be domain-prefixed. No restrictions
+                                        are placed on values, except an overall size limitation on the entire field.
+
+                                        Signers should document the keys and values they support. Signers should
+                                        deny requests that contain keys they do not recognize.
+                                      type: object
                                   required:
                                     - keyType
                                     - signerName
@@ -19742,7 +19985,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: buildstrategies.shipwright.io
 spec:
   conversion:
@@ -20626,7 +20869,9 @@ spec:
                             type: integer
                         type: object
                       resizePolicy:
-                        description: Resources resize policy for the container.
+                        description: |-
+                          Resources resize policy for the container.
+                          This field cannot be set on ephemeral containers.
                         items:
                           description: ContainerResizePolicy represents resource resize policy for the container.
                           properties:
@@ -20850,7 +21095,6 @@ spec:
                               procMount denotes the type of proc mount to use for the containers.
                               The default value is Default which uses the container runtime defaults for
                               readonly paths and masked paths.
-                              This requires the ProcMountType feature flag to be enabled.
                               Note that this field cannot be set when spec.os.name is windows.
                             type: string
                           readOnlyRootFilesystem:
@@ -21258,6 +21502,9 @@ spec:
                       - name
                     type: object
                   type: array
+                  x-kubernetes-list-map-keys:
+                    - name
+                  x-kubernetes-list-type: map
                 parameters:
                   description: Parameters defines the parameters of the strategy
                   items:
@@ -21874,7 +22121,7 @@ spec:
                                   resources:
                                     description: |-
                                       resources represents the minimum resources the volume should have.
-                                      If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                      Users are allowed to specify resource requirements
                                       that are lower than previous value but must still be higher than capacity recorded in the
                                       status field of the claim.
                                       More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -22193,7 +22440,7 @@ spec:
                           A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                           The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                           The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                          The volume will be mounted read-only (ro) and non-executable files (noexec).
+                          The volume will be mounted read-only (ro).
                           Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                           The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                         properties:
@@ -22363,8 +22610,7 @@ spec:
                         description: |-
                           portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                           Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                          are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                          is on.
+                          are redirected to the pxd.portworx.com CSI driver.
                         properties:
                           fsType:
                             description: |-
@@ -22711,6 +22957,24 @@ spec:
                                     signerName:
                                       description: Kubelet's generated CSRs will be addressed to this signer.
                                       type: string
+                                    userAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: |-
+                                        userAnnotations allow pod authors to pass additional information to
+                                        the signer implementation.  Kubernetes does not restrict or validate this
+                                        metadata in any way.
+
+                                        These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                        the PodCertificateRequest objects that Kubelet creates.
+
+                                        Entries are subject to the same validation as object metadata annotations,
+                                        with the addition that all keys must be domain-prefixed. No restrictions
+                                        are placed on values, except an overall size limitation on the entire field.
+
+                                        Signers should document the keys and values they support. Signers should
+                                        deny requests that contain keys they do not recognize.
+                                      type: object
                                   required:
                                     - keyType
                                     - signerName
@@ -23548,7 +23812,6 @@ spec:
                               procMount denotes the type of proc mount to use for the containers.
                               The default value is Default which uses the container runtime defaults for
                               readonly paths and masked paths.
-                              This requires the ProcMountType feature flag to be enabled.
                               Note that this field cannot be set when spec.os.name is windows.
                             type: string
                           readOnlyRootFilesystem:
@@ -23739,6 +24002,9 @@ spec:
                       - name
                     type: object
                   type: array
+                  x-kubernetes-list-map-keys:
+                    - name
+                  x-kubernetes-list-type: map
                 volumes:
                   description: Volumes defines the volumes of the strategy
                   items:
@@ -24301,7 +24567,7 @@ spec:
                                   resources:
                                     description: |-
                                       resources represents the minimum resources the volume should have.
-                                      If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                      Users are allowed to specify resource requirements
                                       that are lower than previous value but must still be higher than capacity recorded in the
                                       status field of the claim.
                                       More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -24620,7 +24886,7 @@ spec:
                           A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                           The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                           The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                          The volume will be mounted read-only (ro) and non-executable files (noexec).
+                          The volume will be mounted read-only (ro).
                           Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                           The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                         properties:
@@ -24790,8 +25056,7 @@ spec:
                         description: |-
                           portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                           Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                          are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                          is on.
+                          are redirected to the pxd.portworx.com CSI driver.
                         properties:
                           fsType:
                             description: |-
@@ -25138,6 +25403,24 @@ spec:
                                     signerName:
                                       description: Kubelet's generated CSRs will be addressed to this signer.
                                       type: string
+                                    userAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: |-
+                                        userAnnotations allow pod authors to pass additional information to
+                                        the signer implementation.  Kubernetes does not restrict or validate this
+                                        metadata in any way.
+
+                                        These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                        the PodCertificateRequest objects that Kubelet creates.
+
+                                        Entries are subject to the same validation as object metadata annotations,
+                                        with the addition that all keys must be domain-prefixed. No restrictions
+                                        are placed on values, except an overall size limitation on the entire field.
+
+                                        Signers should document the keys and values they support. Signers should
+                                        deny requests that contain keys they do not recognize.
+                                      type: object
                                   required:
                                     - keyType
                                     - signerName
@@ -25561,7 +25844,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: clusterbuildstrategies.shipwright.io
 spec:
   conversion:
@@ -26445,7 +26728,9 @@ spec:
                             type: integer
                         type: object
                       resizePolicy:
-                        description: Resources resize policy for the container.
+                        description: |-
+                          Resources resize policy for the container.
+                          This field cannot be set on ephemeral containers.
                         items:
                           description: ContainerResizePolicy represents resource resize policy for the container.
                           properties:
@@ -26669,7 +26954,6 @@ spec:
                               procMount denotes the type of proc mount to use for the containers.
                               The default value is Default which uses the container runtime defaults for
                               readonly paths and masked paths.
-                              This requires the ProcMountType feature flag to be enabled.
                               Note that this field cannot be set when spec.os.name is windows.
                             type: string
                           readOnlyRootFilesystem:
@@ -27077,6 +27361,9 @@ spec:
                       - name
                     type: object
                   type: array
+                  x-kubernetes-list-map-keys:
+                    - name
+                  x-kubernetes-list-type: map
                 parameters:
                   description: Parameters defines the parameters of the strategy
                   items:
@@ -27693,7 +27980,7 @@ spec:
                                   resources:
                                     description: |-
                                       resources represents the minimum resources the volume should have.
-                                      If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                      Users are allowed to specify resource requirements
                                       that are lower than previous value but must still be higher than capacity recorded in the
                                       status field of the claim.
                                       More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -28012,7 +28299,7 @@ spec:
                           A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                           The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                           The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                          The volume will be mounted read-only (ro) and non-executable files (noexec).
+                          The volume will be mounted read-only (ro).
                           Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                           The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                         properties:
@@ -28182,8 +28469,7 @@ spec:
                         description: |-
                           portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                           Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                          are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                          is on.
+                          are redirected to the pxd.portworx.com CSI driver.
                         properties:
                           fsType:
                             description: |-
@@ -28530,6 +28816,24 @@ spec:
                                     signerName:
                                       description: Kubelet's generated CSRs will be addressed to this signer.
                                       type: string
+                                    userAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: |-
+                                        userAnnotations allow pod authors to pass additional information to
+                                        the signer implementation.  Kubernetes does not restrict or validate this
+                                        metadata in any way.
+
+                                        These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                        the PodCertificateRequest objects that Kubelet creates.
+
+                                        Entries are subject to the same validation as object metadata annotations,
+                                        with the addition that all keys must be domain-prefixed. No restrictions
+                                        are placed on values, except an overall size limitation on the entire field.
+
+                                        Signers should document the keys and values they support. Signers should
+                                        deny requests that contain keys they do not recognize.
+                                      type: object
                                   required:
                                     - keyType
                                     - signerName
@@ -29367,7 +29671,6 @@ spec:
                               procMount denotes the type of proc mount to use for the containers.
                               The default value is Default which uses the container runtime defaults for
                               readonly paths and masked paths.
-                              This requires the ProcMountType feature flag to be enabled.
                               Note that this field cannot be set when spec.os.name is windows.
                             type: string
                           readOnlyRootFilesystem:
@@ -29558,6 +29861,9 @@ spec:
                       - name
                     type: object
                   type: array
+                  x-kubernetes-list-map-keys:
+                    - name
+                  x-kubernetes-list-type: map
                 volumes:
                   description: Volumes defines the volumes of the strategy
                   items:
@@ -30120,7 +30426,7 @@ spec:
                                   resources:
                                     description: |-
                                       resources represents the minimum resources the volume should have.
-                                      If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements
+                                      Users are allowed to specify resource requirements
                                       that are lower than previous value but must still be higher than capacity recorded in the
                                       status field of the claim.
                                       More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
@@ -30439,7 +30745,7 @@ spec:
                           A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
                           The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
                           The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
-                          The volume will be mounted read-only (ro) and non-executable files (noexec).
+                          The volume will be mounted read-only (ro).
                           Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
                           The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
                         properties:
@@ -30609,8 +30915,7 @@ spec:
                         description: |-
                           portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
                           Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
-                          are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
-                          is on.
+                          are redirected to the pxd.portworx.com CSI driver.
                         properties:
                           fsType:
                             description: |-
@@ -30957,6 +31262,24 @@ spec:
                                     signerName:
                                       description: Kubelet's generated CSRs will be addressed to this signer.
                                       type: string
+                                    userAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      description: |-
+                                        userAnnotations allow pod authors to pass additional information to
+                                        the signer implementation.  Kubernetes does not restrict or validate this
+                                        metadata in any way.
+
+                                        These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of
+                                        the PodCertificateRequest objects that Kubelet creates.
+
+                                        Entries are subject to the same validation as object metadata annotations,
+                                        with the addition that all keys must be domain-prefixed. No restrictions
+                                        are placed on values, except an overall size limitation on the entire field.
+
+                                        Signers should document the keys and values they support. Signers should
+                                        deny requests that contain keys they do not recognize.
+                                      type: object
                                   required:
                                     - keyType
                                     - signerName

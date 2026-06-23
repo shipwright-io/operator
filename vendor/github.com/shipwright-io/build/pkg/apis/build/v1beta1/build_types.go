@@ -87,6 +87,15 @@ const (
 	SchedulerNameNotValid BuildReason = "SchedulerNameNotValid"
 	// RuntimeClassNameNotValid indicates that the RuntimeClassName is not valid
 	RuntimeClassNameNotValid BuildReason = "RuntimeClassNameNotValid"
+	// NodeSelectorPlatformConflict indicates that nodeSelector contains kubernetes.io/os or kubernetes.io/arch
+	// which conflicts with output platform scheduling
+	NodeSelectorPlatformConflict BuildReason = "NodeSelectorPlatformConflict"
+	// InvalidPlatform indicates a platform entry has invalid or empty fields, or a duplicate entry
+	InvalidPlatform BuildReason = "InvalidPlatform"
+	// ExecutorNotPipelineRun indicates multi-arch builds require PipelineRun executor mode
+	ExecutorNotPipelineRun BuildReason = "ExecutorNotPipelineRun"
+	// NodePlatformNotFound indicates no schedulable node was found for a requested platform
+	NodePlatformNotFound BuildReason = "NodePlatformNotFound"
 	// AllValidationsSucceeded indicates a Build was successfully validated
 	AllValidationsSucceeded = "all validations succeeded"
 )
@@ -117,6 +126,8 @@ const (
 
 	// AnnotationBuildRefSecret is an annotation that tells the Build Controller to reconcile on
 	// events of the secret only if is referenced by a Build in the same namespace
+	//
+	// Deprecated: this annotation is no longer required and has no effect.
 	AnnotationBuildRefSecret = BuildDomain + "/referenced.secret"
 
 	// AnnotationBuildVerifyRepository tells the Build Controller to check a remote repository. If the annotation is not set
@@ -271,6 +282,18 @@ type VulnerabilityScanOptions struct {
 	Ignore *VulnerabilityIgnoreOptions `json:"ignore,omitempty"`
 }
 
+// ImagePlatform describes the operating system and CPU architecture
+// of a container image, following the OCI image index specification.
+type ImagePlatform struct {
+	// OS is the operating system of the image platform (e.g. "linux").
+	// +required
+	OS string `json:"os"`
+
+	// Arch is the CPU architecture of the image platform (e.g. "amd64", "arm64", "s390x", "ppc64le").
+	// +required
+	Arch string `json:"arch"`
+}
+
 // Image refers to an container image with credentials
 type Image struct {
 	// Image is the reference of the image.
@@ -310,6 +333,16 @@ type Image struct {
 	//
 	// +optional
 	Timestamp *string `json:"timestamp,omitempty"`
+
+	// Platforms is the list of OS and CPU architecture combinations to build for.
+	// When non-empty, the build controller orchestrates parallel builds for each
+	// platform and assembles the results into an OCI image index (manifest list).
+	//
+	// +listType=map
+	// +listMapKey=os
+	// +listMapKey=arch
+	// +optional
+	Platforms []ImagePlatform `json:"platforms,omitempty"`
 }
 
 // BuildStatus defines the observed state of Build

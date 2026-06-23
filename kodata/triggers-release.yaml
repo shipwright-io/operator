@@ -236,7 +236,7 @@ spec:
             runAsUser: 1000
             seccompProfile:
               type: RuntimeDefault
-          image: "ghcr.io/shipwright-io/triggers/triggers@sha256:66166ea3a992d251d72d8ae548b9d31f48ad41ac2f98f385641627a18e0c5666"
+          image: "ghcr.io/shipwright-io/triggers/triggers@sha256:fed8989bcb2ca7b8986659be74c16463858884f031789eb905e5c519dae1523d"
           args:
             - --health-probe-bind-address
             - ":8081"

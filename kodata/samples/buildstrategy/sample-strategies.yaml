@@ -5,11 +5,22 @@ metadata:
 spec:
   steps:
     - name: build
-      image: quay.io/containers/buildah:v1.43.0
+      image: quay.io/containers/buildah:v1.43.1
       imagePullPolicy: Always
       workingDir: $(params.shp-source-root)
       securityContext:
         privileged: true
+        readOnlyRootFilesystem: true
+      volumeMounts:
+        - name: shp-buildah-container-storage
+          mountPath: /var/lib/containers # Read/Write location of container storage
+        - name: shp-tmp
+          mountPath: /shp-tmp
+        - name: shp-run
+          mountPath: /var/run
+      env:
+        - name: TMPDIR
+          value: /shp-tmp
       command:
         - /bin/bash
       args:
@@ -124,21 +135,21 @@ spec:
 
           echo "[INFO] Creating registries config file..."
           if [ "${registriesSearch}" != "" ]; then
-            cat <<EOF >>/tmp/registries.conf
+            cat <<EOF >>/shp-tmp/registries.conf
           [registries.search]
           registries = [${registriesSearch::-2}]
 
           EOF
           fi
           if [ "${registriesInsecure}" != "" ]; then
-            cat <<EOF >>/tmp/registries.conf
+            cat <<EOF >>/shp-tmp/registries.conf
           [registries.insecure]
           registries = [${registriesInsecure::-2}]
 
           EOF
           fi
           if [ "${registriesBlock}" != "" ]; then
-            cat <<EOF >>/tmp/registries.conf
+            cat <<EOF >>/shp-tmp/registries.conf
           [registries.block]
           registries = [${registriesBlock::-2}]
 
@@ -149,7 +160,7 @@ spec:
           echo "[INFO] Building image ${image}"
           buildah --storage-driver=$(params.storage-driver) \
             bud "${budArgs[@]}" \
-            --registries-conf=/tmp/registries.conf \
+            --registries-conf=/shp-tmp/registries.conf \
             --tag="${image}" \
             --file="${dockerfile}" \
             .
@@ -218,6 +229,13 @@ spec:
       description: "Sets the target stage to be built."
       type: string
       default: ""
+  volumes:
+    - name: shp-buildah-container-storage
+      emptyDir: {}
+    - name: shp-tmp
+      emptyDir: {}
+    - name: shp-run
+      emptyDir: {}
   securityContext:
     runAsUser: 0
     runAsGroup: 0
@@ -230,13 +248,24 @@ metadata:
 spec:
   steps:
     - name: build-and-push
-      image: quay.io/containers/buildah:v1.43.0
+      image: quay.io/containers/buildah:v1.43.1
       imagePullPolicy: Always
       workingDir: $(params.shp-source-root)
       securityContext:
+        readOnlyRootFilesystem: true
         capabilities:
           add:
             - "SETFCAP"
+      volumeMounts:
+        - name: shp-buildah-container-storage
+          mountPath: /var/lib/containers # Read/Write location of container storage
+        - name: shp-tmp
+          mountPath: /shp-tmp
+        - name: shp-run
+          mountPath: /var/run
+      env:
+        - name: TMPDIR
+          value: /shp-tmp
       command:
         - /bin/bash
       args:
@@ -349,21 +378,21 @@ spec:
 
           echo "[INFO] Creating registries config file..."
           if [ "${registriesSearch}" != "" ]; then
-            cat <<EOF >>/tmp/registries.conf
+            cat <<EOF >>/shp-tmp/registries.conf
           [registries.search]
           registries = [${registriesSearch::-2}]
 
           EOF
           fi
           if [ "${registriesInsecure}" != "" ]; then
-            cat <<EOF >>/tmp/registries.conf
+            cat <<EOF >>/shp-tmp/registries.conf
           [registries.insecure]
           registries = [${registriesInsecure::-2}]
 
           EOF
           fi
           if [ "${registriesBlock}" != "" ]; then
-            cat <<EOF >>/tmp/registries.conf
+            cat <<EOF >>/shp-tmp/registries.conf
           [registries.block]
           registries = [${registriesBlock::-2}]
 
@@ -374,7 +403,7 @@ spec:
           echo "[INFO] Building image ${image}"
           buildah --storage-driver=$(params.storage-driver) \
             bud "${budArgs[@]}" \
-            --registries-conf=/tmp/registries.conf \
+            --registries-conf=/shp-tmp/registries.conf \
             --tag="${image}" \
             --file="${dockerfile}" \
             .
@@ -446,6 +475,13 @@ spec:
   securityContext:
     runAsUser: 0
     runAsGroup: 0
+  volumes:
+    - name: shp-buildah-container-storage
+      emptyDir: {}
+    - name: shp-tmp
+      emptyDir: {}
+    - name: shp-run
+      emptyDir: {}
 
 ---
 apiVersion: shipwright.io/v1beta1
@@ -483,7 +519,7 @@ spec:
       default: ""
   steps:
     - name: build-and-push
-      image: moby/buildkit:v0.28.0-rootless
+      image: moby/buildkit:v0.30.0-rootless
       imagePullPolicy: Always
       securityContext:
         allowPrivilegeEscalation: true
@@ -493,8 +529,13 @@ spec:
             - SETUID
         seccompProfile:
           type: Unconfined
+        readOnlyRootFilesystem: true
       workingDir: $(params.shp-source-root)
       env:
+        # This is required to align the temporary directory created by buildkit
+        # with the volume mount for that directory.
+        - name: XDG_RUNTIME_DIR
+          value: /home/user/.local/tmp
         - name: DOCKER_CONFIG
           value: /tekton/home/.docker
         - name: HOME
@@ -516,6 +557,13 @@ spec:
           value: $(params.cache)
         - name: PARAM_TARGET
           value: $(params.target)
+      volumeMounts:
+        - name: buildkitd-1
+          mountPath: /home/user/.local/share/buildkit
+        - name: buildkitd-2
+          mountPath: /home/user/.local/tmp
+        - name: shp-tmp
+          mountPath: /tmp
       command:
         - /bin/ash
       args:
@@ -594,7 +642,7 @@ spec:
               # using head because the data could be multiline
               id="$(echo "${a}" | head -1 | sed 's/=.*//')"
 
-              # This is hacky, we remove the suffix ${id}= from all lines of the data.
+              # This is hacky, we remove the prefix ${id}= from all lines of the data.
               # If the data would be multiple lines and a line would start with ${id}=
               # then we would remove it. We could force users to give us the secret
               # base64 encoded. But ultimately, the best solution might be if the user
@@ -629,6 +677,13 @@ spec:
   securityContext:
     runAsUser: 1000
     runAsGroup: 1000
+  volumes:
+    - name: shp-tmp
+      emptyDir: {}
+    - name: buildkitd-1
+      emptyDir: {}
+    - name: buildkitd-2
+      emptyDir: {}
 
 ---
 apiVersion: shipwright.io/v1beta1
@@ -648,7 +703,11 @@ spec:
       default: "x86_64"
     - name: platform-api-version
       description: The referenced version is the minimum version that all relevant buildpack implementations support.
-      default: "0.12"
+      default: "0.13"
+    - name: insecure-registries
+      description: List of registries to consider insecure (http or self-signed certificate).
+      type: array
+      defaults: []
   steps:
     - name: build-and-push
       image: heroku/builder:22
@@ -663,11 +722,107 @@ spec:
           value: $(params.shp-source-context)
         - name: PARAM_OUTPUT_IMAGE
           value: $(params.shp-output-image)
+        - name: PARAM_OUTPUT_INSECURE
+          value: $(params.shp-output-insecure)
       command:
         - /bin/bash
       args:
         - -c
-        - "set -euo pipefail\n\necho \"> Processing environment variables...\"\nENV_DIR=\"/platform/env\"\n\nenvs=($(env))\n\n# Denying the creation of non required files from system environments.\n# The creation of a file named PATH (corresponding to PATH system environment)\n# caused failure for python source during pip install (https://github.com/Azure-Samples/python-docs-hello-world)\nblock_list=(\"PATH\" \"HOSTNAME\" \"PWD\" \"_\" \"SHLVL\" \"HOME\" \"\")\n\nfor env in \"${envs[@]}\"; do\n  blocked=false\n\n  IFS='=' read -r key value string <<< \"$env\"\n\n  for str in \"${block_list[@]}\"; do\n    if [[ \"$key\" == \"$str\" ]]; then\n      blocked=true\n      break\n    fi\n  done\n\n  if [ \"$blocked\" == \"false\" ]; then\n    path=\"${ENV_DIR}/${key}\"\n    echo -n \"$value\" > \"$path\"\n  fi\ndone\n\nLAYERS_DIR=/tmp/.shp/layers\nCACHE_DIR=/tmp/.shp/cache\n\nmkdir -p \"$CACHE_DIR\" \"$LAYERS_DIR\"\n\nfunction announce_phase {\n  printf \"===> %s\\n\" \"$1\"\n}\n\nannounce_phase \"ANALYZING\"\n/cnb/lifecycle/analyzer -layers=\"$LAYERS_DIR\" \"${PARAM_OUTPUT_IMAGE}\"\n\nannounce_phase \"DETECTING\"\n/cnb/lifecycle/detector -app=\"${PARAM_SOURCE_CONTEXT}\" -layers=\"$LAYERS_DIR\"\n\nannounce_phase \"RESTORING\"\n/cnb/lifecycle/restorer -cache-dir=\"$CACHE_DIR\" -layers=\"$LAYERS_DIR\"\n\nannounce_phase \"BUILDING\"\n/cnb/lifecycle/builder -app=\"${PARAM_SOURCE_CONTEXT}\" -layers=\"$LAYERS_DIR\"\n\nexporter_args=( -layers=\"$LAYERS_DIR\" -report=/tmp/report.toml -cache-dir=\"$CACHE_DIR\" -app=\"${PARAM_SOURCE_CONTEXT}\")\ngrep -q \"buildpack-default-process-type\" \"$LAYERS_DIR/config/metadata.toml\" || exporter_args+=( -process-type web ) \n\nannounce_phase \"EXPORTING\"\n/cnb/lifecycle/exporter \"${exporter_args[@]}\" \"${PARAM_OUTPUT_IMAGE}\"\n\n# Store the image digest\ngrep digest /tmp/report.toml | tail -n 1 | tr -d ' \\\"\\n' | sed s/digest=// > \"$(results.shp-image-digest.path)\"\n"
+        - |
+          insecureRegistries=""
+          inInsecureRegistries=false
+
+          while [[ $# -gt 0 ]]; do
+            arg="$1"
+            shift
+
+            if [ "${arg}" == "--insecure-registries" ]; then
+              inInsecureRegistries=true
+            elif [ "${inInsecureRegistries}" == "true" ]; then
+              insecureRegistries="${insecureRegistries}${arg},"
+            else
+              echo "Invalid usage"
+              exit 1
+            fi
+          done
+
+          if [[ "${PARAM_OUTPUT_INSECURE}" == "true" ]]; then
+            outputImageHost="${PARAM_OUTPUT_IMAGE%%/*}"
+            if [[ "${outputImageHost}" == "${PARAM_OUTPUT_IMAGE}" || ( "${outputImageHost}" != *.* && "${outputImageHost}" != *:* && "${outputImageHost}" != "localhost" ) ]]; then
+              echo "> Output image '${PARAM_OUTPUT_IMAGE}' has no explicit registry host; not adding to insecure registries."
+            else
+              insecureRegistries="${insecureRegistries}${outputImageHost},"
+            fi
+          fi
+
+          if [[ ! -z "$insecureRegistries" ]]; then
+            echo "> Using insecure registries: $insecureRegistries"
+
+            export CNB_INSECURE_REGISTRIES="${insecureRegistries}"
+          fi
+
+          set -euo pipefail
+
+          echo "> Processing environment variables..."
+          ENV_DIR="/platform/env"
+
+          envs=($(env))
+
+          # Denying the creation of non required files from system environments.
+          # The creation of a file named PATH (corresponding to PATH system environment)
+          # caused failure for python source during pip install (https://github.com/Azure-Samples/python-docs-hello-world)
+          block_list=("PATH" "HOSTNAME" "PWD" "_" "SHLVL" "HOME" "")
+
+          for env in "${envs[@]}"; do
+            blocked=false
+
+            IFS='=' read -r key value string <<< "$env"
+
+            for str in "${block_list[@]}"; do
+              if [[ "$key" == "$str" ]]; then
+                blocked=true
+                break
+              fi
+            done
+
+            if [ "$blocked" == "false" ]; then
+              path="${ENV_DIR}/${key}"
+              echo -n "$value" > "$path"
+            fi
+          done
+
+          LAYERS_DIR=/tmp/.shp/layers
+          CACHE_DIR=/tmp/.shp/cache
+
+          mkdir -p "$CACHE_DIR" "$LAYERS_DIR"
+
+          function announce_phase {
+            printf "===> %s\n" "$1"
+          }
+
+          announce_phase "ANALYZING"
+          /cnb/lifecycle/analyzer -layers="$LAYERS_DIR" "${PARAM_OUTPUT_IMAGE}"
+
+          announce_phase "DETECTING"
+          /cnb/lifecycle/detector -app="${PARAM_SOURCE_CONTEXT}" -layers="$LAYERS_DIR"
+
+          announce_phase "RESTORING"
+          /cnb/lifecycle/restorer -cache-dir="$CACHE_DIR" -layers="$LAYERS_DIR"
+
+          announce_phase "BUILDING"
+          /cnb/lifecycle/builder -app="${PARAM_SOURCE_CONTEXT}" -layers="$LAYERS_DIR"
+
+          exporter_args=( -layers="$LAYERS_DIR" -report=/tmp/report.toml -cache-dir="$CACHE_DIR" -app="${PARAM_SOURCE_CONTEXT}")
+          grep -q "buildpack-default-process-type" "$LAYERS_DIR/config/metadata.toml" || exporter_args+=( -process-type web )
+
+          announce_phase "EXPORTING"
+          /cnb/lifecycle/exporter "${exporter_args[@]}" "${PARAM_OUTPUT_IMAGE}"
+
+          # Store the image digest
+          grep digest /tmp/report.toml | tail -n 1 | tr -d ' \"\n' | sed s/digest=// > "$(results.shp-image-digest.path)"
+        - --
+        - --insecure-registries
+        - $(params.insecure-registries[*])
       volumeMounts:
         - mountPath: /platform/env
           name: platform-env
@@ -694,7 +849,11 @@ spec:
   parameters:
     - name: platform-api-version
       description: The referenced version is the minimum version that all relevant buildpack implementations support.
-      default: "0.12"
+      default: "0.13"
+    - name: insecure-registries
+      description: List of registries to consider insecure (http or self-signed certificate).
+      type: array
+      defaults: []
   steps:
     - name: build-and-push
       image: docker.io/paketobuildpacks/builder-jammy-full:latest
@@ -705,11 +864,107 @@ spec:
           value: $(params.shp-source-context)
         - name: PARAM_OUTPUT_IMAGE
           value: $(params.shp-output-image)
+        - name: PARAM_OUTPUT_INSECURE
+          value: $(params.shp-output-insecure)
       command:
         - /bin/bash
       args:
         - -c
-        - "set -euo pipefail\n\necho \"> Processing environment variables...\"\nENV_DIR=\"/platform/env\"\n\nenvs=($(env))\n\n# Denying the creation of non required files from system environments.\n# The creation of a file named PATH (corresponding to PATH system environment)\n# caused failure for python source during pip install (https://github.com/Azure-Samples/python-docs-hello-world)\nblock_list=(\"PATH\" \"HOSTNAME\" \"PWD\" \"_\" \"SHLVL\" \"HOME\" \"\")\n\nfor env in \"${envs[@]}\"; do\n  blocked=false\n\n  IFS='=' read -r key value string <<< \"$env\"\n\n  for str in \"${block_list[@]}\"; do\n    if [[ \"$key\" == \"$str\" ]]; then\n      blocked=true\n      break\n    fi\n  done\n\n  if [ \"$blocked\" == \"false\" ]; then\n    path=\"${ENV_DIR}/${key}\"\n    echo -n \"$value\" > \"$path\"\n  fi\ndone\n\nLAYERS_DIR=/tmp/.shp/layers\nCACHE_DIR=/tmp/.shp/cache\n\nmkdir -p \"$CACHE_DIR\" \"$LAYERS_DIR\"\n\nfunction announce_phase {\n  printf \"===> %s\\n\" \"$1\" \n}\n\nannounce_phase \"ANALYZING\"\n/cnb/lifecycle/analyzer -layers=\"$LAYERS_DIR\" \"${PARAM_OUTPUT_IMAGE}\"\n\nannounce_phase \"DETECTING\"\n/cnb/lifecycle/detector -app=\"${PARAM_SOURCE_CONTEXT}\" -layers=\"$LAYERS_DIR\"\n\nannounce_phase \"RESTORING\"\n/cnb/lifecycle/restorer -cache-dir=\"$CACHE_DIR\" -layers=\"$LAYERS_DIR\"\n\nannounce_phase \"BUILDING\"\n/cnb/lifecycle/builder -app=\"${PARAM_SOURCE_CONTEXT}\" -layers=\"$LAYERS_DIR\"\n\nexporter_args=( -layers=\"$LAYERS_DIR\" -report=/tmp/report.toml -cache-dir=\"$CACHE_DIR\" -app=\"${PARAM_SOURCE_CONTEXT}\")\ngrep -q \"buildpack-default-process-type\" \"$LAYERS_DIR/config/metadata.toml\" || exporter_args+=( -process-type web ) \n\nannounce_phase \"EXPORTING\"\n/cnb/lifecycle/exporter \"${exporter_args[@]}\" \"${PARAM_OUTPUT_IMAGE}\"\n\n# Store the image digest\ngrep digest /tmp/report.toml | tail -n 1 | tr -d ' \\\"\\n' | sed s/digest=// > \"$(results.shp-image-digest.path)\"\n"
+        - |
+          insecureRegistries=""
+          inInsecureRegistries=false
+
+          while [[ $# -gt 0 ]]; do
+            arg="$1"
+            shift
+
+            if [ "${arg}" == "--insecure-registries" ]; then
+              inInsecureRegistries=true
+            elif [ "${inInsecureRegistries}" == "true" ]; then
+              insecureRegistries="${insecureRegistries}${arg},"
+            else
+              echo "Invalid usage"
+              exit 1
+            fi
+          done
+
+          if [[ "${PARAM_OUTPUT_INSECURE}" == "true" ]]; then
+            outputImageHost="${PARAM_OUTPUT_IMAGE%%/*}"
+            if [[ "${outputImageHost}" == "${PARAM_OUTPUT_IMAGE}" || ( "${outputImageHost}" != *.* && "${outputImageHost}" != *:* && "${outputImageHost}" != "localhost" ) ]]; then
+              echo "> Output image '${PARAM_OUTPUT_IMAGE}' has no explicit registry host; not adding to insecure registries."
+            else
+              insecureRegistries="${insecureRegistries}${outputImageHost},"
+            fi
+          fi
+
+          if [[ ! -z "$insecureRegistries" ]]; then
+            echo "> Using insecure registries: $insecureRegistries"
+
+            export CNB_INSECURE_REGISTRIES="${insecureRegistries}"
+          fi
+
+          set -euo pipefail
+
+          echo "> Processing environment variables..."
+          ENV_DIR="/platform/env"
+
+          envs=($(env))
+
+          # Denying the creation of non required files from system environments.
+          # The creation of a file named PATH (corresponding to PATH system environment)
+          # caused failure for python source during pip install (https://github.com/Azure-Samples/python-docs-hello-world)
+          block_list=("PATH" "HOSTNAME" "PWD" "_" "SHLVL" "HOME" "")
+
+          for env in "${envs[@]}"; do
+            blocked=false
+
+            IFS='=' read -r key value string <<< "$env"
+
+            for str in "${block_list[@]}"; do
+              if [[ "$key" == "$str" ]]; then
+                blocked=true
+                break
+              fi
+            done
+
+            if [ "$blocked" == "false" ]; then
+              path="${ENV_DIR}/${key}"
+              echo -n "$value" > "$path"
+            fi
+          done
+
+          LAYERS_DIR=/tmp/.shp/layers
+          CACHE_DIR=/tmp/.shp/cache
+
+          mkdir -p "$CACHE_DIR" "$LAYERS_DIR"
+
+          function announce_phase {
+            printf "===> %s\n" "$1"
+          }
+
+          announce_phase "ANALYZING"
+          /cnb/lifecycle/analyzer -layers="$LAYERS_DIR" "${PARAM_OUTPUT_IMAGE}"
+
+          announce_phase "DETECTING"
+          /cnb/lifecycle/detector -app="${PARAM_SOURCE_CONTEXT}" -layers="$LAYERS_DIR"
+
+          announce_phase "RESTORING"
+          /cnb/lifecycle/restorer -cache-dir="$CACHE_DIR" -layers="$LAYERS_DIR"
+
+          announce_phase "BUILDING"
+          /cnb/lifecycle/builder -app="${PARAM_SOURCE_CONTEXT}" -layers="$LAYERS_DIR"
+
+          exporter_args=( -layers="$LAYERS_DIR" -report=/tmp/report.toml -cache-dir="$CACHE_DIR" -app="${PARAM_SOURCE_CONTEXT}")
+          grep -q "buildpack-default-process-type" "$LAYERS_DIR/config/metadata.toml" || exporter_args+=( -process-type web )
+
+          announce_phase "EXPORTING"
+          /cnb/lifecycle/exporter "${exporter_args[@]}" "${PARAM_OUTPUT_IMAGE}"
+
+          # Store the image digest
+          grep digest /tmp/report.toml | tail -n 1 | tr -d ' \"\n' | sed s/digest=// > "$(results.shp-image-digest.path)"
+        - --
+        - --insecure-registries
+        - $(params.insecure-registries[*])
       volumeMounts:
         - mountPath: /platform/env
           name: platform-env
@@ -804,7 +1059,7 @@ spec:
       default: ""
     - name: go-version
       description: "Version of Go, must match a tag from https://hub.docker.com/_/golang?tab=tags"
-      default: "1.24"
+      default: "1.25"
     - name: ko-version
       description: "Version of ko, must be either 'latest', or a release name from https://github.com/ko-build/ko/releases"
       default: latest
@@ -819,14 +1074,23 @@ spec:
       description: "Volume to contain the GOCACHE. Can be set to a persistent volume to optimize compilation performance for rebuilds."
       overridable: true
       emptyDir: {}
+    - name: ko-tmp
+      description: "Volume to contain temporary files for ko binary and other build artifacts."
+      overridable: true
+      emptyDir: {}
   steps:
     - name: build
       image: golang:$(params.go-version)
       imagePullPolicy: Always
       workingDir: $(params.shp-source-root)
+      securityContext:
+        readOnlyRootFilesystem: true
       volumeMounts:
         - mountPath: /gocache
           name: gocache
+          readOnly: false
+        - mountPath: /ko-tmp
+          name: ko-tmp
           readOnly: false
       env:
         - name: DOCKER_CONFIG
@@ -836,7 +1100,13 @@ spec:
         - name: GOFLAGS
           value: $(params.go-flags)
         - name: GOCACHE
-          value: /gocache
+          value: /gocache/go-build
+        - name: GOMODCACHE
+          value: /gocache/go-mod
+        - name: GOTMPDIR
+          value: /ko-tmp
+        - name: TMPDIR
+          value: /ko-tmp
         - name: PARAM_OUTPUT_IMAGE
           value: $(params.shp-output-image)
         - name: PARAM_OUTPUT_DIRECTORY
@@ -874,7 +1144,7 @@ spec:
           fi
 
           # Download ko to the temp directory
-          curl -f -s -L "https://github.com/ko-build/ko/releases/download/${KO_VERSION_WITH_V}/ko_${KO_VERSION_WITHOUT_V}_$(uname)_$(uname -m | sed 's/aarch64/arm64/').tar.gz" | tar xzf - -C /tmp ko
+          curl -f -s -L "https://github.com/ko-build/ko/releases/download/${KO_VERSION_WITH_V}/ko_${KO_VERSION_WITHOUT_V}_$(uname)_$(uname -m | sed 's/aarch64/arm64/').tar.gz" | tar xzf - -C /ko-tmp ko
 
           # Determine the platform
           PLATFORM="${PARAM_TARGET_PLATFORM}"
@@ -884,7 +1154,7 @@ spec:
 
           # Print version information
           go version
-          echo "ko version $(/tmp/ko version)"
+          echo "ko version $(/ko-tmp/ko version)"
 
           # Allow directory to be owned by other user which is normal for a volume-mounted directory.
           # This allows Go to run git commands to access repository metadata.
@@ -896,18 +1166,277 @@ spec:
           export GOROOT="$(go env GOROOT)"
 
           pushd "${PARAM_SOURCE_CONTEXT}" > /dev/null
-            /tmp/ko build "${PARAM_PACKAGE_DIRECTORY}" --oci-layout-path="${PARAM_OUTPUT_DIRECTORY}" --platform="${PLATFORM}" --push=false
+            /ko-tmp/ko build "${PARAM_PACKAGE_DIRECTORY}" --oci-layout-path="${PARAM_OUTPUT_DIRECTORY}" --platform="${PLATFORM}" --push=false
           popd > /dev/null
       resources:
         limits:
-          cpu: 500m
-          memory: 1Gi
+          cpu: "1"
+          memory: 2Gi
         requests:
           cpu: 250m
-          memory: 65Mi
+          memory: 256Mi
   securityContext:
     runAsUser: 1000
     runAsGroup: 1000
+
+---
+apiVersion: shipwright.io/v1beta1
+kind: ClusterBuildStrategy
+metadata:
+  name: multiarch-native-buildah
+spec:
+  volumes:
+    - name: oci-archive-storage
+      emptyDir: {}
+      overridable: true
+    - name: additional-bins
+      emptyDir: {}
+  steps:
+    - name: prepare-build
+      image: quay.io/centos/centos:stream9
+      workingDir: $(params.shp-source-root)
+      volumeMounts:
+        - mountPath: /usr/local/bin
+          name: additional-bins
+      resources:
+        requests:
+          cpu: 100m
+          memory: 16Mi
+        limits:
+          memory: 256Mi
+      command:
+        - /bin/bash
+      args:
+        - -c
+        - "#!/bin/bash\nset -Eueo pipefail\ntrap 'CHILDREN=$(jobs -p); if test -n \"${CHILDREN}\"; then kill ${CHILDREN} && wait; fi' TERM ERR\n\n# Parse parameters\ncontext=\"\" dockerfile=\"\" runtime_stage_from_image=\"\" image=\"\" status=\"\"\nregistriesBlock=\"\" registriesInsecure=\"\" registriesSearch=\"\"\nrequest_cpu=\"\" request_memory=\"\" limit_cpu=\"\" limit_memory=\"\"\ndeclare -a architectures buildArgs\n\nwhile [[ $# -gt 0 ]]; do\n  arg=\"$1\"\n  shift\n  if [ \"${arg}\" == \"--context\" ]; then\n    status=\n    context=\"$1\"\n    shift\n  elif [ \"${arg}\" == \"--dockerfile\" ]; then\n    status=\n    dockerfile=\"$1\"\n    shift\n  elif [ \"${arg}\" == \"--image\" ]; then\n    status=\n    image=\"$1\"\n    shift\n  elif [ \"${arg}\" == \"--request-cpu\" ]; then\n    status=\n    [ \"${#1}\" -gt 0 ] && request_cpu=\"${1}\"\n    shift\n  elif [ \"${arg}\" == \"--request-memory\" ]; then\n    status=\n    [ \"${#1}\" -gt 0 ] && request_memory=\"${1}\"\n    shift\n  elif [ \"${arg}\" == \"--limit-cpu\" ]; then\n    status=\n    [ \"${#1}\" -gt 0 ] && limit_cpu=\"${1}\"\n    shift\n  elif [ \"${arg}\" == \"--limit-memory\" ]; then\n    status=\n    [ \"${#1}\" -gt 0 ] && limit_memory=\"${1}\"\n    shift\n  elif [ \"${arg}\" == \"--from\" ]; then\n    status=\n    [ \"${#1}\" -gt 0 ] && buildArgs+=(\"--from\" \"$1\")\n    shift\n  elif [ \"${arg}\" == \"--runtime-stage-from\" ]; then\n    status=\n    runtime_stage_from_image=\"$1\"\n    shift\n  elif [ \"${arg}\" == \"--architectures\" ]; then\n    status=\"parse_architectures\"\n  elif [ \"${arg}\" == \"--build-args\" ]; then\n    status=\"parse_build_args\"\n  elif [ \"${arg}\" == \"--build-contexts\" ]; then\n    status=\"parse_build_contexts\"\n  elif [ \"${arg}\" == \"--registries-block\" ]; then\n    status=\"parse_registries_block\"\n  elif [ \"${arg}\" == \"--registries-insecure\" ]; then\n    status=\"parse_registries_insecure\"\n  elif [ \"${arg}\" == \"--registries-search\" ]; then\n    status=\"parse_registries_search\"\n  elif [[ \"${arg}\" == --* ]]; then\n    echo \"[ERROR] Invalid usage\"\n    exit 1\n  elif [ \"${status}\" == \"parse_architectures\" ]; then\n    architectures+=(\"${arg}\")\n  elif [ \"${status}\" == \"parse_build_args\" ]; then\n    buildArgs+=(\"--build-arg\" \"${arg}\")\n  elif [ \"${status}\" == \"parse_build_contexts\" ]; then\n    buildArgs+=(\"--build-context\" \"${arg}\")\n  elif [ \"${status}\" == \"parse_registries_block\" ]; then\n    registriesBlock=\"${registriesBlock}'${arg}', \"\n  elif [ \"${status}\" == \"parse_registries_insecure\" ]; then\n    registriesInsecure=\"${registriesInsecure}'${arg}', \"\n  elif [ \"${status}\" == \"parse_registries_search\" ]; then\n    registriesSearch=\"${registriesSearch}'${arg}', \"\n  else\n    echo \"[ERROR] Invalid usage\"\n    exit 1\n  fi\ndone\n\n# Verify the existence of the context directory\nif [ ! -d \"${context}\" ]; then\n  echo -e \"[ERROR] The context directory '${context}' does not exist.\"\n  echo -n \"ContextDirNotFound\" > '$(results.shp-error-reason.path)'\n  echo -n \"The context directory '${context}' does not exist.\" > '$(results.shp-error-message.path)'\n  exit 1\nfi\ncd \"${context}\"\n\n# Verify the existence of the Dockerfile\nif [ ! -f \"${dockerfile}\" ]; then\n  echo -e \"[ERROR] The Dockerfile '${dockerfile}' does not exist.\"\n  echo -n \"DockerfileNotFound\" > '$(results.shp-error-reason.path)'\n  echo -n \"The Dockerfile '${dockerfile}' does not exist.\" > '$(results.shp-error-message.path)'\n  exit 1\nfi\necho \"[INFO] Creating registries config file...\"\ntouch /tmp/registries.conf\nif [ \"${registriesSearch}\" != \"\" ]; then\n  cat <<EOF >>/tmp/registries.conf\n[registries.search]\nregistries = [${registriesSearch::-2}]\nEOF\nfi\nif [ \"${registriesInsecure}\" != \"\" ]; then\n  cat <<EOF >>/tmp/registries.conf\n[registries.insecure]\nregistries = [${registriesInsecure::-2}]\nEOF\nfi\nif [ \"${registriesBlock}\" != \"\" ]; then\n  cat <<EOF >>/tmp/registries.conf\n[registries.block]\nregistries = [${registriesBlock::-2}]\nEOF\nfi\n\nif [ \"${#runtime_stage_from_image}\" -gt 0 ]; then\n  echo \"[INFO] Replacing the runtime stage image to extend from\"\n  buildArgs+=(\"--build-context\" \"$(tac \"${dockerfile}\" | grep -m1 -i -E '^[ ]*FROM' | \\\n    sed -n '0,/p/s/^[ ]*from[ ]\\+\\([^ ]*\\)[ ]*\\(as.*$\\)\\{0,1\\}$/\\1/Ip')=${runtime_stage_from_image}\")\nfi\n# TODO: what image including kubectl can we use?\necho \"[INFO] Downloading kubectl...\"\nkube_version=$(curl --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \\\n  \"https:${KUBERNETES_PORT#tcp:}/version\" | sed -n 's/^.*gitVersion.*\"v\\(.*\\)\\+\".*$/\\1/p' | cut -f1 -d'+')\narch=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')\ncurl --fail --location --output /usr/local/bin/kubectl \\\n  \"https://dl.k8s.io/release/v${kube_version}/bin/linux/${arch}/kubectl\"\nchmod +x /usr/local/bin/kubectl\ntask_run_pod=${HOSTNAME}\ntask_run_name=${task_run_pod%-pod}\nname=${task_run_name}-job\nnamespace=$(</var/run/secrets/kubernetes.io/serviceaccount/namespace)\ntask_run_uid=$(kubectl get pod/\"${task_run_pod}\" -o jsonpath='{.metadata.ownerReferences[0].uid}')\n\nfor arch in \"${architectures[@]}\"; do\n  echo \"[INFO] Creating the ${arch} build job\"\n  kubectl create -f - <<EOF\napiVersion: batch/v1\nkind: Job\nmetadata:\n  name: ${name}-${arch}\n  namespace: ${namespace}\n  ownerReferences:\n    - apiVersion: tekton.dev/v1beta1\n      kind: TaskRun\n      name: ${task_run_name}\n      uid: ${task_run_uid}\n      controller: true\n  labels:\n    clusterbuildstrategy.shipwright.io/arch: \"${arch}\"\nspec:\n  backoffLimit: 1\n  completions: 1\n  ttlSecondsAfterFinished: 86400\n  template:\n    spec:\n      serviceAccountName: pipeline\n      nodeSelector:\n        kubernetes.io/arch: ${arch}\n      restartPolicy: Never\n      containers:\n        - name: build\n          image: quay.io/containers/buildah:v1.43.1\n          volumeMounts:\n            - mountPath: /var/workdir\n              name: workdir\n          securityContext:\n            privileged: true\n          command:\n            - bash\n          resources:\n            requests:\n              ${request_cpu:+\"cpu: '${request_cpu}'\"}\n              ${request_memory:+\"memory: '${request_memory}'\"}\n            limits:\n              ${limit_cpu:+\"cpu: '${limit_cpu}'\"}\n              ${limit_memory:+\"memory: '${limit_memory}'\"}\n          args:\n            - -c\n            - |\n              #!/bin/bash\n              set -Eueo pipefail\n\n              echo \"[INFO] Build started on \\$(date)\"\n              mkdir -p /var/workdir/context\n              mkfifo /tmp/pipe\n\n              echo \"[INFO] Waiting for the assets to be copied... \"\n              timeout 30m cat /tmp/pipe || { echo \"[ERROR] Timeout while waiting for the assets to be copied.\"; exit 1; }\n\n              cd /var/workdir/context\n              # Building the image\n              echo \"[INFO] Building image ${image}\"\n              # No need to use double quotes for the buildArgs array, because we are expanding it in the heredoc\n              set -x; buildah bud ${buildArgs[@]} \\\n                --registries-conf=/var/workdir/registries.conf \\\n                --tag=\"${image}\" \\\n                --file=\"${dockerfile}\" .; set +x\n              # Create the oci-archive\n              echo \"[INFO] Storing the image ${image} as an oci-archive\"\n              buildah push \\\n                \"${image}\" \\\n                \"oci-archive:/tmp/image-${arch}.tar.gz\"\n              echo \"[INFO] Waiting for the image download to start...\"\n              timeout 5m cat /tmp/pipe || { echo \"[ERROR] The image download did not start\"; exit 1; }\n              echo \"[INFO] Waiting for the image download to finish...\"\n              timeout 30m cat /tmp/pipe || { echo \"[ERROR] The image download did not finish\"; exit 1; }\n              echo \"[INFO] Build completed on \\$(date)\"\n      volumes:\n      - name: workdir\n        emptyDir: {}\nEOF\ndone\n\ndeclare -a failure_pids success_pids\nfinished_job=\"\"\nfor arch in \"${architectures[@]}\"; do\n   kubectl wait job/\"${name}-${arch}\" --timeout=10m --for=condition=Failed &\n   failure_pids+=($!)\n   kubectl wait job/\"${name}-${arch}\" --timeout=5m --for=jsonpath='{.status.active}'=1 && \\\n     kubectl wait pod --timeout=10m -l \"job-name=${name}-${arch}\" --for=condition=Ready &\n   success_pids+=($!)\n   kubectl wait job/\"${name}-${arch}\" --timeout=5m --for=jsonpath='{.status.active}'=1 && \\\n     kubectl wait pod --timeout=10m -l \"job-name=${name}-${arch}\" --for=condition=PodScheduled=false &\n   failure_pids+=($!)\ndone\nret=0\nwhile [ ${ret} -eq 0 ]; do\n  wait -p finished_job -n \"${failure_pids[@]}\" \"${success_pids[@]}\" 2>/dev/null || ret=$?\n  if printf '%s\\0' \"${failure_pids[@]}\" | grep -Fxqz -- \"${finished_job}\"; then\n    echo \"[ERROR] A failure condition has been met while waiting for the jobs to initialize\"\n    exit 1\n  elif printf '%s\\0' \"${success_pids[@]}\" | grep -Fxqz -- \"${finished_job}\"; then\n    # shellcheck disable=SC2206\n    # It's safe to ignore the double quotes here, as the array keeps the ids of the jobs and ignoring them \n    # allows us to ignore the empty array\n    success_pids=( ${success_pids[@]/${finished_job}} )\n  fi\n  [ ${#success_pids[@]} -eq 0 ] && break\ndone\necho \"[INFO] All the jobs' pods started\"\necho \"[INFO] Uploading the assets to the build pods\"\n\nfunction upload_assets {\n  pod_name=$(kubectl get pod -l \"job-name=$1\" -o jsonpath='{.items[0].metadata.name}')\n  tar czpf - . | kubectl exec -i \"$pod_name\" -- tar xzpf - -C /var/workdir/context/\n  kubectl cp /tmp/registries.conf \"$pod_name\":/var/workdir/registries.conf\n  kubectl exec \"$pod_name\" -- bash -c \"echo -n > /tmp/pipe\"\n}\n\nsuccess_pids=()\n\nfor arch in \"${architectures[@]}\"; do\n   upload_assets \"${name}-${arch}\" &\n   success_pids+=($!)\ndone\nret=0\nwhile [ ${ret} -eq 0 ]; do\n  wait -n \"${success_pids[@]}\" 2>/dev/null || ret=$?\n  if [ ${ret} -ne 0 ] && [ \"${ret}\" -ne 127 ]; then\n    echo \"[ERROR] An error occurred while uploading the assets\"\n    exit 1\n  fi\ndone\necho \"[INFO] All the assets have been uploaded. Continuing.\"\n"
+        - --
+        - --context
+        - $(params.shp-source-context)
+        - --dockerfile
+        - $(params.dockerfile)
+        - --image
+        - $(params.shp-output-image)
+        - --build-args
+        - $(params.build-args[*])
+        - --registries-block
+        - $(params.registries-block[*])
+        - --registries-insecure
+        - $(params.registries-insecure[*])
+        - --registries-search
+        - $(params.registries-search[*])
+        - --architectures
+        - $(params.architectures[*])
+        - --from
+        - $(params.from)
+        - --runtime-stage-from
+        - $(params.runtime-stage-from)
+        - --build-contexts
+        - $(params.build-contexts[*])
+        - --request-cpu
+        - '$(params.request-cpu)'
+        - --request-memory
+        - '$(params.request-memory)'
+        - --limit-cpu
+        - '$(params.limit-cpu)'
+        - --limit-memory
+        - '$(params.limit-memory)'
+    - name: wait-manifests-complete
+      image: quay.io/centos/centos:stream9
+      workingDir: /tmp
+      volumeMounts:
+        - mountPath: /var/oci-archive-storage
+          name: oci-archive-storage
+        - mountPath: /usr/local/bin
+          name: additional-bins
+      resources:
+        requests:
+          cpu: 50m
+          memory: 16Mi
+        limits:
+          memory: 256Mi
+      command:
+        - bash
+      args:
+        - -c
+        - |
+          #!/bin/bash
+          set -Eueo pipefail
+          trap 'CHILDREN=$(jobs -p); if test -n "${CHILDREN}"; then kill ${CHILDREN} && wait; fi' TERM ERR
+
+          declare -a architectures
+          inArchitectures=false
+
+          while [[ $# -gt 0 ]]; do
+            arg="$1"
+            shift
+            if [ "${arg}" == "--architectures" ]; then
+              inArchitectures=true
+            elif [[ "${arg}" =~ --* ]]; then
+              inArchitectures=false
+              break
+            elif [ "${inArchitectures}" == "true" ]; then
+              architectures+=("${arg}")
+            fi
+          done
+          task_run_pod=${HOSTNAME}
+          name=${task_run_pod%-pod}-job
+          declare -a success_pids failure_pids
+          finished_job=""
+
+          function download_images {
+            pod_name=$(kubectl get pod -l "job-name=${1}-${2}" -o jsonpath='{.items[0].metadata.name}')
+            # Trigger the image download start event
+            kubectl exec -c build "${pod_name}" -- bash -c 'echo "done" > /tmp/pipe'
+            # Download the image
+            kubectl cp "${pod_name}:/tmp/image-${2}.tar.gz" "/var/oci-archive-storage/image-${2}.tar.gz"
+            # Trigger the image download complete event
+            kubectl exec -c build "${pod_name}" -- bash -c 'echo "done" > /tmp/pipe'
+          }
+
+          for arch in "${architectures[@]}"; do
+            echo "[INFO] Waiting for the ${arch} build job to complete"
+            kubectl wait job/"${name}-${arch}" --timeout=-1s --for=condition=Complete &
+            success_pids+=($!)
+            kubectl wait job/"${name}-${arch}" --timeout=-1s --for=condition=Failed &
+            failure_pids+=($!)
+            download_images "${name}" "${arch}" &
+            success_pids+=($!)
+            kubectl wait job/"${name}-${arch}" --timeout=5m --for=jsonpath='{.status.active}'=1 && \
+              kubectl wait pod --timeout=10m -l "job-name=${name}-${arch}" --for=condition=ContainersReady && \
+              kubectl logs -c build -l "job-name=${name}-${arch}" -f --tail=-1 |& sed -u "s/^/[${arch}] /" || true &
+          done
+
+          ret=0
+          while [ ${ret} -eq 0 ]; do
+            wait -p finished_job -n "${failure_pids[@]}" "${success_pids[@]}" 2>/dev/null || true
+            ret=$?
+            if printf '%s\0' "${failure_pids[@]}" | grep -Fxqz -- "${finished_job}"; then
+              echo "[ERROR] A failure condition has been met while waiting for the builds jobs to complete"
+              exit 1
+            elif printf '%s\0' "${success_pids[@]}" | grep -Fxqz -- "${finished_job}"; then
+              success_pids=( ${success_pids[@]/${finished_job}} )
+            fi
+            [ ${#success_pids[@]} -eq 0 ] && break
+          done
+          echo "[INFO] All the jobs completed successfully"
+          ls -lh /var/oci-archive-storage/
+        - --
+        - --architectures
+        - $(params.architectures[*])
+    - name: package-manifest-list-and-push
+      image: quay.io/containers/buildah:v1.43.1
+      securityContext:
+        privileged: true
+      workingDir: /var/oci-archive-storage
+      resources:
+        requests:
+          cpu: 50m
+          memory: 16Mi
+        limits:
+          memory: 256Mi
+      volumeMounts:
+        - mountPath: /var/oci-archive-storage
+          name: oci-archive-storage
+      command:
+        - bash
+      args:
+        - -c
+        - "#!/bin/bash\nset -Eueo pipefail\nls -lh\n\nimage=\"\" registriesInsecure=\"\" status=\"\" tlsVerify=true\n\nwhile [[ $# -gt 0 ]]; do\n  arg=\"$1\"\n  shift\n  if [ \"${arg}\" == \"--image\" ]; then\n    image=\"$1\"\n    status=\n    shift\n  elif [ \"${arg}\" == \"--registries-insecure\" ]; then\n    status=\"parse_registries_insecure\"\n  elif [[ \"${arg}\" == --* ]]; then\n    echo \"[ERROR] Invalid usage\"\n    exit 1      \n  elif [ \"${status}\" == \"parse_registries_insecure\" ]; then\n    registriesInsecure=\"${registriesInsecure}'${arg}', \"\n    # This assumes that the image is passed before the insecure registries which is fair in this context\n    if [[ ${image} == ${arg}/* ]]; then\n      tlsVerify=false\n    fi\n  else\n    echo \"[ERROR] Invalid usage\"\n    exit 1               \n  fi\ndone\n\nimage_name_tag=\"$(basename ${image})\"\necho \"[INFO] Creating manifest list\"\nbuildah manifest create \"${image_name_tag}\"\n\nfor f in image-*.tar.gz; do\n  echo \"[INFO] Adding the $(echo ${f%.tar.gz} | sed 's/^.*-//') manifest to the manifest list\"\n  [[ -e \"$f\" ]] || { echo \"[ERROR] no oci-archive available for the manifest\"; exit 1; } # handle case of no files available\n  buildah manifest add \"${image_name_tag}\" \"oci-archive:$f\"\ndone\n\necho \"[INFO] Pushing the manifest list ${image_name_tag} to the registry as ${image}\"\nbuildah manifest push --all --digestfile '$(results.shp-image-digest.path)' \\\n  --tls-verify=${tlsVerify} \"${image_name_tag}\" \"docker://${image}\"\necho \"[INFO] Manifest list pushed successfully. BuildRun succeeded.\"\n"
+        - --
+        - --image
+        - $(params.shp-output-image)
+        - --registries-insecure
+        - $(params.registries-insecure[*])
+  parameters:
+    - name: architectures
+      description: The list of architectures to build the image for
+      type: array
+      defaults:
+        - amd64
+    - name: build-args
+      description: The values for the args in the Dockerfile. Values must be in the format KEY=VALUE.
+      type: array
+      defaults: []
+    - name: dockerfile
+      description: The path to the Dockerfile to be used for building the image.
+      type: string
+      default: "Dockerfile"
+    - name: from
+      type: string
+      description: Image name used to replace the value in the first FROM instruction in the Dockerfile
+      default: ""
+    - name: runtime-stage-from
+      description: Image name used to replace the value in the last FROM instruction in the Dockerfile
+      type: string
+      default: ""
+    - name: build-contexts
+      description: >-
+        Specify an additional build context using its short name and its location.  Additional build contexts can be referenced in the same manner as we access  different stages in COPY instruction. Use values in the form "name=value". See man buildah-build.
+      type: array
+      defaults: []
+    - name: registries-block
+      description: The registries that need to block pull access.
+      type: array
+      defaults: []
+    - name: registries-insecure
+      description: The fully-qualified name of insecure registries. An insecure registry is one that does not have a valid SSL certificate or only supports HTTP.
+      type: array
+      defaults: []
+    - name: registries-search
+      description: The registries for searching short name images such as `golang:latest`.
+      type: array
+      defaults:
+        - docker.io
+        - quay.io
+    - name: request-cpu
+      description: The amount of CPU requested for the build pod.
+      type: string
+      default: 250m
+    - name: request-memory
+      description: The amount of memory requested for the build pod.
+      type: string
+      default: 64Mi
+    - name: limit-cpu
+      description: The amount of CPU limit for the build pod.
+      type: string
+      default: ""
+    - name: limit-memory
+      description: The amount of memory limit for the build pod.
+      type: string
+      default: 2Gi
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 0
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: multiarch-native-buildah-pipeline
+rules:
+  - verbs:
+      - get
+      - list
+      - watch
+    resources:
+      - pods
+    apiGroups:
+      - ""
+  - verbs:
+      - create
+    resources:
+      - pods/exec
+    apiGroups:
+      - ""
+  - verbs:
+      - get
+      - list
+      - create
+      - watch
+    resources:
+      - jobs
+    apiGroups:
+      - batch
 
 ---
 apiVersion: shipwright.io/v1beta1
@@ -934,7 +1463,7 @@ spec:
         - name: s2i
           mountPath: /s2i
     - name: buildah
-      image: quay.io/containers/buildah:v1.43.0
+      image: quay.io/containers/buildah:v1.43.1
       imagePullPolicy: Always
       workingDir: /s2i
       securityContext:
