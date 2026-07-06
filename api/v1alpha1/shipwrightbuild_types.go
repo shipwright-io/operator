@@ -80,11 +80,6 @@ type ShipwrightBuildList struct {
 	Items []ShipwrightBuild `json:"items"`
 }
 
-// init registers the current Schema on the Scheme Builder during initialization.
-func init() {
-	SchemeBuilder.Register(&ShipwrightBuild{}, &ShipwrightBuildList{})
-}
-
 // IsReady returns true the Ready condition status is True
 func (status ShipwrightBuildStatus) IsReady() bool {
 	for _, condition := range status.Conditions {
