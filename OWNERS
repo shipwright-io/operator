@@ -3,7 +3,6 @@
 approvers:
 - otaviof
 - qu1queee
-- adambkaplan
 - SaschaSchwarze0
 - HeavyWombat
 - sayan-biswas
@@ -13,7 +12,6 @@ approvers:
 reviewers:
 - otaviof
 - qu1queee
-- adambkaplan
 - SaschaSchwarze0
 - HeavyWombat
 - sayan-biswas
@@ -21,6 +19,7 @@ reviewers:
 - ayushsatyam146
 
 emeritus_approvers:
+- adambkaplan # 2026-06-17
 - sbose78 #2022-09-12
 - jkhelil
 - coreydaley
