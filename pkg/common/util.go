@@ -242,3 +242,8 @@ func itemInSlice(item string, items []string) bool {
 func IsOpenShiftPlatform() bool {
 	return os.Getenv("PLATFORM") == "openshift"
 }
+
+// OperatorNamespace returns the operator pod's namespace from POD_NAMESPACE.
+func OperatorNamespace() string {
+	return os.Getenv(OperatorNamespaceEnvVar)
+}

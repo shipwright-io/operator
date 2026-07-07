@@ -27,6 +27,7 @@ import (
 
 	operatorv1alpha1 "github.com/shipwright-io/operator/api/v1alpha1"
 	"github.com/shipwright-io/operator/controllers"
+	"github.com/shipwright-io/operator/pkg/common"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -99,12 +100,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	operatorNamespace := common.OperatorNamespace()
+	if operatorNamespace == "" {
+		operatorNamespace = common.DefaultNamespace
+		setupLog.Info("POD_NAMESPACE not set, falling back to default namespace for local development", "namespace", operatorNamespace)
+	}
+
 	if err = (&controllers.ShipwrightBuildReconciler{
 		CRDClient:            crdClient,
 		TektonOperatorClient: tektonOperatorClient,
 		Client:               mgr.GetClient(),
 		Scheme:               mgr.GetScheme(),
 		Logger:               ctrl.Log.WithName("controllers").WithName("ShipwrightBuild"),
+		OperatorNamespace:    operatorNamespace,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ShipwrightBuild")
 		os.Exit(1)
