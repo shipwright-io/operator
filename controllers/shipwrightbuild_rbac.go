@@ -9,6 +9,7 @@ package controllers
 // +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,resourceNames=shipwright-build-controller,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=deployments,resourceNames=shipwright-build-webhook,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,resourceNames=shipwright-build-webhook,verbs=update
+// TODO(#241): Reduce to get;list;watch once TargetNamespace field is fully removed
 // +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods;events;configmaps;secrets;limitranges;namespaces;services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create

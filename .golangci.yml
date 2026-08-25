@@ -2,3 +2,11 @@ version: "2"
 
 run:
   timeout: 10m
+
+linters:
+  exclusions:
+    rules:
+      # TODO(#241): Remove once TargetNamespace field is fully removed
+      - linters:
+          - staticcheck
+        text: "SA1019:.*TargetNamespace"

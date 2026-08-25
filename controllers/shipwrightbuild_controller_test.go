@@ -32,6 +32,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// testOperatorNamespace is the namespace used as the operator's namespace in unit tests.
+const testOperatorNamespace = "shipwright-operator"
+
 // bootstrapShipwrightBuildReconciler start up a new instance of ShipwrightBuildReconciler which is
 // ready to interact with Manifestival, returning the Manifestival instance and the client.
 func bootstrapShipwrightBuildReconciler(
@@ -76,7 +79,7 @@ func bootstrapShipwrightBuildReconciler(
 	} else {
 		toClient = tektonoperatorv1alpha1client.NewSimpleClientset(tcfg)
 	}
-	r := &ShipwrightBuildReconciler{CRDClient: crdClient.ApiextensionsV1(), TektonOperatorClient: toClient.OperatorV1alpha1(), Client: c, Scheme: s, Logger: logger}
+	r := &ShipwrightBuildReconciler{CRDClient: crdClient.ApiextensionsV1(), TektonOperatorClient: toClient.OperatorV1alpha1(), Client: c, Scheme: s, Logger: logger, OperatorNamespace: testOperatorNamespace}
 
 	// creating targetNamespace on which Shipwright-Build will be deployed against, before the other
 	// tests takes place
@@ -248,7 +251,7 @@ func TestShipwrightBuildReconciler_Reconcile(t *testing.T) {
 		targetNamespace: "namespace",
 	}, {
 		testName:        "target namespace is not informed",
-		targetNamespace: defaultTargetNamespace,
+		targetNamespace: testOperatorNamespace,
 	}}
 
 	for _, tt := range tests {
