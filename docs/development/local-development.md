@@ -38,21 +38,21 @@ To test the operator on a Kubernetes cluster, you first must have the following:
 * Install [Tekton operator](https://github.com/tektoncd/operator) v0.74.0 or higher on the cluster.
 
 ```bash
-$ export KUBECONFIG=/path/to/kubeconfig
-$ kubectl apply -f https://github.com/tektoncd/operator/releases/download/v0.74.0/release.notags.yaml
+export KUBECONFIG=/path/to/kubeconfig
+kubectl apply -f https://github.com/tektoncd/operator/releases/download/v0.74.0/release.notags.yaml
 ```
 
 If pushing to an external image registry, you may need to provide credentials to ko:
 
 ```bash
-$ make ko
-$ ko login <IMAGE_REGISTRY> -u <USERNAME> -p <PASSWORD>
+make ko
+ko login <IMAGE_REGISTRY> -u <USERNAME> -p <PASSWORD>
 ```
 
 Next, use the `make deploy` command with appropriate `IMAGE_REPO` and `VERSION` arguments to deploy the operator to the cluster.
 
 ```bash
-$ make deploy IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" VERSION="<VERSION>"
+make deploy IMAGE_REPO="<IMAGE_REGISTRY>/<USERNAME>" VERSION="<VERSION>"
 ```
 
 _Note:_
@@ -60,5 +60,5 @@ _Note:_
 Scripts in `hack` folder may require `sed` (GNU), therefore in platforms other than Linux you may have it with a different name. For instance, on macOS it's usually named `gsed`, in this case provide the `SED_BIN` make variable with the alternative name.
 
 ```bash
-$ make build SED_BIN=gsed ...
+make build SED_BIN=gsed ...
 ```

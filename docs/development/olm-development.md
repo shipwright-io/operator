@@ -66,8 +66,8 @@ Like Step 2 above, you will need to publish a catalog containing the candidate o
 Run the following command to set the correct `BUNDLE_IMG` for the catalog:
 
 ```sh
-$ version=<version to test, no leading v> # example: 0.13.0-rc0
-$ make catalog-push IMAGE_REPO=<your-registry> VERSION="$version" BUNDLE_IMG="ghcr.io/shipwright-io/operator/operator-bundle:v$version"
+version=<version to test, no leading v> # example: 0.13.0-rc0
+make catalog-push IMAGE_REPO=<your-registry> VERSION="$version" BUNDLE_IMG="ghcr.io/shipwright-io/operator/operator-bundle:v$version"
 ```
 
 ### Step 2: Deploy the operator
@@ -75,8 +75,8 @@ $ make catalog-push IMAGE_REPO=<your-registry> VERSION="$version" BUNDLE_IMG="gh
 Similar to Step 3 above, deploy the operator with the catalog image:
 
 ```sh
-$ version=<version to test, no leading `v`> # example: 0.13.0-rc0
-$ make catalog-run IMAGE_REPO=<your-registry> VERSION="$version"
+version=<version to test, no leading `v`> # example: 0.13.0-rc0
+make catalog-run IMAGE_REPO=<your-registry> VERSION="$version"
 ```
 
 ## Troubleshooting
@@ -88,7 +88,7 @@ On platforms other than Linux, use the `SED_BIN` make variable to use a differen
 For instance, on MacOS sed functions are provided by `gsed`:
 
 ```bash
-$ make catalog-run SED_BIN=gsed ...
+make catalog-run SED_BIN=gsed ...
 ```
 
 ### Catalog Source Fails - Cannot Access Registry Over grpc
@@ -100,6 +100,6 @@ To fall back to HTTP-based pull, set the `USE-HTTP` make variable to `true` when
 the test catalog:
 
 ```bash
-$ make catalog-push USE-HTTP="true" ...
-$ make catalog-run ...
+make catalog-push USE-HTTP="true" ...
+make catalog-run ...
 ```

@@ -10,7 +10,7 @@ Before installation, ensure that OLM has been deployed on your cluster by follow
 Once OLM has been deployed, use the following command to install the latest operator release from [operatorhub.io](https://operatorhub.io/operator/shipwright-operator):
 
 ```sh
-$ kubectl apply -f https://operatorhub.io/install/shipwright-operator.yaml
+kubectl apply -f https://operatorhub.io/install/shipwright-operator.yaml
 ```
 
 ## Prerequisites

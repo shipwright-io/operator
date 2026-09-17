@@ -94,7 +94,7 @@ The OperatorHub release script requires the following:
 3. Add the community operators repository as the `upstream` remote:
 
    ```sh
-   $ git remote add upstream https://github.com/k8s-operatorhub/community-operators.git
+   git remote add upstream https://github.com/k8s-operatorhub/community-operators.git
    ```
 
 4. Install the [crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md)
